@@ -15,6 +15,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      external: ['electron'],
+    },
   },
   optimizeDeps: {
     include: [
@@ -24,5 +27,9 @@ export default defineConfig({
       'zustand',
       '@monaco-editor/react'
     ],
+  },
+  define: {
+    '__dirname': JSON.stringify(path.resolve(__dirname)),
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
   },
 })
