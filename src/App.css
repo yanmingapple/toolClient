@@ -1,0 +1,97 @@
+.app-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  background-color: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  color: #1890ff;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.sider {
+  background-color: #fff;
+  border-right: 1px solid #f0f0f0;
+  overflow-y: auto;
+}
+
+.content {
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #f5f5f5;
+}
+
+.main-content {
+  background-color: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-height: calc(100vh - 120px);
+}
+
+.welcome-container {
+  text-align: center;
+  padding: 80px 0;
+}
+
+.welcome-icon {
+  font-size: 64px;
+  color: #1890ff;
+  margin-bottom: 24px;
+}
+
+.welcome-title {
+  font-size: 28px;
+  margin-bottom: 16px;
+  color: #262626;
+}
+
+.welcome-description {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 32px;
+}
+
+.connection-card {
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.connection-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.query-tab {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0 16px;
+}
+
+.query-editor {
+  height: calc(100vh - 200px);
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.result-table {
+  margin-top: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 4px;
+}
+
+.pagination {
+  margin-top: 16px;
+  text-align: right;
+}
