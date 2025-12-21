@@ -5,7 +5,7 @@ import { CloseOutlined } from '@ant-design/icons'
 const { Content, Sider } = Layout
 
 // 定义面板类型
-export type PanelType = 'query' | 'function' | 'table' | 'view' | 'backup' | 'model' | 'bi'
+export type PanelType = 'query' | 'function' | 'table' | 'view' | 'backup' | 'model' | 'bi' | 'object'
 
 // 面板项接口
 export interface PanelItem {
@@ -55,13 +55,16 @@ const MainPanel: React.FC<MainPanelProps> = ({
       label: (
         <span>
           {panel.title}
-          <CloseOutlined
-            onClick={(e) => {
-              e.stopPropagation()
-              onClosePanel(panel.id)
-            }}
-            style={{ marginLeft: '8px', cursor: 'pointer' }}
-          />
+          {/* 默认的"对象"面板不显示关闭按钮 */}
+          {panel.id !== 'object-0' && (
+            <CloseOutlined
+              onClick={(e) => {
+                e.stopPropagation()
+                onClosePanel(panel.id)
+              }}
+              style={{ marginLeft: '8px', cursor: 'pointer' }}
+            />
+          )}
         </span>
       ),
       children: panel.content

@@ -122,8 +122,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onAutoRun
 }) => {
   // 面板状态
-  const [panels, setPanels] = useState<PanelItem[]>([])
-  const [activePanelId, setActivePanelId] = useState<string | undefined>()
+  // 添加默认的"对象"面板
+  const [panels, setPanels] = useState<PanelItem[]>([
+    {
+      id: 'object-0',
+      type: 'object',
+      title: '对象',
+      content: (
+        <div style={{ padding: '20px' }}>
+          <h3>对象列表</h3>
+          <p>选择左侧导航树中的对象以查看详细信息</p>
+        </div>
+      )
+    }
+  ])
+  const [activePanelId, setActivePanelId] = useState<string | undefined>('object-0')
   
   // 选中对象状态
   const [selectedTables, setSelectedTables] = useState<TableData[]>([])
@@ -146,6 +159,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 
   // 关闭面板
   const handleClosePanel = (panelId: string) => {
+    // 防止删除默认的"对象"面板
+    if (panelId === 'object-0') {
+      return
+    }
+    
     const updatedPanels = panels.filter(panel => panel.id !== panelId)
     setPanels(updatedPanels)
     
