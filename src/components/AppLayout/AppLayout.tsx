@@ -2,43 +2,22 @@
  * 应用主布局组件
  */
 import React, { useState } from 'react'
-import { Layout, Typography, Button } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
-import { Icon } from '../../icons'
+import { Layout } from 'antd'
 import HeaderBar from '../HeaderBar'
 import ConnectionTree from '../ConnectionTree'
 import MainPanel, { PanelItem, PanelType } from '../MainPanel'
-import TablePanel, { TableData } from '../TablePanel'
+import ObjectPanel, { TableData } from '../ObjectPanel'
 import FunctionPanel, { FunctionData } from '../FunctionPanel'
 import PropertiesPanel, { TableObject } from '../PropertiesPanel'
 import { TreeNode, TreeNodeType } from '../../types/tree'
+import { useConnection } from '../../hooks/useConnection'
+import { useDatabaseOperations } from '../../hooks/useDatabaseOperations'
+import { useConnectionStore } from '../../store/connectionStore'
+import { ConnectionStatus } from '../../types/connection'
 
 const { Sider, Content } = Layout
-const { Title, Paragraph } = Typography
 
-// 模拟数据
-const mockTables: TableData[] = [
-  { name: 'columns_priv', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Column privileges' },
-  { name: 'component', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Components' },
-  { name: 'db', rows: 2, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Database privileges' },
-  { name: 'default_roles', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Default roles' },
-  { name: 'engine_cost', rows: 2, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Costs for query execution engines' },
-  { name: 'func', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'User defined functions' },
-  { name: 'general_log', rows: 2, dataLength: '0 KB', engine: 'CSV', modifyDate: '--', comment: 'General log' },
-  { name: 'global_grants', rows: 57, dataLength: '48 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Extended global grants' },
-  { name: 'gtid_executed', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: '' },
-  { name: 'help_category', rows: 53, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'help categories' },
-  { name: 'help_keyword', rows: 1016, dataLength: '128 KB', engine: 'InnoDB', modifyDate: '--', comment: 'help keywords' },
-  { name: 'help_relation', rows: 2631, dataLength: '96 KB', engine: 'InnoDB', modifyDate: '--', comment: 'keyword-topic relation' },
-  { name: 'help_topic', rows: 511, dataLength: '1552 KB', engine: 'InnoDB', modifyDate: '--', comment: 'help topics' },
-  { name: 'innodb_index_stats', rows: 365, dataLength: '96 KB', engine: 'InnoDB', modifyDate: '--', comment: 'InnoDB index statistics' },
-  { name: 'innodb_table_stats', rows: 87, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'InnoDB table statistics' },
-  { name: 'ndb_binlog_index', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: '' },
-  { name: 'password_history', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Password history for users' },
-  { name: 'plugin', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'MySQL plugins' },
-  { name: 'proc_priv', rows: 0, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'Procedure privileges' },
-  { name: 'proxies_priv', rows: 1, dataLength: '16 KB', engine: 'InnoDB', modifyDate: '--', comment: 'User proxy privileges' },
-]
+
 
 const mockFunctions: FunctionData[] = [
   { name: 'get_format', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: true, comment: 'Format a date or time value' },
@@ -113,7 +92,7 @@ interface AppLayoutProps {
  * 应用主布局组件
  */
 const AppLayout: React.FC<AppLayoutProps> = ({
-  activeConnectionId,
+  activeConnectionId: propActiveConnectionId, // 使用下划线前缀表示未使用的参数
   onNewConnection,
   onConnect,
   onUser,
@@ -121,25 +100,59 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onSearch,
   onAutoRun
 }) => {
+  // 从hooks获取连接和数据库操作相关的状态和函数
+  const { connectionStates, activeConnectionId: storeActiveConnectionId } = useConnection()
+  const { databaseObjects } = useConnectionStore()
+  const { } = useDatabaseOperations()
+  
+  // 选中对象状态
+  const [selectedTables, setSelectedTables] = useState<TableData[]>([])
+  // 当前连接状态
+  const [currentConnectionStatus, setCurrentConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED)
+  // 当前选中的节点信息
+  const [selectedNode, setSelectedNode] = useState<{ type?: TreeNodeType; name?: string }>({})
+  
   // 面板状态
-  // 添加默认的"对象"面板
+  // 添加默认的"对象"面板，默认显示表内容
   const [panels, setPanels] = useState<PanelItem[]>([
     {
       id: 'object-0',
-      type: 'object',
+      type: 'table',
       title: '对象',
       content: (
-        <div style={{ padding: '20px' }}>
-          <h3>对象列表</h3>
-          <p>选择左侧导航树中的对象以查看详细信息</p>
-        </div>
+        <ObjectPanel
+          dataSource={[]} // 默认显示空表列表
+          selectedTables={selectedTables}
+          onSelectTables={setSelectedTables}
+          connectionStatus={currentConnectionStatus}
+          selectedNodeType={selectedNode.type}
+          selectedNodeName={selectedNode.name}
+          onOpenTable={(record) => {
+            // 打开表时，显示表的详细信息
+            const tableObject: TableObject = {
+              name: record.name,
+              type: TreeNodeType.TABLE,
+              engine: record.engine,
+              rows: record.rows,
+              dataLength: record.dataLength,
+              createTime: '2025-11-08 09:51:13',
+              updateTime: record.modifyDate || '',
+              collation: 'utf8mb4_0900_ai_ci',
+              autoIncrement: 0,
+              rowFormat: 'Dynamic',
+              checkTime: null,
+              indexLength: '0 bytes (0)',
+              maxDataLength: '0 bytes (0)',
+              dataFree: '4.00 MB (4,194,304)',
+              comment: record.comment
+          }
+          setSelectedObject(tableObject)
+          }}
+        />
       )
     }
   ])
   const [activePanelId, setActivePanelId] = useState<string | undefined>('object-0')
-  
-  // 选中对象状态
-  const [selectedTables, setSelectedTables] = useState<TableData[]>([])
   const [selectedObject, setSelectedObject] = useState<TableObject | null>(null)
 
   // 创建新面板
@@ -186,32 +199,35 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       setActivePanelId(existingPanel.id)
     } else {
       createPanel('table', '表', (
-        <TablePanel
-          dataSource={mockTables}
-          selectedTables={selectedTables}
-          onSelectTables={setSelectedTables}
-          onOpenTable={(record) => {
-            // 打开表时，显示表的详细信息
-            const tableObject: TableObject = {
-              name: record.name,
-              type: 'table',
-              engine: record.engine,
-              rows: record.rows,
-              dataLength: record.dataLength,
-              createTime: '2025-11-08 09:51:13',
-              updateTime: record.modifyDate || '',
-              collation: 'utf8mb4_0900_ai_ci',
-              autoIncrement: 0,
-              rowFormat: 'Dynamic',
-              checkTime: null,
-              indexLength: '0 bytes (0)',
-              maxDataLength: '0 bytes (0)',
-              dataFree: '4.00 MB (4,194,304)',
-              comment: record.comment
-            }
-            setSelectedObject(tableObject)
-          }}
-        />
+        <ObjectPanel
+              dataSource={[]} // 默认显示空表列表
+              selectedTables={selectedTables}
+              onSelectTables={setSelectedTables}
+              connectionStatus={currentConnectionStatus}
+              selectedNodeType={selectedNode.type}
+              selectedNodeName={selectedNode.name}
+              onOpenTable={(record) => {
+                // 打开表时，显示表的详细信息
+                const tableObject: TableObject = {
+                  name: record.name,
+                  type: TreeNodeType.TABLE,
+                  engine: record.engine,
+                  rows: record.rows,
+                  dataLength: record.dataLength,
+                  createTime: '2025-11-08 09:51:13',
+                  updateTime: record.modifyDate || '',
+                  collation: 'utf8mb4_0900_ai_ci',
+                  autoIncrement: 0,
+                  rowFormat: 'Dynamic',
+                  checkTime: null,
+                  indexLength: '0 bytes (0)',
+                  maxDataLength: '0 bytes (0)',
+                  dataFree: '4.00 MB (4,194,304)',
+                  comment: record.comment
+                }
+                setSelectedObject(tableObject)
+              }}
+            />
       ))
     }
   }
@@ -305,17 +321,38 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     }
   }
 
-  // 处理节点双击事件
-  const handleNodeDoubleClick = (node: TreeNode) => {
-    // 根据节点类型处理不同的双击事件
+  // 更新当前连接状态
+  React.useEffect(() => {
+    const activeId = propActiveConnectionId || storeActiveConnectionId
+    if (activeId && connectionStates instanceof Map) {
+      const status = connectionStates.get(activeId) || ConnectionStatus.DISCONNECTED
+      setCurrentConnectionStatus(status)
+    } else {
+      setCurrentConnectionStatus(ConnectionStatus.DISCONNECTED)
+    }
+  }, [propActiveConnectionId, storeActiveConnectionId, connectionStates])
+
+  // 处理节点选择事件
+  const handleNodeSelect = (node: TreeNode) => {
+    // 更新选中节点状态
+    setSelectedNode({ type: node.type, name: typeof node.title === 'string' ? node.title : undefined })
+    
+    // 根据节点类型处理不同的选择事件
     if (node.type === TreeNodeType.TABLE) {
-      // 查找双击的表
-      const tableName = node.key.replace(/^table_/, '')
-      const table = mockTables.find(t => t.name === tableName)
+      // 从databaseObjects中查找选中的表
+      const tableObject = databaseObjects.get(node.key)
       
-      if (table) {
+      if (tableObject) {
+        const table: TableData = {
+          name: tableObject.name,
+          rows: tableObject.metadata?.rows || 0,
+          dataLength: tableObject.metadata?.dataLength || '0 KB',
+          engine: tableObject.metadata?.engine || '',
+          modifyDate: tableObject.metadata?.updateTime || '--',
+          comment: tableObject.metadata?.comment || ''
+        }
         // 设置选中对象
-        const tableObject: TableObject = {
+        const tableDetails: TableObject = {
           name: table.name,
           type: TreeNodeType.TABLE,
           engine: table.engine,
@@ -332,20 +369,79 @@ const AppLayout: React.FC<AppLayoutProps> = ({
           dataFree: '4.00 MB (4,194,304)',
           comment: table.comment
         }
-        setSelectedObject(tableObject)
+        setSelectedObject(tableDetails)
+        
+        // 从databaseObjects中获取该表所在数据库的所有表
+        const databaseId = tableObject.parentId
+        const actualTables = databaseObjects instanceof Map 
+          ? Array.from(databaseObjects.values())
+              .filter(obj => obj.parentId === databaseId && obj.type === TreeNodeType.TABLE)
+              .map(obj => ({
+                name: obj.name,
+                rows: obj.metadata?.rows || 0,
+                dataLength: obj.metadata?.dataLength || '0 KB',
+                engine: obj.metadata?.engine || '',
+                modifyDate: obj.metadata?.updateTime || '--',
+                comment: obj.metadata?.comment || ''
+              }))
+          : []
         
         // 检查是否已经存在表面板
         const existingPanel = panels.find(panel => panel.type === 'table')
         if (existingPanel) {
+          // 更新现有面板的内容
+          const updatedPanels = panels.map(panel => {
+            if (panel.id === existingPanel.id) {
+              return {
+                ...panel,
+                content: (
+                  <ObjectPanel
+                    dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
+                    selectedTables={selectedTables}
+                    onSelectTables={setSelectedTables}
+                    connectionStatus={currentConnectionStatus}
+                    selectedNodeType={node.type}
+                    selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+                    onOpenTable={(record: TableData) => {
+                      // 打开表时，显示表的详细信息
+                      const tableObject: TableObject = {
+                        name: record.name,
+                        type: TreeNodeType.TABLE,
+                        engine: record.engine,
+                        rows: record.rows,
+                        dataLength: record.dataLength,
+                        createTime: '2025-11-08 09:51:13',
+                        updateTime: record.modifyDate || '',
+                        collation: 'utf8mb4_0900_ai_ci',
+                        autoIncrement: 0,
+                        rowFormat: 'Dynamic',
+                        checkTime: null,
+                        indexLength: '0 bytes (0)',
+                        maxDataLength: '0 bytes (0)',
+                        dataFree: '4.00 MB (4,194,304)',
+                        comment: record.comment
+                      }
+                      setSelectedObject(tableObject)
+                    }}
+                  />
+                )
+              }
+            }
+            return panel
+          })
+          setPanels(updatedPanels)
           setActivePanelId(existingPanel.id)
         } else {
           // 如果没有表面板，则创建一个
           createPanel('table', '表', (
-            <TablePanel
-              dataSource={mockTables}
+            <ObjectPanel
+              dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
               selectedTables={selectedTables}
               onSelectTables={setSelectedTables}
-              onOpenTable={(record) => {
+              connectionStatus={currentConnectionStatus}
+              selectedNodeType={node.type}
+              selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+              onOpenTable={(record: TableData) => {
                 // 打开表时，显示表的详细信息
                 const tableObject: TableObject = {
                   name: record.name,
@@ -372,17 +468,156 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       }
     } else if (node.type === TreeNodeType.DATABASE) {
       // 双击数据库节点可以加载表并显示表列表
+      // 从databaseObjects中获取该数据库下的所有表
+      const actualTables = databaseObjects instanceof Map 
+        ? Array.from(databaseObjects.values())
+            .filter(obj => obj.parentId === node.key && obj.type === TreeNodeType.TABLE)
+            .map(obj => ({
+              name: obj.name,
+              rows: obj.metadata?.rows || 0,
+              dataLength: obj.metadata?.dataLength || '0 KB',
+              engine: obj.metadata?.engine || '',
+              modifyDate: obj.metadata?.updateTime || '--',
+              comment: obj.metadata?.comment || ''
+            }))
+        : []
+      
       // 检查是否已经存在表面板
       const existingPanel = panels.find(panel => panel.type === 'table')
       if (existingPanel) {
+        // 更新现有面板的内容
+        const updatedPanels = panels.map(panel => {
+          if (panel.id === existingPanel.id) {
+            return {
+              ...panel,
+              content: (
+                <ObjectPanel
+                  dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
+                  selectedTables={selectedTables}
+                  onSelectTables={setSelectedTables}
+                  connectionStatus={currentConnectionStatus}
+                  selectedNodeType={node.type}
+                  selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+                  onOpenTable={(record) => {
+                    // 打开表时，显示表的详细信息
+                    const tableObject: TableObject = {
+                      name: record.name,
+                      type: TreeNodeType.TABLE,
+                      engine: record.engine,
+                      rows: record.rows,
+                      dataLength: record.dataLength,
+                      createTime: '2025-11-08 09:51:13',
+                      updateTime: record.modifyDate || '',
+                      collation: 'utf8mb4_0900_ai_ci',
+                      autoIncrement: 0,
+                      rowFormat: 'Dynamic',
+                      checkTime: null,
+                      indexLength: '0 bytes (0)',
+                      maxDataLength: '0 bytes (0)',
+                      dataFree: '4.00 MB (4,194,304)',
+                      comment: record.comment
+                    }
+                    setSelectedObject(tableObject)
+                  }}
+                />
+              )
+            }
+          }
+          return panel
+        })
+        setPanels(updatedPanels)
         setActivePanelId(existingPanel.id)
       } else {
         // 创建表面板
         createPanel('table', '表', (
-          <TablePanel
-            dataSource={mockTables}
+          <ObjectPanel
+            dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
             selectedTables={selectedTables}
             onSelectTables={setSelectedTables}
+            connectionStatus={currentConnectionStatus}
+            selectedNodeType={node.type}
+            selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+            onOpenTable={(record) => {
+              // 打开表时，显示表的详细信息
+              const tableObject: TableObject = {
+                name: record.name,
+                type: TreeNodeType.TABLE,
+                engine: record.engine,
+                rows: record.rows,
+                dataLength: record.dataLength,
+                createTime: '2025-11-08 09:51:13',
+                updateTime: record.modifyDate || '',
+                collation: 'utf8mb4_0900_ai_ci',
+                autoIncrement: 0,
+                rowFormat: 'Dynamic',
+                checkTime: null,
+                indexLength: '0 bytes (0)',
+                maxDataLength: '0 bytes (0)',
+                dataFree: '4.00 MB (4,194,304)',
+                comment: record.comment
+              }
+              setSelectedObject(tableObject)
+            }}
+          />
+        ))
+      }
+    } else if (node.type === TreeNodeType.CONNECTION) {
+      // 处理连接节点点击
+      // 检查是否已经存在表面板
+      const existingPanel = panels.find(panel => panel.type === 'table')
+      if (existingPanel) {
+        // 更新现有面板的内容
+        const updatedPanels = panels.map(panel => {
+          if (panel.id === existingPanel.id) {
+            return {
+              ...panel,
+              content: (
+                <ObjectPanel
+                  dataSource={[]} // 连接节点选中时显示空表列表
+                  selectedTables={selectedTables}
+                  onSelectTables={setSelectedTables}
+                  connectionStatus={currentConnectionStatus}
+                  selectedNodeType={node.type}
+                  selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+                  onOpenTable={(record) => {
+                    // 打开表时，显示表的详细信息
+                    const tableObject: TableObject = {
+                      name: record.name,
+                      type: TreeNodeType.TABLE,
+                      engine: record.engine,
+                      rows: record.rows,
+                      dataLength: record.dataLength,
+                      createTime: '2025-11-08 09:51:13',
+                      updateTime: record.modifyDate || '',
+                      collation: 'utf8mb4_0900_ai_ci',
+                      autoIncrement: 0,
+                      rowFormat: 'Dynamic',
+                      checkTime: null,
+                      indexLength: '0 bytes (0)',
+                      maxDataLength: '0 bytes (0)',
+                      dataFree: '4.00 MB (4,194,304)',
+                      comment: record.comment
+                    }
+                    setSelectedObject(tableObject)
+                  }}
+                />
+              )
+            }
+          }
+          return panel
+        })
+        setPanels(updatedPanels)
+        setActivePanelId(existingPanel.id)
+      } else {
+        // 创建表面板
+        createPanel('table', '表', (
+          <ObjectPanel
+            dataSource={[]} // 连接节点选中时显示空表列表
+            selectedTables={selectedTables}
+            onSelectTables={setSelectedTables}
+            connectionStatus={currentConnectionStatus}
+            selectedNodeType={node.type}
+            selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
             onOpenTable={(record) => {
               // 打开表时，显示表的详细信息
               const tableObject: TableObject = {
@@ -423,6 +658,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     }
   }
 
+
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <HeaderBar
@@ -444,36 +681,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         <Sider width={280} style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}>
           <ConnectionTree
             onNewConnection={onNewConnection}
-            onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeSelect={handleNodeSelect}
           />
         </Sider>
         
-        <Content style={{ margin: '16px', padding: 0,  }}>
-          {activeConnectionId ? (
-            <MainPanel
-              activePanelId={activePanelId}
-              panels={panels}
-              onClosePanel={handleClosePanel}
-              onSwitchPanel={handleSwitchPanel}
-              propertiesContent={
-                <PropertiesPanel
-                  selectedObject={selectedObject}
-                  objectType="table"
-                />
-              }
-            />
-          ) : (
-            <div style={{ textAlign: 'center', padding: '80px 0', margin: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
-              <Icon name="database" size={64} color="#1890ff" style={{ marginBottom: '24px' }} />
-              <Title level={2} style={{ marginBottom: '16px' }}>欢迎使用 DBManager Pro</Title>
-              <Paragraph style={{ fontSize: '16px', color: '#666' }}>
-                一款功能强大的数据库管理工具，支持多种数据库类型
-              </Paragraph>
-              <Button type="primary" size="large" icon={<PlusOutlined />} onClick={onNewConnection} style={{ marginTop: '24px' }}>
-                新建数据库连接
-              </Button>
-            </div>
-          )}
+        <Content style={{ margin: '16px', padding: 0, overflowY: 'auto' }}>
+          <MainPanel
+            activePanelId={activePanelId}
+            panels={panels}
+            onClosePanel={handleClosePanel}
+            onSwitchPanel={handleSwitchPanel}
+            propertiesContent={
+              <PropertiesPanel
+                selectedObject={selectedObject}
+              />
+            }
+          />
         </Content>
       </Layout>
     </Layout>

@@ -1,6 +1,8 @@
 import React from 'react'
-import { Table, Button, Input, Space, Checkbox } from 'antd'
-import { SearchOutlined, FolderOpenOutlined, EditOutlined, PlusOutlined, DeleteOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons'
+import { Table, Button, Input, Space, Checkbox, Empty } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
+import { TreeNodeType } from '../../types/tree'
+import { ConnectionStatus } from '../../types/connection'
 
 const { Search } = Input
 
@@ -15,7 +17,7 @@ export interface TableData {
   [key: string]: any
 }
 
-interface TablePanelProps {
+interface ObjectPanelProps {
   /**
    * 表数据列表
    */
@@ -56,12 +58,24 @@ interface TablePanelProps {
    * 选择表的回调
    */
   onSelectTables?: (records: TableData[]) => void
+  /**
+   * 当前连接状态
+   */
+  connectionStatus?: ConnectionStatus
+  /**
+   * 当前选中节点类型
+   */
+  selectedNodeType?: TreeNodeType
+  /**
+   * 当前选中节点名称
+   */
+  selectedNodeName?: string
 }
 
 /**
- * 表列表面板组件
+ * 对象列表面板组件
  */
-const TablePanel: React.FC<TablePanelProps> = ({
+const ObjectPanel: React.FC<ObjectPanelProps> = ({
   dataSource = [],
   selectedTables = [],
   onOpenTable,
@@ -71,7 +85,10 @@ const TablePanel: React.FC<TablePanelProps> = ({
   onImportWizard,
   onExportWizard,
   onSearch,
-  onSelectTables
+  onSelectTables,
+  connectionStatus,
+  selectedNodeType,
+  selectedNodeName: _selectedNodeName
 }) => {
   // 表格列配置
   const columns: any[] = [
@@ -153,34 +170,38 @@ const TablePanel: React.FC<TablePanelProps> = ({
       ellipsis: true
     }
   ]
+debugger
+  // 判断是否显示表数据
+  const shouldShowTables = connectionStatus === ConnectionStatus.CONNECTED && 
+    selectedNodeType && [TreeNodeType.CONNECTION, TreeNodeType.DATABASE, TreeNodeType.TABLE].includes(selectedNodeType)
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* 工具栏 */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
-          <Button onClick={() => onOpenTable && onOpenTable(dataSource[0])} type="default">
-            <FolderOpenOutlined /> 打开表
+          <Button onClick={() => onOpenTable && onOpenTable(dataSource[0])} type="text" disabled={!shouldShowTables || dataSource.length === 0}>
+            打开表
           </Button>
-          <Button onClick={() => onDesignTable && onDesignTable(dataSource[0])} type="default">
-            <EditOutlined /> 设计表
+          <Button onClick={() => onDesignTable && onDesignTable(dataSource[0])} type="text" disabled={!shouldShowTables || dataSource.length === 0}>
+            设计表
           </Button>
-          <Button onClick={onNewTable} type="default">
-            <PlusOutlined /> 新建表
+          <Button onClick={onNewTable} type="text" disabled={!shouldShowTables}>
+            新建表
           </Button>
           <Button 
             onClick={() => onDeleteTable?.(selectedTables)}
-            type="default" 
+            type="text" 
             danger
-            disabled={selectedTables.length === 0}
+            disabled={!shouldShowTables || selectedTables.length === 0}
           >
-            <DeleteOutlined /> 删除表
+            删除表
           </Button>
-          <Button onClick={onImportWizard} type="default">
-            <ImportOutlined /> 导入向导
+          <Button onClick={onImportWizard} type="text" disabled={!shouldShowTables}>
+            导入向导
           </Button>
-          <Button onClick={onExportWizard} type="default">
-            <ExportOutlined /> 导出向导
+          <Button onClick={onExportWizard} type="text" disabled={!shouldShowTables}>
+            导出向导
           </Button>
         </Space>
         
@@ -191,21 +212,33 @@ const TablePanel: React.FC<TablePanelProps> = ({
           size="middle"
           onSearch={onSearch}
           style={{ width: 200 }}
+          disabled={!shouldShowTables}
         />
       </div>
       
       {/* 表格区域 */}
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="name"
-        pagination={false}
-        style={{ flex: 1 }}
-        bordered
-        scroll={{ x: 800, y: 'calc(100vh - 280px)' }}
-      />
+      {shouldShowTables ? (
+        <Table
+          dataSource={dataSource}
+          columns={columns}
+          rowKey="name"
+          pagination={false}
+          style={{ flex: 1 }}
+          bordered
+          scroll={{ x: 800, y: 'calc(100vh - 280px)' }}
+          locale={{ emptyText: <Empty description="当前数据库没有表" /> }}
+        />
+      ) : (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Empty description={
+            connectionStatus === ConnectionStatus.CONNECTED 
+              ? "请选择一个数据库或表" 
+              : "请先连接到数据库"
+          } />
+        </div>
+      )}
     </div>
   )
 }
 
-export default TablePanel
+export default ObjectPanel

@@ -11,9 +11,10 @@ import { DatabaseStatus } from '../types/connection'
 
 /**
  * 树形数据管理Hook
+ * @param onSelect 节点选择回调函数
  * @returns 树形数据相关的状态和操作函数
  */
-export const useTreeData = () => {
+export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
   // 从store获取树形数据相关的状态
   const connections = useConnectionStore((state) => state.connections)
   const connectionStates = useConnectionStore((state) => state.connectionStates)
@@ -78,7 +79,13 @@ export const useTreeData = () => {
     // 可以在这里添加节点选择后的处理逻辑
     // 例如：显示选中节点的详情、执行相关操作等
     console.log('Selected node:', selectedKeys, info)
-  }, [])
+    
+    // 调用外部传入的选择回调
+    if (onSelect && info.node) {
+      debugger
+      onSelect(info.node as TreeNode, info)
+    }
+  }, [onSelect])
   
   return {
     treeData,

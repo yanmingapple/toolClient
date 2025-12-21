@@ -18,9 +18,9 @@ interface ConnectionTreeProps {
    */
   onNewConnection?: () => void
   /**
-   * 处理节点双击事件
+   * 处理节点选择事件
    */
-  onNodeDoubleClick?: (node: TreeNode) => void
+  onNodeSelect?: (node: TreeNode, info: any) => void
 }
 
 /**
@@ -28,10 +28,10 @@ interface ConnectionTreeProps {
  */
 const ConnectionTree: React.FC<ConnectionTreeProps> = ({
   onNewConnection,
-  onNodeDoubleClick
+  onNodeSelect
 }) => {
   // 使用自定义hooks获取树形数据和操作
-  const { treeData, handleExpand, handleSelect } = useTreeData()
+  const { treeData, handleExpand, handleSelect } = useTreeData(onNodeSelect)
   const { handleConnectAndLoadDatabases } = useConnection()
   
   // 本地状态
@@ -82,12 +82,7 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
       // 数据库加载成功后自动展开
       setExpandedKeys(prev => [...prev, node.key])
     }
-    
-    // 调用外部传入的双击处理函数
-    if (onNodeDoubleClick) {
-      onNodeDoubleClick(node)
-    }
-  }, [handleConnectAndLoadDatabases, handleExpand, expandedKeys, onNodeDoubleClick, setExpandedKeys])
+  }, [handleConnectAndLoadDatabases, handleExpand, expandedKeys, setExpandedKeys])
   
   /**
    * 处理数据加载

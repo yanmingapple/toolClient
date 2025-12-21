@@ -53,10 +53,6 @@ interface PropertiesPanelProps {
    * 当前选中的对象
    */
   selectedObject?: PropertiesObject | null
-  /**
-   * 对象类型
-   */
-  objectType?: ObjectType
 }
 
 /**
