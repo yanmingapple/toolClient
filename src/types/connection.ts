@@ -36,6 +36,14 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
+export enum DatabaseStatus {
+  DISCONNECTED = 'disconnected',
+  LOADING = 'loading',
+  LOADED = 'loaded',
+  ERROR = 'error',
+  EMPTY = 'empty',
+}
+
 export interface ConnectionState {
   id: string;
   status: ConnectionStatus;
