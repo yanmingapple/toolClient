@@ -141,21 +141,21 @@ const ObjectPanel: React.FC<ObjectPanelProps> = ({
       title: '行',
       dataIndex: 'rows',
       key: 'rows',
-      width: 60,
+      width: 150,
       align: 'right'
     },
     {
       title: '数据长度',
       dataIndex: 'dataLength',
       key: 'dataLength',
-      width: 100,
+      width: 150,
       align: 'right'
     },
     {
       title: '引擎',
       dataIndex: 'engine',
       key: 'engine',
-      width: 100
+      width: 150
     },
     {
       title: '修改日期',

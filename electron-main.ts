@@ -286,11 +286,11 @@ async function handleGetDatabaseList(_event: any, config: any) {
           password: config.password,
           ssl: config.ssl ? { rejectUnauthorized: true } : undefined
         })
-        const [databases] = await mysqlConn.query('SHOW DATABASES')
+        const [databases] = await mysqlConn.query('SHOW DATABASES') as [Array<{ Database: string }>, any]
         await mysqlConn.end()
         return {
           success: true,
-          data: (databases as Array<{ Database: string }>).map((db, index) => ({
+          data: databases.map((db, index) => ({
             id: `db_${config.id}_${index}`,
             name: db.Database,
             type: 'database',
@@ -366,16 +366,22 @@ async function handleGetTableList(_event: any, config: any) {
           database: config.databaseName,
           ssl: config.ssl ? { rejectUnauthorized: true } : undefined
         })
-        const [tables] = await mysqlConn.query('SHOW TABLES')
+        const [tables] = await mysqlConn.query('SHOW TABLE STATUS') as [any[], any]
         await mysqlConn.end()
         return {
           success: true,
-          data: Object.values(tables).map((table: any, index: number) => ({
+          data: tables.map((table: any, index: number) => ({
             id: `table_${config.databaseId}_${index}`,
-            name: table[`Tables_in_${config.databaseName}`],
+            name: table.Name,
             type: 'table',
             parentId: config.databaseId,
-            metadata: {}
+            metadata: {
+              rows: table.Rows,
+              dataLength: table.Data_length,
+              engine: table.Engine,
+              updateTime: table.Update_time,
+              comment: table.Comment
+            }
           }))
         }
       case 'postgresql':
@@ -390,7 +396,23 @@ async function handleGetTableList(_event: any, config: any) {
         })
         await pgClient.connect()
         const result = await pgClient.query(
-          `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+          `SELECT 
+            t.table_name,
+            c.reltuples AS rows,
+            pg_total_relation_size(t.table_name::regclass) AS data_length,
+            t.table_type,
+            t.last_ddl_time AS update_time,
+            d.description AS comment
+          FROM 
+            information_schema.tables t
+          LEFT JOIN 
+            pg_class c ON c.relname = t.table_name
+          LEFT JOIN 
+            pg_description d ON d.objoid = c.oid AND d.objsubid = 0
+          WHERE 
+            t.table_schema = 'public'
+          ORDER BY 
+            t.table_name`
         )
         await pgClient.end()
         return {
@@ -400,7 +422,13 @@ async function handleGetTableList(_event: any, config: any) {
             name: row.table_name,
             type: 'table',
             parentId: config.databaseId,
-            metadata: {}
+            metadata: {
+              rows: Math.round(row.rows || 0),
+              dataLength: row.data_length || 0,
+              engine: row.table_type,
+              updateTime: row.update_time,
+              comment: row.comment || ''
+            }
           }))
         }
       case 'mongodb':
@@ -410,17 +438,36 @@ async function handleGetTableList(_event: any, config: any) {
           authSource: 'admin'
         })
         await mongoClient.connect()
-        const collections = await mongoClient.db(config.databaseName).listCollections().toArray()
-        await mongoClient.close()
-        return {
-          success: true,
-          data: collections.map((collection, index) => ({
-            id: `table_${config.databaseId}_${index}`,
+        const db = mongoClient.db(config.databaseName)
+        const collections = await db.listCollections().toArray()
+        
+        // 获取每个集合的详细元数据
+        const tableData = []
+        for (const collection of collections) {
+          // 获取集合统计信息
+          const stats = await db.command({ collStats: collection.name })
+          // 获取集合创建信息
+          const options = await db.collection(collection.name).options()
+          
+          tableData.push({
+            id: `table_${config.databaseId}_${tableData.length}`,
             name: collection.name,
             type: 'table',
             parentId: config.databaseId,
-            metadata: { type: collection.type }
-          }))
+            metadata: {
+              rows: stats.count || 0,
+              dataLength: stats.size || 0,
+              engine: 'mongodb',
+              updateTime: options.creationDate || '--',
+              comment: options.comment || ''
+            }
+          })
+        }
+        
+        await mongoClient.close()
+        return {
+          success: true,
+          data: tableData
         }
       default:
         return {

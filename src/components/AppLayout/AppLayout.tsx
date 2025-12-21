@@ -17,7 +17,24 @@ import { ConnectionStatus } from '../../types/connection'
 
 const { Sider, Content } = Layout
 
-
+/**
+ * 将字节转换为人类可读的格式 (KB, MB, GB, etc.)
+ * @param bytes 字节数
+ * @returns 格式化后的字符串
+ */
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 KB'
+  
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  
+  // 对于小于1KB的，直接显示为0 KB
+  if (i < 1) return '0 KB'
+  
+  // 使用2位小数，避免科学计数法
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
 
 const mockFunctions: FunctionData[] = [
   { name: 'get_format', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: true, comment: 'Format a date or time value' },
@@ -346,7 +363,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         const table: TableData = {
           name: tableObject.name,
           rows: tableObject.metadata?.rows || 0,
-          dataLength: tableObject.metadata?.dataLength || '0 KB',
+          dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
           engine: tableObject.metadata?.engine || '',
           modifyDate: tableObject.metadata?.updateTime || '--',
           comment: tableObject.metadata?.comment || ''
@@ -379,7 +396,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               .map(obj => ({
                 name: obj.name,
                 rows: obj.metadata?.rows || 0,
-                dataLength: obj.metadata?.dataLength || '0 KB',
+                dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
                 engine: obj.metadata?.engine || '',
                 modifyDate: obj.metadata?.updateTime || '--',
                 comment: obj.metadata?.comment || ''
@@ -475,7 +492,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             .map(obj => ({
               name: obj.name,
               rows: obj.metadata?.rows || 0,
-              dataLength: obj.metadata?.dataLength || '0 KB',
+              dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
               engine: obj.metadata?.engine || '',
               modifyDate: obj.metadata?.updateTime || '--',
               comment: obj.metadata?.comment || ''
