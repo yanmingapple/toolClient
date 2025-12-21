@@ -98,7 +98,7 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
   }, [])
   
   return (
-    <div style={{ padding: '16px', height: 'calc(100vh - 64px)', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ padding: '16px', height: 'calc(100vh - 70px)', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box' }}>
       <Title level={4} style={{ margin: 0, marginBottom: '16px' }}>我的连接</Title>
       
       <Tree
