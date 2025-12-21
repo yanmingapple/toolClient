@@ -2,10 +2,12 @@
  * 树形数据处理相关Hook
  */
 import { useCallback, useMemo } from 'react'
+import type { Key } from 'rc-tree/lib/interface'
+
 import { useConnectionStore } from '../store/connectionStore'
-import { TreeNode, TreeNodeType, DatabaseObject } from '../types/tree'
+import { TreeNode, TreeNodeType } from '../types/tree'
 import { generateTreeData } from '../utils/treeUtils'
-import { ConnectionStatus, DatabaseStatus } from '../types/connection'
+import { DatabaseStatus } from '../types/connection'
 
 /**
  * 树形数据管理Hook
@@ -39,8 +41,8 @@ export const useTreeData = () => {
    * @param expandedKeys 展开的节点key数组
    * @param info 展开信息
    */
-  const handleExpand = useCallback(async (expandedKeys: string[], info: any) => {
-    const node = info.node as TreeNode
+  const handleExpand = useCallback(async (_expandedKeys: Key[], info: any) => {
+    const node = info as TreeNode
     
     // 如果展开的是数据库节点且没有加载过表
     if (node.type === TreeNodeType.DATABASE && node.isLeaf) {
@@ -72,7 +74,7 @@ export const useTreeData = () => {
    * @param selectedKeys 选中的节点key数组
    * @param info 选择信息
    */
-  const handleSelect = useCallback((selectedKeys: string[], info: any) => {
+  const handleSelect = useCallback((selectedKeys: Key[], info: any) => {
     // 可以在这里添加节点选择后的处理逻辑
     // 例如：显示选中节点的详情、执行相关操作等
     console.log('Selected node:', selectedKeys, info)

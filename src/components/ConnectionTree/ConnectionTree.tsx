@@ -2,11 +2,13 @@
  * 连接树形菜单组件
  */
 import React, { useState, useCallback } from 'react'
+import type { Key } from 'rc-tree/lib/interface'
+
 import { Tree, Button, Empty, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useTreeData } from '../../hooks/useTreeData'
 import { useConnection } from '../../hooks/useConnection'
-import { TreeNode } from '../../types/tree'
+import { TreeNode, TreeNodeType } from '../../types/tree'
 
 const { Title, Paragraph } = Typography
 
@@ -33,13 +35,13 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
   const { handleConnectAndLoadDatabases } = useConnection()
   
   // 本地状态
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([])
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>([])
+  const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
   
   /**
    * 处理节点展开事件
    */
-  const onExpand = useCallback(async (keys: string[], info: any) => {
+  const onExpand = useCallback(async (keys: Key[], info: any) => {
     setExpandedKeys(keys)
     await handleExpand(keys, info)
   }, [handleExpand])
@@ -47,7 +49,7 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
   /**
    * 处理节点选择事件
    */
-  const onSelect = useCallback((keys: string[], info: any) => {
+  const onSelect = useCallback((keys: Key[], info: any) => {
     setSelectedKeys(keys)
     handleSelect(keys, info)
   }, [handleSelect])
@@ -55,25 +57,42 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
   /**
    * 处理节点双击事件
    */
-  const onDoubleClick = useCallback(async (e: React.MouseEvent, info: any) => {
-    const node = info.node as TreeNode
+  const onDoubleClick = useCallback(async (_e: React.MouseEvent, info: any) => {
+    if (!info) {
+      return
+    }
+    
+    // 根据Tree组件事件类型确定节点获取方式
+    const node = info.node ? info.node as TreeNode : info as TreeNode
     
     // 如果双击的是连接节点且未连接，则连接并加载数据库
-    if (node.type === 'connection') {
-      const connection = info.node.data.metadata.connection
-      await handleConnectAndLoadDatabases(connection)
+    if (node.type === TreeNodeType.CONNECTION) {
+      const connection = node.data?.metadata?.connection
+      if (connection) {
+        await handleConnectAndLoadDatabases(connection)
+        // 连接成功后自动展开
+        setExpandedKeys(prev => [...prev, node.key])
+      }
+    }
+    
+    // 如果双击的是数据库节点，则加载表并展开
+    if (node.type === TreeNodeType.DATABASE) {
+      // 调用handleExpand来加载表
+      await handleExpand([...expandedKeys, node.key], info)
+      // 数据库加载成功后自动展开
+      setExpandedKeys(prev => [...prev, node.key])
     }
     
     // 调用外部传入的双击处理函数
     if (onNodeDoubleClick) {
       onNodeDoubleClick(node)
     }
-  }, [handleConnectAndLoadDatabases, onNodeDoubleClick])
+  }, [handleConnectAndLoadDatabases, handleExpand, expandedKeys, onNodeDoubleClick, setExpandedKeys])
   
   /**
    * 处理数据加载
    */
-  const onLoadData = useCallback((treeNode: any) => {
+  const onLoadData = useCallback((_treeNode: any) => {
     // 加载数据的逻辑已经在handleExpand中处理
     return Promise.resolve()
   }, [])

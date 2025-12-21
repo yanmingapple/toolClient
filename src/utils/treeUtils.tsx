@@ -2,7 +2,7 @@
  * 树形数据处理相关工具函数
  */
 import { TreeNode, TreeNodeType } from '../types/tree'
-import { ConnectionConfig, ConnectionStatus, DatabaseType, DatabaseStatus } from '../types/connection'
+import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/connection'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'
@@ -17,15 +17,25 @@ import { Tag } from 'antd'
  */
 export const generateTreeData = (
   connections: ConnectionConfig[],
-  connectionStates: Map<string, ConnectionStatus>,
+  connectionStates: Map<string, ConnectionStatus> | Array<[string, ConnectionStatus]> | any,
   databaseObjects: Map<string, any>,
   databaseStates: Map<string, DatabaseStatus>
 ): TreeNode[] => {
   const treeNodes: TreeNode[] = []
   
+  // 确保connectionStates是Map类型
+  let safeConnectionStates: Map<string, ConnectionStatus>
+  if (connectionStates instanceof Map) {
+    safeConnectionStates = connectionStates
+  } else if (Array.isArray(connectionStates)) {
+    safeConnectionStates = new Map(connectionStates as Array<[string, ConnectionStatus]>)
+  } else {
+    safeConnectionStates = new Map()
+  }
+  
   // 生成连接节点
   connections.forEach(connection => {
-    const status = connectionStates.get(connection.id) || ConnectionStatus.DISCONNECTED
+    const status = safeConnectionStates.get(connection.id) || ConnectionStatus.DISCONNECTED
     const isConnected = status === ConnectionStatus.CONNECTED
     
     // 连接节点

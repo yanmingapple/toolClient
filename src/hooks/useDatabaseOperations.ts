@@ -3,7 +3,7 @@
  */
 import { useCallback, useState } from 'react'
 import { useConnectionStore } from '../store/connectionStore'
-import { DatabaseObject } from '../types/tree'
+
 import { ConnectionStatus } from '../types/connection'
 
 /**
@@ -14,7 +14,7 @@ export const useDatabaseOperations = () => {
   // 从store获取相关状态
   const connections = useConnectionStore((state) => state.connections)
   const connectionStates = useConnectionStore((state) => state.connectionStates)
-  const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)
+  // const activeConnectionId = useConnectionStore((state) => state.activeConnectionId) // 暂时未使用
   
   // 从store获取相关操作
   const getDatabaseList = useConnectionStore((state) => state.getDatabaseList)

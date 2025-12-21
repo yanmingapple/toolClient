@@ -3,17 +3,7 @@ import { persist, StorageValue } from 'zustand/middleware'
 import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/connection'
 import { DatabaseObject } from '../types/tree'
 import CryptoJS from 'crypto-js'
-
-// 在 Vite + Electron 环境中，安全地加载 electron 模块
-let ipcRenderer: any = null
-if (typeof window !== 'undefined' && window.process && window.process.type === 'renderer') {
-  try {
-    const electron = (window as any).require('electron')
-    ipcRenderer = electron.ipcRenderer
-  } catch (error) {
-    console.error('Failed to load electron.ipcRenderer:', error)
-  }
-}
+import { getSafeIpcRenderer } from '../utils/electronUtils'
 
 const SECRET_KEY = 'dbmanager-pro-secret-key' // 实际应用中应该从环境变量获取
 
@@ -164,6 +154,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         }
         
         // 检查 ipcRenderer 是否可用
+        const ipcRenderer = getSafeIpcRenderer()
         if (!ipcRenderer) {
           console.error('ipcRenderer is not available')
           return []
@@ -177,7 +168,7 @@ export const useConnectionStore = create<ConnectionStore>()(
             id: connectionId
           }
           
-          const result = await ipcRenderer.invoke('get-database-list', decryptedConfig)
+        const result = await ipcRenderer.invoke('get-database-list', decryptedConfig)
           
           if (result.success) {
             const databases = result.data as DatabaseObject[]
@@ -211,6 +202,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         }
         
         // 检查 ipcRenderer 是否可用
+        const ipcRenderer = getSafeIpcRenderer()
         if (!ipcRenderer) {
           console.error('ipcRenderer is not available')
           return []
@@ -228,7 +220,8 @@ export const useConnectionStore = create<ConnectionStore>()(
             databaseId
           }
           
-          const result = await ipcRenderer.invoke('get-table-list', decryptedConfig)
+          const ipcRenderer = getSafeIpcRenderer()
+        const result = await ipcRenderer.invoke('get-table-list', decryptedConfig)
           
           if (result.success) {
             const tables = result.data as DatabaseObject[]
@@ -417,6 +410,7 @@ export const useConnectionStore = create<ConnectionStore>()(
       testConnection: async (config) => {
         try {
           // 检查 ipcRenderer 是否可用
+          const ipcRenderer = getSafeIpcRenderer()
           if (!ipcRenderer) {
             console.error('ipcRenderer is not available. Make sure the app is running in Electron environment.')
             get().setConnectionStatus(config.id, ConnectionStatus.ERROR)
