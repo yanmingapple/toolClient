@@ -170,7 +170,6 @@ const ObjectPanel: React.FC<ObjectPanelProps> = ({
       ellipsis: true
     }
   ]
-debugger
   // 判断是否显示表数据
   const shouldShowTables = connectionStatus === ConnectionStatus.CONNECTED && 
     selectedNodeType && [TreeNodeType.CONNECTION, TreeNodeType.DATABASE, TreeNodeType.TABLE].includes(selectedNodeType)

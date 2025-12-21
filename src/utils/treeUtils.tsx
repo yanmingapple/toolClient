@@ -11,14 +11,16 @@ import { Tag } from 'antd'
  * 生成树形菜单数据
  * @param connections 连接配置列表
  * @param connectionStates 连接状态
- * @param databaseObjects 数据库对象
+ * @param databases 数据库对象
+ * @param tables 表对象
  * @param databaseStates 数据库状态
  * @returns 树形菜单数据
  */
 export const generateTreeData = (
   connections: ConnectionConfig[],
   connectionStates: Map<string, ConnectionStatus> | Array<[string, ConnectionStatus]> | any,
-  databaseObjects: Map<string, any>,
+  databases: Map<string, any>,
+  tables: Map<string, any>,
   databaseStates: Map<string, DatabaseStatus>
 ): TreeNode[] => {
   const treeNodes: TreeNode[] = []
@@ -67,22 +69,22 @@ export const generateTreeData = (
     }
     
     // 如果已连接且有数据库对象，添加数据库节点
-    if (isConnected && databaseObjects instanceof Map) {
+    if (isConnected && databases instanceof Map && tables instanceof Map) {
       // 获取该连接下的所有数据库
-      const databases = Array.from(databaseObjects.values()).filter(obj => 
-        obj.parentId === connection.id && obj.type === TreeNodeType.DATABASE
+      const connectionDatabases = Array.from(databases.values()).filter(obj => 
+        obj.parentId === connection.id
       )
       
       // 如果有数据库，则设置children并将isLeaf设为false
-      if (databases.length > 0) {
-        connectionNode.children = databases.map(database => {
+      if (connectionDatabases.length > 0) {
+        connectionNode.children = connectionDatabases.map(database => {
           // 获取该数据库下的所有表
-          const tables = Array.from(databaseObjects.values()).filter(obj => 
-            obj.parentId === database.id && obj.type === TreeNodeType.TABLE
+          const databaseTables = Array.from(tables.values()).filter(obj => 
+            obj.parentId === database.id
           )
           
           // 检查是否已加载表
-          const hasTables = tables.length > 0
+          const hasTables = databaseTables.length > 0
           
           // 获取数据库状态
           let safeDatabaseStates: Map<string, DatabaseStatus>
@@ -108,7 +110,7 @@ export const generateTreeData = (
             type: TreeNodeType.DATABASE,
             data: database,
             // 加载表后显示表节点
-            children: hasTables ? tables.map(table => ({
+            children: hasTables ? databaseTables.map(table => ({
               key: table.id,
               title: (
                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', overflow: 'hidden' }}>

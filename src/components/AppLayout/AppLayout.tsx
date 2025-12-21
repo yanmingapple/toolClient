@@ -102,7 +102,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   // 从hooks获取连接和数据库操作相关的状态和函数
   const { connectionStates, activeConnectionId: storeActiveConnectionId } = useConnection()
-  const { databaseObjects } = useConnectionStore()
+  const { tables } = useConnectionStore()
   const { } = useDatabaseOperations()
   
   // 选中对象状态
@@ -339,8 +339,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     
     // 根据节点类型处理不同的选择事件
     if (node.type === TreeNodeType.TABLE) {
-      // 从databaseObjects中查找选中的表
-      const tableObject = databaseObjects.get(node.key)
+      // 从tables中查找选中的表
+      const tableObject = tables.get(node.key)
       
       if (tableObject) {
         const table: TableData = {
@@ -371,11 +371,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         }
         setSelectedObject(tableDetails)
         
-        // 从databaseObjects中获取该表所在数据库的所有表
+        // 从tables中获取该表所在数据库的所有表
         const databaseId = tableObject.parentId
-        const actualTables = databaseObjects instanceof Map 
-          ? Array.from(databaseObjects.values())
-              .filter(obj => obj.parentId === databaseId && obj.type === TreeNodeType.TABLE)
+        const actualTables = tables instanceof Map 
+          ? Array.from(tables.values())
+              .filter(obj => obj.parentId === databaseId)
               .map(obj => ({
                 name: obj.name,
                 rows: obj.metadata?.rows || 0,
@@ -468,10 +468,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       }
     } else if (node.type === TreeNodeType.DATABASE) {
       // 双击数据库节点可以加载表并显示表列表
-      // 从databaseObjects中获取该数据库下的所有表
-      const actualTables = databaseObjects instanceof Map 
-        ? Array.from(databaseObjects.values())
-            .filter(obj => obj.parentId === node.key && obj.type === TreeNodeType.TABLE)
+      // 从tables中获取该数据库下的所有表
+      const actualTables = tables instanceof Map 
+        ? Array.from(tables.values())
+            .filter(obj => obj.parentId === node.key)
             .map(obj => ({
               name: obj.name,
               rows: obj.metadata?.rows || 0,

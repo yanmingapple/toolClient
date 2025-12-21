@@ -11,7 +11,8 @@ interface ConnectionStore {
   connections: ConnectionConfig[]
   connectionStates: Map<string, ConnectionStatus>
   activeConnectionId: string | null
-  databaseObjects: Map<string, DatabaseObject>
+  databases: Map<string, DatabaseObject>
+  tables: Map<string, DatabaseObject>
   databaseStates: Map<string, DatabaseStatus>
   
   // Actions
@@ -59,7 +60,8 @@ export const useConnectionStore = create<ConnectionStore>()(
       connections: [],
       connectionStates: new Map(),
       activeConnectionId: null,
-      databaseObjects: new Map(),
+      databases: new Map(),
+      tables: new Map(),
       databaseStates: new Map(),
 
       addConnection: (config) => {
@@ -125,12 +127,21 @@ export const useConnectionStore = create<ConnectionStore>()(
           newConnectionStates.delete(id)
           
           // 删除该连接下的所有数据库对象
-          const currentDatabaseObjects = state.databaseObjects
-          let newDatabaseObjects = new Map()
-          if (currentDatabaseObjects instanceof Map) {
-            for (const [key, obj] of currentDatabaseObjects.entries()) {
+          let newDatabases = new Map()
+          if (state.databases instanceof Map) {
+            for (const [key, obj] of state.databases.entries()) {
               if (obj.parentId !== id && !obj.id.startsWith(`db_${id}`)) {
-                newDatabaseObjects.set(key, obj)
+                newDatabases.set(key, obj)
+              }
+            }
+          }
+          
+          // 删除该连接下的所有表对象
+          let newTables = new Map()
+          if (state.tables instanceof Map) {
+            for (const [key, obj] of state.tables.entries()) {
+              if (obj.parentId !== id && !obj.id.startsWith(`db_${id}`)) {
+                newTables.set(key, obj)
               }
             }
           }
@@ -138,7 +149,8 @@ export const useConnectionStore = create<ConnectionStore>()(
           return {
             connections: newConnections,
             connectionStates: newConnectionStates,
-            databaseObjects: newDatabaseObjects,
+            databases: newDatabases,
+            tables: newTables,
             activeConnectionId: state.activeConnectionId === id ? null : state.activeConnectionId,
           }
         })
@@ -180,7 +192,6 @@ export const useConnectionStore = create<ConnectionStore>()(
               // 但由于此时还没有获取表列表，所以先设置为LOADED
               store.setDatabaseStatus(database.id, DatabaseStatus.DISCONNECTED)
             })
-            
             return databases
           } else {
             console.error('Failed to get database list:', result.message)
@@ -250,17 +261,34 @@ export const useConnectionStore = create<ConnectionStore>()(
       // 添加单个数据库对象
       addDatabaseObject: (object: DatabaseObject) => {
         set((state) => {
-          const currentDatabaseObjects = state.databaseObjects
-          let newDatabaseObjects = new Map()
-          
-          if (currentDatabaseObjects instanceof Map) {
-            newDatabaseObjects = new Map(currentDatabaseObjects)
-          }
-          
-          newDatabaseObjects.set(object.id, object)
-          
-          return {
-            databaseObjects: newDatabaseObjects
+          if (object.type === 'table') {
+            // 存储到tables Map
+            const currentTables = state.tables
+            let newTables = new Map()
+            
+            if (currentTables instanceof Map) {
+              newTables = new Map(currentTables)
+            }
+            
+            newTables.set(object.id, object)
+            
+            return {
+              tables: newTables
+            }
+          } else {
+            // 存储到databases Map
+            const currentDatabases = state.databases
+            let newDatabases = new Map()
+            
+            if (currentDatabases instanceof Map) {
+              newDatabases = new Map(currentDatabases)
+            }
+            
+            newDatabases.set(object.id, object)
+            
+            return {
+              databases: newDatabases
+            }
           }
         })
       },
@@ -270,42 +298,62 @@ export const useConnectionStore = create<ConnectionStore>()(
         set((state) => {
           if (objects.length === 0) return state;
           
-          const currentDatabaseObjects = state.databaseObjects
-          if (!(currentDatabaseObjects instanceof Map)) {
-            return {
-              databaseObjects: new Map(objects.map(obj => [obj.id, obj]))
-            }
+          // 将对象按类型分组
+          const tableObjects = objects.filter(obj => obj.type === 'table');
+          const databaseObjects = objects.filter(obj => obj.type !== 'table');
+          
+          let newDatabases = new Map(state.databases);
+          let newTables = new Map(state.tables);
+          let needsUpdate = false;
+          
+          // 处理数据库对象
+          if (databaseObjects.length > 0) {
+            databaseObjects.forEach(obj => {
+              if (!newDatabases.has(obj.id) || JSON.stringify(newDatabases.get(obj.id)) !== JSON.stringify(obj)) {
+                newDatabases.set(obj.id, obj);
+                needsUpdate = true;
+              }
+            });
           }
           
-          // 检查是否需要更新
-          let needsUpdate = false
-          const newMap = new Map(currentDatabaseObjects)
-          
-          objects.forEach(obj => {
-            if (!newMap.has(obj.id) || JSON.stringify(newMap.get(obj.id)) !== JSON.stringify(obj)) {
-              newMap.set(obj.id, obj)
-              needsUpdate = true
-            }
-          })
+          // 处理表对象
+          if (tableObjects.length > 0) {
+            tableObjects.forEach(obj => {
+              if (!newTables.has(obj.id) || JSON.stringify(newTables.get(obj.id)) !== JSON.stringify(obj)) {
+                newTables.set(obj.id, obj);
+                needsUpdate = true;
+              }
+            });
+          }
           
           if (!needsUpdate) return state;
           
           return {
-            databaseObjects: newMap
-          }
-        })
+            databases: newDatabases,
+            tables: newTables
+          };
+        });
       },
       
       // 删除指定父ID下的所有数据库对象
       removeDatabaseObjectsByParentId: (parentId: string) => {
         set((state) => {
-          const currentDatabaseObjects = state.databaseObjects
-          let newDatabaseObjects = new Map()
-          
-          if (currentDatabaseObjects instanceof Map) {
-            for (const [key, obj] of currentDatabaseObjects.entries()) {
+          // 处理databases Map
+          let newDatabases = new Map()
+          if (state.databases instanceof Map) {
+            for (const [key, obj] of state.databases.entries()) {
               if (obj.parentId !== parentId) {
-                newDatabaseObjects.set(key, obj)
+                newDatabases.set(key, obj)
+              }
+            }
+          }
+          
+          // 处理tables Map
+          let newTables = new Map()
+          if (state.tables instanceof Map) {
+            for (const [key, obj] of state.tables.entries()) {
+              if (obj.parentId !== parentId) {
+                newTables.set(key, obj)
               }
             }
           }
@@ -323,7 +371,8 @@ export const useConnectionStore = create<ConnectionStore>()(
           }
           
           return {
-            databaseObjects: newDatabaseObjects,
+            databases: newDatabases,
+            tables: newTables,
             databaseStates: newDatabaseStates
           }
         })
@@ -376,20 +425,30 @@ export const useConnectionStore = create<ConnectionStore>()(
             
             // 如果状态变为DISCONNECTED，清理相关的数据库对象
             if (status === ConnectionStatus.DISCONNECTED) {
-              const currentDatabaseObjects = state.databaseObjects
-              let newDatabaseObjects = new Map()
-              
-              if (currentDatabaseObjects instanceof Map) {
-                for (const [key, obj] of currentDatabaseObjects.entries()) {
+              // 清理databases
+              let newDatabases = new Map()
+              if (state.databases instanceof Map) {
+                for (const [key, obj] of state.databases.entries()) {
                   if (obj.parentId !== id && !obj.id.startsWith(`db_${id}`)) {
-                    newDatabaseObjects.set(key, obj)
+                    newDatabases.set(key, obj)
+                  }
+                }
+              }
+              
+              // 清理tables
+              let newTables = new Map()
+              if (state.tables instanceof Map) {
+                for (const [key, obj] of state.tables.entries()) {
+                  if (obj.parentId !== id && !obj.id.startsWith(`db_${id}`)) {
+                    newTables.set(key, obj)
                   }
                 }
               }
               
               return {
                 connectionStates: newMap,
-                databaseObjects: newDatabaseObjects
+                databases: newDatabases,
+                tables: newTables
               }
             }
             
@@ -458,7 +517,8 @@ export const useConnectionStore = create<ConnectionStore>()(
         return JSON.stringify({
           ...connectionStoreState,
           connectionStates: Array.from(connectionStoreState.connectionStates?.entries() || []),
-          databaseObjects: Array.from(connectionStoreState.databaseObjects?.entries() || []),
+          databases: Array.from(connectionStoreState.databases?.entries() || []),
+          tables: Array.from(connectionStoreState.tables?.entries() || []),
           databaseStates: Array.from(connectionStoreState.databaseStates?.entries() || []),
         })
       },
@@ -478,18 +538,55 @@ export const useConnectionStore = create<ConnectionStore>()(
           connectionStates = new Map()
         }
         
-        // 确保databaseObjects是可迭代的
-        let databaseObjects = new Map()
+        // 确保databases是可迭代的
+        let databases = new Map()
         try {
-          if (Array.isArray(state.databaseObjects)) {
-            databaseObjects = new Map(state.databaseObjects)
-          } else if (state.databaseObjects && typeof state.databaseObjects === 'object') {
+          if (Array.isArray(state.databases)) {
+            databases = new Map(state.databases)
+          } else if (state.databases && typeof state.databases === 'object') {
             // 如果是普通对象，尝试转换为Map
-            databaseObjects = new Map(Object.entries(state.databaseObjects))
+            databases = new Map(Object.entries(state.databases))
           }
         } catch (error) {
-          console.error('Failed to deserialize databaseObjects:', error)
-          databaseObjects = new Map()
+          console.error('Failed to deserialize databases:', error)
+          databases = new Map()
+        }
+        
+        // 确保tables是可迭代的
+        let tables = new Map()
+        try {
+          if (Array.isArray(state.tables)) {
+            tables = new Map(state.tables)
+          } else if (state.tables && typeof state.tables === 'object') {
+            // 如果是普通对象，尝试转换为Map
+            tables = new Map(Object.entries(state.tables))
+          }
+        } catch (error) {
+          console.error('Failed to deserialize tables:', error)
+          tables = new Map()
+        }
+        
+        // 处理向后兼容性 - 如果存在旧的databaseObjects，则将其迁移到新结构
+        if (state.databaseObjects) {
+          let oldDatabaseObjects = new Map()
+          try {
+            if (Array.isArray(state.databaseObjects)) {
+              oldDatabaseObjects = new Map(state.databaseObjects)
+            } else if (typeof state.databaseObjects === 'object') {
+              oldDatabaseObjects = new Map(Object.entries(state.databaseObjects))
+            }
+            
+            // 将旧数据迁移到新结构
+            for (const [key, obj] of oldDatabaseObjects.entries()) {
+              if (obj.type === 'table') {
+                tables.set(key, obj)
+              } else {
+                databases.set(key, obj)
+              }
+            }
+          } catch (error) {
+            console.error('Failed to migrate old databaseObjects:', error)
+          }
         }
         
         // 确保databaseStates是可迭代的
@@ -509,7 +606,8 @@ export const useConnectionStore = create<ConnectionStore>()(
         return {
           ...state,
           connectionStates,
-          databaseObjects,
+          databases,
+          tables,
           databaseStates,
         }
       },

@@ -18,7 +18,8 @@ export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
   // 从store获取树形数据相关的状态
   const connections = useConnectionStore((state) => state.connections)
   const connectionStates = useConnectionStore((state) => state.connectionStates)
-  const databaseObjects = useConnectionStore((state) => state.databaseObjects)
+  const databases = useConnectionStore((state) => state.databases)
+  const tables = useConnectionStore((state) => state.tables)
   const databaseStates = useConnectionStore((state) => state.databaseStates)
   
   // 从store获取树形数据相关的操作
@@ -32,10 +33,11 @@ export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
     return generateTreeData(
       connections,
       connectionStates,
-      databaseObjects,
+      databases,
+      tables,
       databaseStates
     )
-  }, [connections, connectionStates, databaseObjects, databaseStates])
+  }, [connections, connectionStates, databases, tables, databaseStates])
   
   /**
    * 处理节点展开
@@ -81,9 +83,8 @@ export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
     console.log('Selected node:', selectedKeys, info)
     
     // 调用外部传入的选择回调
-    if (onSelect && info.node) {
-      debugger
-      onSelect(info.node as TreeNode, info)
+    if (onSelect && info) {
+      onSelect(info as TreeNode, info)
     }
   }, [onSelect])
   

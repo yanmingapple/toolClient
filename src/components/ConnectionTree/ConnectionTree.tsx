@@ -51,7 +51,7 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
    */
   const onSelect = useCallback((keys: Key[], info: any) => {
     setSelectedKeys(keys)
-    handleSelect(keys, info)
+    handleSelect(keys, info.node)
   }, [handleSelect])
   
   /**
@@ -78,11 +78,16 @@ const ConnectionTree: React.FC<ConnectionTreeProps> = ({
     // 如果双击的是数据库节点，则加载表并展开
     if (node.type === TreeNodeType.DATABASE) {
       // 调用handleExpand来加载表
-      await handleExpand([...expandedKeys, node.key], info)
+      await handleExpand([], info)
       // 数据库加载成功后自动展开
       setExpandedKeys(prev => [...prev, node.key])
+      // 延迟执行handleSelect，确保树渲染完成后再更新右侧面板
+      setTimeout(() => {
+        // 触发节点点击事件
+        handleSelect([node.key], info)
+      }, 2000)
     }
-  }, [handleConnectAndLoadDatabases, handleExpand, expandedKeys, setExpandedKeys])
+  }, [handleConnectAndLoadDatabases, handleExpand, handleSelect])
   
   /**
    * 处理数据加载
