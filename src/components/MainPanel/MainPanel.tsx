@@ -41,13 +41,13 @@ interface MainPanelProps {
 /**
  * 主操作区面板组件
  */
-const MainPanel: React.FC<MainPanelProps> = ({
+const MainPanel = ({
   activePanelId,
   panels,
   onClosePanel,
   onSwitchPanel,
   propertiesContent
-}) => {
+}: MainPanelProps) => {
   // 渲染标签页
   const renderTabs = () => {
     return panels.map(panel => ({

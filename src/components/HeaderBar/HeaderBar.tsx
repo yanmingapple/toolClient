@@ -97,7 +97,7 @@ interface NavItem {
 /**
  * 顶部导航栏组件
  */
-const HeaderBar: React.FC<HeaderBarProps> = ({
+const HeaderBar = ({
   onConnect,
   onNewQuery,
   onTable,
@@ -110,7 +110,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   onAutoRun,
   onModel,
   onBI
-}) => {
+}: HeaderBarProps) => {
   // 导航项数据数组
   const navItems: NavItem[] = [
     {

@@ -44,14 +44,14 @@ interface FunctionPanelProps {
 /**
  * 函数管理面板组件
  */
-const FunctionPanel: React.FC<FunctionPanelProps> = ({
+const FunctionPanel = ({
   dataSource = [],
   onDesignFunction,
   onNewFunction,
   onDeleteFunction,
   onRunFunction,
   onSearch
-}) => {
+}: FunctionPanelProps) => {
   // 表格列配置
   const columns = [
     {

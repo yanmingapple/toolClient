@@ -7,7 +7,7 @@ import { useConnectionStore } from './store/connectionStore'
 import { ConnectionConfig } from './types/connection'
 import { useIpcCommunication } from './hooks/useIpcCommunication'
 
-const App: React.FC = () => {
+const App = () => {
   const [connectionDialogVisible, setConnectionDialogVisible] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionConfig | null>(null)
   const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)

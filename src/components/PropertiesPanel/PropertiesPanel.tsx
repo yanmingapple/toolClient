@@ -58,9 +58,9 @@ interface PropertiesPanelProps {
 /**
  * 属性面板组件，用于显示不同对象的详细信息
  */
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
+const PropertiesPanel = ({
   selectedObject,
-}) => {
+}: PropertiesPanelProps) => {
   // 获取对象类型对应的图标
   const getObjectIcon = () => {
     if (!selectedObject) return null

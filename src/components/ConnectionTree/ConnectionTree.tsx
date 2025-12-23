@@ -26,10 +26,10 @@ interface ConnectionTreeProps {
 /**
  * 连接树形菜单组件
  */
-const ConnectionTree: React.FC<ConnectionTreeProps> = ({
+const ConnectionTree = ({
   onNewConnection,
   onNodeSelect
-}) => {
+}: ConnectionTreeProps) => {
   // 使用自定义hooks获取树形数据和操作
   const { treeData, handleExpand, handleSelect } = useTreeData(onNodeSelect)
   const { handleConnectAndLoadDatabases } = useConnection()

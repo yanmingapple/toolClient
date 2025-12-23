@@ -47,7 +47,7 @@ const DefaultIcon: React.FC<IconProps> = ({ name, size = 16, color, className })
 };
 
 // 图标组件
-const Icon: React.FC<IconProps> = ({ name, size = 16, color, className }) => {
+const Icon = ({ name, size = 16, color, className }: IconProps) => {
   const IconComponent = IconMap[name] ? lazy(IconMap[name]) : null;
   const style = {
     width: size,

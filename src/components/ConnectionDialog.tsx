@@ -13,7 +13,7 @@ interface ConnectionDialogProps {
 const { Option } = Select
 const { TabPane } = Tabs
 
-const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ visible, onCancel, connection }) => {
+const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogProps) => {
   const [form] = Form.useForm<Omit<ConnectionConfig, 'id'>>()
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)

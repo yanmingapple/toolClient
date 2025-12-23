@@ -108,7 +108,7 @@ interface AppLayoutProps {
 /**
  * 应用主布局组件
  */
-const AppLayout: React.FC<AppLayoutProps> = ({
+const AppLayout = ({
   activeConnectionId: propActiveConnectionId, // 使用下划线前缀表示未使用的参数
   onNewConnection,
   onConnect,
@@ -116,7 +116,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onOther,
   onSearch,
   onAutoRun
-}) => {
+}: AppLayoutProps) => {
   // 从hooks获取连接和数据库操作相关的状态和函数
   const { connectionStates, activeConnectionId: storeActiveConnectionId } = useConnection()
   const { tables } = useConnectionStore()

@@ -8,7 +8,7 @@ import { QueryResult } from '../types/connection'
 
 const { TabPane } = Tabs
 
-const QueryEditor: React.FC = () => {
+const QueryEditor = () => {
   const { 
     tabs, 
     activeTabId, 

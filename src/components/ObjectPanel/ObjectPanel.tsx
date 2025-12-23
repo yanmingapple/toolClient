@@ -75,7 +75,7 @@ interface ObjectPanelProps {
 /**
  * 对象列表面板组件
  */
-const ObjectPanel: React.FC<ObjectPanelProps> = ({
+const ObjectPanel = ({
   dataSource = [],
   selectedTables = [],
   onOpenTable,
@@ -89,7 +89,7 @@ const ObjectPanel: React.FC<ObjectPanelProps> = ({
   connectionStatus,
   selectedNodeType,
   selectedNodeName: _selectedNodeName
-}) => {
+}: ObjectPanelProps) => {
   // 表格列配置
   const columns: any[] = [
     {
