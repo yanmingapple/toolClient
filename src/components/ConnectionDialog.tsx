@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, Form, Input, Select, Switch, InputNumber, Button, message, Space, Card, Tabs } from 'antd'
 import { DatabaseOutlined, CheckCircleOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { ConnectionConfig, DatabaseType } from '../types/connection'

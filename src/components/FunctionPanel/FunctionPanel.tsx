@@ -1,4 +1,4 @@
-import React from 'react'
+// React import not needed
 import { Table, Button, Input, Space, Tooltip } from 'antd'
 import { SearchOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 

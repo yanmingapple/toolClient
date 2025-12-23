@@ -78,6 +78,7 @@ export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
    * @param info 选择信息
    */
   const handleSelect = useCallback((selectedKeys: Key[], info: any) => {
+    debugger
     // 可以在这里添加节点选择后的处理逻辑
     // 例如：显示选中节点的详情、执行相关操作等
     console.log('Selected node:', selectedKeys, info)

@@ -1,4 +1,4 @@
-import React from 'react'
+// React import not needed
 import { Card, Descriptions } from 'antd'
 import { DatabaseOutlined, TableOutlined, FunctionOutlined } from '@ant-design/icons'
 
@@ -62,6 +62,7 @@ const PropertiesPanel = ({
   selectedObject,
 }: PropertiesPanelProps) => {
   // 获取对象类型对应的图标
+  debugger
   const getObjectIcon = () => {
     if (!selectedObject) return null
     

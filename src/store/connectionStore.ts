@@ -11,9 +11,9 @@ interface ConnectionStore {
   connections: ConnectionConfig[]
   connectionStates: Map<string, ConnectionStatus>
   activeConnectionId: string | null
+  databaseStates: Map<string, DatabaseStatus>
   databases: Map<string, DatabaseObject>
   tables: Map<string, DatabaseObject>
-  databaseStates: Map<string, DatabaseStatus>
   
   // Actions
   addConnection: (config: Omit<ConnectionConfig, 'id'>) => void

@@ -1,11 +1,11 @@
 /**
  * 应用主布局组件
  */
-import React, { useState } from 'react'
+import React from 'react'
 import { Layout } from 'antd'
 import HeaderBar from '../HeaderBar'
 import ConnectionTree from '../ConnectionTree'
-import MainPanel, { PanelItem, PanelType } from '../MainPanel'
+import MainPanel from '../MainPanel/MainPanel'
 import ObjectPanel, { TableData } from '../ObjectPanel'
 import FunctionPanel, { FunctionData } from '../FunctionPanel'
 import PropertiesPanel, { TableObject } from '../PropertiesPanel'
@@ -13,28 +13,12 @@ import { TreeNode, TreeNodeType } from '../../types/tree'
 import { useConnection } from '../../hooks/useConnection'
 import { useDatabaseOperations } from '../../hooks/useDatabaseOperations'
 import { useConnectionStore } from '../../store/connectionStore'
-import { ConnectionStatus } from '../../types/connection'
+import { useSelection } from '../../hooks/useSelection'
+import { formatBytes } from '../../utils/formatUtils'
+import { ConnectionStatus, DatabaseStatus } from '../../types/connection'
 
 const { Sider, Content } = Layout
 
-/**
- * 将字节转换为人类可读的格式 (KB, MB, GB, etc.)
- * @param bytes 字节数
- * @returns 格式化后的字符串
- */
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 KB'
-  
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
-  // 对于小于1KB的，直接显示为0 KB
-  if (i < 1) return '0 KB'
-  
-  // 使用2位小数，避免科学计数法
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
 
 const mockFunctions: FunctionData[] = [
   { name: 'get_format', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: true, comment: 'Format a date or time value' },
@@ -119,154 +103,79 @@ const AppLayout = ({
 }: AppLayoutProps) => {
   // 从hooks获取连接和数据库操作相关的状态和函数
   const { connectionStates, activeConnectionId: storeActiveConnectionId } = useConnection()
-  const { tables } = useConnectionStore()
+  const { tables, databaseStates } = useConnectionStore()
   const { } = useDatabaseOperations()
   
-  // 选中对象状态
-  const [selectedTables, setSelectedTables] = useState<TableData[]>([])
-  // 当前连接状态
-  const [currentConnectionStatus, setCurrentConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED)
-  // 当前选中的节点信息
-  const [selectedNode, setSelectedNode] = useState<{ type?: TreeNodeType; name?: string }>({})
+  // 使用useSelection hook管理选中状态
+  const {
+    selectedTables,
+    setSelectedTables,
+    currentConnectionStatus,
+    setCurrentConnectionStatus,
+    selectedNode,
+    setSelectedNode,
+    mainPanelRef,
+    selectedObject,
+    setSelectedObject
+  } = useSelection()
   
-  // 面板状态
-  // 添加默认的"对象"面板，默认显示表内容
-  const [panels, setPanels] = useState<PanelItem[]>([
-    {
-      id: 'object-0',
-      type: 'table',
-      title: '对象',
-      content: (
-        <ObjectPanel
-          dataSource={[]} // 默认显示空表列表
-          selectedTables={selectedTables}
-          onSelectTables={setSelectedTables}
-          connectionStatus={currentConnectionStatus}
-          selectedNodeType={selectedNode.type}
-          selectedNodeName={selectedNode.name}
-          onOpenTable={(record) => {
-            // 打开表时，显示表的详细信息
-            const tableObject: TableObject = {
-              name: record.name,
-              type: TreeNodeType.TABLE,
-              engine: record.engine,
-              rows: record.rows,
-              dataLength: record.dataLength,
-              createTime: '2025-11-08 09:51:13',
-              updateTime: record.modifyDate || '',
-              collation: 'utf8mb4_0900_ai_ci',
-              autoIncrement: 0,
-              rowFormat: 'Dynamic',
-              checkTime: null,
-              indexLength: '0 bytes (0)',
-              maxDataLength: '0 bytes (0)',
-              dataFree: '4.00 MB (4,194,304)',
-              comment: record.comment
-          }
-          setSelectedObject(tableObject)
-          }}
-        />
-      )
+  // 处理表打开事件，创建TableObject对象
+  const handleTableOpen = (record: TableData): void => {
+    const tableObject: TableObject = {
+      name: record.name,
+      type: TreeNodeType.TABLE,
+      engine: record.engine,
+      rows: record.rows,
+      dataLength: record.dataLength,
+      createTime: record.createTime || '',
+      updateTime: record.modifyDate || '',
+      collation: record.collation || '',
+      autoIncrement: record.autoIncrement || null,
+      rowFormat: record.rowFormat || '',
+      checkTime: record.checkTime || null,
+      indexLength: record.indexLength || '0 KB',
+      maxDataLength: record.maxDataLength || '0 KB',
+      dataFree: record.dataFree || '0 KB',
+      comment: record.comment
     }
-  ])
-  const [activePanelId, setActivePanelId] = useState<string | undefined>('object-0')
-  const [selectedObject, setSelectedObject] = useState<TableObject | null>(null)
-
-  // 创建新面板
-  const createPanel = (type: PanelType, title: string, content: React.ReactNode) => {
-    const panelId = `${type}-${Date.now()}`
-    const newPanel: PanelItem = {
-      id: panelId,
-      type,
-      title,
-      content
-    }
-    
-    const updatedPanels = [...panels, newPanel]
-    setPanels(updatedPanels)
-    setActivePanelId(panelId)
+    debugger
+    setSelectedObject(tableObject)
   }
 
-  // 关闭面板
-  const handleClosePanel = (panelId: string) => {
-    // 防止删除默认的"对象"面板
-    if (panelId === 'object-0') {
-      return
-    }
-    
-    const updatedPanels = panels.filter(panel => panel.id !== panelId)
-    setPanels(updatedPanels)
-    
-    // 如果关闭的是当前激活的面板，激活最后一个面板
-    if (panelId === activePanelId) {
-      setActivePanelId(updatedPanels[updatedPanels.length - 1]?.id)
-    }
-  }
-
-  // 切换面板
-  const handleSwitchPanel = (panelId: string) => {
-    setActivePanelId(panelId)
-  }
+  // 创建ObjectPanel组件
+  const createObjectPanelContent = (dataSource: TableData[] = [], nodeType?: TreeNodeType, nodeName?: string, databaseStatus?: DatabaseStatus) => (
+    <ObjectPanel
+      dataSource={dataSource}
+      selectedTables={selectedTables}
+      onSelectTables={setSelectedTables}
+      selectedNodeType={nodeType}
+      selectedNodeName={nodeName}
+      onOpenTable={handleTableOpen}
+      connectionStatus={currentConnectionStatus}
+      databaseStatus={databaseStatus}
+      mainPanelRef={mainPanelRef}
+      connectionId={propActiveConnectionId || storeActiveConnectionId || undefined}
+      databaseName={selectedNode.name}
+    />
+  )
 
   // 处理表按钮点击
   const handleTableClick = () => {
-    // 检查是否已经存在表面板
-    const existingPanel = panels.find(panel => panel.type === 'table')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('table', '表', (
-        <ObjectPanel
-              dataSource={[]} // 默认显示空表列表
-              selectedTables={selectedTables}
-              onSelectTables={setSelectedTables}
-              connectionStatus={currentConnectionStatus}
-              selectedNodeType={selectedNode.type}
-              selectedNodeName={selectedNode.name}
-              onOpenTable={(record) => {
-                // 打开表时，显示表的详细信息
-                const tableObject: TableObject = {
-                  name: record.name,
-                  type: TreeNodeType.TABLE,
-                  engine: record.engine,
-                  rows: record.rows,
-                  dataLength: record.dataLength,
-                  createTime: '2025-11-08 09:51:13',
-                  updateTime: record.modifyDate || '',
-                  collation: 'utf8mb4_0900_ai_ci',
-                  autoIncrement: 0,
-                  rowFormat: 'Dynamic',
-                  checkTime: null,
-                  indexLength: '0 bytes (0)',
-                  maxDataLength: '0 bytes (0)',
-                  dataFree: '4.00 MB (4,194,304)',
-                  comment: record.comment
-                }
-                setSelectedObject(tableObject)
-              }}
-            />
-      ))
-    }
+    mainPanelRef.current?.createPanel('table', '表', createObjectPanelContent([], selectedNode.type, selectedNode.name))
   }
 
   // 处理函数按钮点击
   const handleFunctionClick = () => {
-    // 检查是否已经存在函数面板
-    const existingPanel = panels.find(panel => panel.type === 'function')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('function', '函数', (
-        <FunctionPanel
-          dataSource={mockFunctions}
-        />
-      ))
-    }
+    mainPanelRef.current?.createPanel('function', '函数', (
+      <FunctionPanel
+        dataSource={mockFunctions}
+      />
+    ))
   }
 
   // 处理新建查询按钮点击
   const handleNewQueryClick = () => {
-    createPanel('query', `查询 (${panels.filter(p => p.type === 'query').length + 1})`, (
+    mainPanelRef.current?.createPanel('query', `查询`, (
       <div style={{ padding: '20px' }}>
         <h3>新建查询</h3>
         <p>查询编辑器将在这里显示</p>
@@ -276,66 +185,42 @@ const AppLayout = ({
 
   // 处理视图按钮点击
   const handleViewClick = () => {
-    // 检查是否已经存在视图面板
-    const existingPanel = panels.find(panel => panel.type === 'view')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('view', '视图', (
-        <div style={{ padding: '20px' }}>
-          <h3>视图</h3>
-          <p>视图列表将在这里显示</p>
-        </div>
-      ))
-    }
+    mainPanelRef.current?.createPanel('view', '视图', (
+      <div style={{ padding: '20px' }}>
+        <h3>视图</h3>
+        <p>视图列表将在这里显示</p>
+      </div>
+    ))
   }
 
   // 处理备份按钮点击
   const handleBackupClick = () => {
-    // 检查是否已经存在备份面板
-    const existingPanel = panels.find(panel => panel.type === 'backup')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('backup', '备份', (
-        <div style={{ padding: '20px' }}>
-          <h3>备份</h3>
-          <p>备份功能将在这里显示</p>
-        </div>
-      ))
-    }
+    mainPanelRef.current?.createPanel('backup', '备份', (
+      <div style={{ padding: '20px' }}>
+        <h3>备份</h3>
+        <p>备份功能将在这里显示</p>
+      </div>
+    ))
   }
 
   // 处理模型按钮点击
   const handleModelClick = () => {
-    // 检查是否已经存在模型面板
-    const existingPanel = panels.find(panel => panel.type === 'model')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('model', '模型', (
-        <div style={{ padding: '20px' }}>
-          <h3>模型</h3>
-          <p>模型功能将在这里显示</p>
-        </div>
-      ))
-    }
+    mainPanelRef.current?.createPanel('model', '模型', (
+      <div style={{ padding: '20px' }}>
+        <h3>模型</h3>
+        <p>模型功能将在这里显示</p>
+      </div>
+    ))
   }
 
   // 处理BI按钮点击
   const handleBIClick = () => {
-    // 检查是否已经存在BI面板
-    const existingPanel = panels.find(panel => panel.type === 'bi')
-    if (existingPanel) {
-      setActivePanelId(existingPanel.id)
-    } else {
-      createPanel('bi', 'BI', (
-        <div style={{ padding: '20px' }}>
-          <h3>BI</h3>
-          <p>BI功能将在这里显示</p>
-        </div>
-      ))
-    }
+    mainPanelRef.current?.createPanel('bi', 'BI', (
+      <div style={{ padding: '20px' }}>
+        <h3>BI</h3>
+        <p>BI功能将在这里显示</p>
+      </div>
+    ))
   }
 
   // 更新当前连接状态
@@ -366,26 +251,29 @@ const AppLayout = ({
           dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
           engine: tableObject.metadata?.engine || '',
           modifyDate: tableObject.metadata?.updateTime || '--',
+          collation: tableObject.metadata?.collation || '',
+          rowFormat: tableObject.metadata?.rowFormat || '',
           comment: tableObject.metadata?.comment || ''
         }
         // 设置选中对象
         const tableDetails: TableObject = {
           name: table.name,
           type: TreeNodeType.TABLE,
-          engine: table.engine,
-          rows: table.rows,
-          dataLength: table.dataLength,
-          createTime: '2025-11-08 09:51:13',
-          updateTime: table.modifyDate || '',
-          collation: 'utf8mb4_0900_ai_ci',
-          autoIncrement: 0,
-          rowFormat: 'Dynamic',
-          checkTime: null,
-          indexLength: '0 bytes (0)',
-          maxDataLength: '0 bytes (0)',
-          dataFree: '4.00 MB (4,194,304)',
-          comment: table.comment
+          engine: tableObject.metadata?.engine || '',
+          rows: tableObject.metadata?.rows || 0,
+          dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
+          createTime: tableObject.metadata?.createTime || '',
+          updateTime: tableObject.metadata?.updateTime || '',
+          collation: tableObject.metadata?.collation || '',
+          autoIncrement: tableObject.metadata?.autoIncrement || null,
+          rowFormat: tableObject.metadata?.rowFormat || '',
+          checkTime: tableObject.metadata?.checkTime || null,
+          indexLength: typeof tableObject.metadata?.indexLength === 'number' ? formatBytes(tableObject.metadata.indexLength) : '0 KB',
+          maxDataLength: typeof tableObject.metadata?.maxDataLength === 'number' ? formatBytes(tableObject.metadata.maxDataLength) : '0 KB',
+          dataFree: typeof tableObject.metadata?.dataFree === 'number' ? formatBytes(tableObject.metadata.dataFree) : '0 KB',
+          comment: tableObject.metadata?.comment || ''
         }
+        debugger
         setSelectedObject(tableDetails)
         
         // 从tables中获取该表所在数据库的所有表
@@ -399,89 +287,19 @@ const AppLayout = ({
                 dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
                 engine: obj.metadata?.engine || '',
                 modifyDate: obj.metadata?.updateTime || '--',
+                collation: obj.metadata?.collation || '',
+                rowFormat: obj.metadata?.rowFormat || '',
                 comment: obj.metadata?.comment || ''
               }))
           : []
         
-        // 检查是否已经存在表面板
-        const existingPanel = panels.find(panel => panel.type === 'table')
-        if (existingPanel) {
-          // 更新现有面板的内容
-          const updatedPanels = panels.map(panel => {
-            if (panel.id === existingPanel.id) {
-              return {
-                ...panel,
-                content: (
-                  <ObjectPanel
-                    dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
-                    selectedTables={selectedTables}
-                    onSelectTables={setSelectedTables}
-                    connectionStatus={currentConnectionStatus}
-                    selectedNodeType={node.type}
-                    selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-                    onOpenTable={(record: TableData) => {
-                      // 打开表时，显示表的详细信息
-                      const tableObject: TableObject = {
-                        name: record.name,
-                        type: TreeNodeType.TABLE,
-                        engine: record.engine,
-                        rows: record.rows,
-                        dataLength: record.dataLength,
-                        createTime: '2025-11-08 09:51:13',
-                        updateTime: record.modifyDate || '',
-                        collation: 'utf8mb4_0900_ai_ci',
-                        autoIncrement: 0,
-                        rowFormat: 'Dynamic',
-                        checkTime: null,
-                        indexLength: '0 bytes (0)',
-                        maxDataLength: '0 bytes (0)',
-                        dataFree: '4.00 MB (4,194,304)',
-                        comment: record.comment
-                      }
-                      setSelectedObject(tableObject)
-                    }}
-                  />
-                )
-              }
-            }
-            return panel
-          })
-          setPanels(updatedPanels)
-          setActivePanelId(existingPanel.id)
-        } else {
-          // 如果没有表面板，则创建一个
-          createPanel('table', '表', (
-            <ObjectPanel
-              dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
-              selectedTables={selectedTables}
-              onSelectTables={setSelectedTables}
-              connectionStatus={currentConnectionStatus}
-              selectedNodeType={node.type}
-              selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-              onOpenTable={(record: TableData) => {
-                // 打开表时，显示表的详细信息
-                const tableObject: TableObject = {
-                  name: record.name,
-                  type: TreeNodeType.TABLE,
-                  engine: record.engine,
-                  rows: record.rows,
-                  dataLength: record.dataLength,
-                  createTime: '2025-11-08 09:51:13',
-                  updateTime: record.modifyDate || '',
-                  collation: 'utf8mb4_0900_ai_ci',
-                  autoIncrement: 0,
-                  rowFormat: 'Dynamic',
-                  checkTime: null,
-                  indexLength: '0 bytes (0)',
-                  maxDataLength: '0 bytes (0)',
-                  dataFree: '4.00 MB (4,194,304)',
-                  comment: record.comment
-                }
-                setSelectedObject(tableObject)
-              }}
-            />
-          ))
-        }
+        // 更新默认对象面板的内容
+        mainPanelRef.current?.updatePanelContent('object-0', createObjectPanelContent(
+          currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : [],
+          node.type,
+          typeof node.title === 'string' ? node.title : undefined,
+          databaseId && databaseStates instanceof Map ? databaseStates.get(databaseId) : undefined // 获取表所在数据库的状态
+        ))
       }
     } else if (node.type === TreeNodeType.DATABASE) {
       // 双击数据库节点可以加载表并显示表列表
@@ -495,146 +313,30 @@ const AppLayout = ({
               dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
               engine: obj.metadata?.engine || '',
               modifyDate: obj.metadata?.updateTime || '--',
+              collation: obj.metadata?.collation || '',
+              rowFormat: obj.metadata?.rowFormat || '',
               comment: obj.metadata?.comment || ''
             }))
         : []
       
-      // 检查是否已经存在表面板
-      const existingPanel = panels.find(panel => panel.type === 'table')
-      if (existingPanel) {
-        // 更新现有面板的内容
-        const updatedPanels = panels.map(panel => {
-          if (panel.id === existingPanel.id) {
-            return {
-              ...panel,
-              content: (
-                <ObjectPanel
-                  dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
-                  selectedTables={selectedTables}
-                  onSelectTables={setSelectedTables}
-                  connectionStatus={currentConnectionStatus}
-                  selectedNodeType={node.type}
-                  selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-                  onOpenTable={(record) => {
-                    // 打开表时，显示表的详细信息
-                    const tableObject: TableObject = {
-                      name: record.name,
-                      type: TreeNodeType.TABLE,
-                      engine: record.engine,
-                      rows: record.rows,
-                      dataLength: record.dataLength,
-                      createTime: '2025-11-08 09:51:13',
-                      updateTime: record.modifyDate || '',
-                      collation: 'utf8mb4_0900_ai_ci',
-                      autoIncrement: 0,
-                      rowFormat: 'Dynamic',
-                      checkTime: null,
-                      indexLength: '0 bytes (0)',
-                      maxDataLength: '0 bytes (0)',
-                      dataFree: '4.00 MB (4,194,304)',
-                      comment: record.comment
-                    }
-                    setSelectedObject(tableObject)
-                  }}
-                />
-              )
-            }
-          }
-          return panel
-        })
-        setPanels(updatedPanels)
-        setActivePanelId(existingPanel.id)
-      } else {
-        // 创建表面板
-        createPanel('table', '表', (
-          <ObjectPanel
-            dataSource={currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : []}
-            selectedTables={selectedTables}
-            onSelectTables={setSelectedTables}
-            connectionStatus={currentConnectionStatus}
-            selectedNodeType={node.type}
-            selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-            onOpenTable={(record) => {
-              // 打开表时，显示表的详细信息
-              const tableObject: TableObject = {
-                name: record.name,
-                type: TreeNodeType.TABLE,
-                engine: record.engine,
-                rows: record.rows,
-                dataLength: record.dataLength,
-                createTime: '2025-11-08 09:51:13',
-                updateTime: record.modifyDate || '',
-                collation: 'utf8mb4_0900_ai_ci',
-                autoIncrement: 0,
-                rowFormat: 'Dynamic',
-                checkTime: null,
-                indexLength: '0 bytes (0)',
-                maxDataLength: '0 bytes (0)',
-                dataFree: '4.00 MB (4,194,304)',
-                comment: record.comment
-              }
-              setSelectedObject(tableObject)
-            }}
-          />
+      // 更新默认对象面板的内容
+        mainPanelRef.current?.updatePanelContent('object-0', createObjectPanelContent(
+          currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : [],
+          node.type,
+          typeof node.title === 'string' ? node.title : undefined,
+          databaseStates instanceof Map ? databaseStates.get(node.key) : undefined
         ))
-      }
     } else if (node.type === TreeNodeType.CONNECTION) {
       // 处理连接节点点击
-      // 检查是否已经存在表面板
-      const existingPanel = panels.find(panel => panel.type === 'table')
-      if (existingPanel) {
-        // 更新现有面板的内容
-        const updatedPanels = panels.map(panel => {
-          if (panel.id === existingPanel.id) {
-            return {
-              ...panel,
-              content: (
-                <ObjectPanel
-                  dataSource={[]} // 连接节点选中时显示空表列表
-                  selectedTables={selectedTables}
-                  onSelectTables={setSelectedTables}
-                  connectionStatus={currentConnectionStatus}
-                  selectedNodeType={node.type}
-                  selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-                  onOpenTable={(record) => {
-                    // 打开表时，显示表的详细信息
-                    const tableObject: TableObject = {
-                      name: record.name,
-                      type: TreeNodeType.TABLE,
-                      engine: record.engine,
-                      rows: record.rows,
-                      dataLength: record.dataLength,
-                      createTime: '2025-11-08 09:51:13',
-                      updateTime: record.modifyDate || '',
-                      collation: 'utf8mb4_0900_ai_ci',
-                      autoIncrement: 0,
-                      rowFormat: 'Dynamic',
-                      checkTime: null,
-                      indexLength: '0 bytes (0)',
-                      maxDataLength: '0 bytes (0)',
-                      dataFree: '4.00 MB (4,194,304)',
-                      comment: record.comment
-                    }
-                    setSelectedObject(tableObject)
-                  }}
-                />
-              )
-            }
-          }
-          return panel
-        })
-        setPanels(updatedPanels)
-        setActivePanelId(existingPanel.id)
-      } else {
-        // 创建表面板
-        createPanel('table', '表', (
+      // 更新默认对象面板的内容
+        mainPanelRef.current?.updatePanelContent('object-0', (
           <ObjectPanel
             dataSource={[]} // 连接节点选中时显示空表列表
             selectedTables={selectedTables}
             onSelectTables={setSelectedTables}
-            connectionStatus={currentConnectionStatus}
             selectedNodeType={node.type}
             selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+            connectionStatus={currentConnectionStatus}
             onOpenTable={(record) => {
               // 打开表时，显示表的详细信息
               const tableObject: TableObject = {
@@ -643,35 +345,29 @@ const AppLayout = ({
                 engine: record.engine,
                 rows: record.rows,
                 dataLength: record.dataLength,
-                createTime: '2025-11-08 09:51:13',
+                createTime: record.createTime || '',
                 updateTime: record.modifyDate || '',
-                collation: 'utf8mb4_0900_ai_ci',
-                autoIncrement: 0,
-                rowFormat: 'Dynamic',
-                checkTime: null,
-                indexLength: '0 bytes (0)',
-                maxDataLength: '0 bytes (0)',
-                dataFree: '4.00 MB (4,194,304)',
+                collation: record.collation || '',
+                autoIncrement: record.autoIncrement || null,
+                rowFormat: record.rowFormat || '',
+                checkTime: record.checkTime || null,
+                indexLength: record.indexLength || '0 KB',
+                maxDataLength: record.maxDataLength || '0 KB',
+                dataFree: record.dataFree || '0 KB',
                 comment: record.comment
               }
+              debugger
               setSelectedObject(tableObject)
             }}
           />
         ))
-      }
     } else if (node.type === TreeNodeType.FUNCTION) {
       // 处理函数节点双击
-      // 检查是否已经存在函数面板
-      const existingPanel = panels.find(panel => panel.type === 'function')
-      if (existingPanel) {
-        setActivePanelId(existingPanel.id)
-      } else {
-        createPanel('function', '函数', (
-          <FunctionPanel
-            dataSource={mockFunctions}
-          />
-        ))
-      }
+      mainPanelRef.current?.createPanel('function', '函数', (
+        <FunctionPanel
+          dataSource={mockFunctions}
+        />
+      ))
     }
   }
 
@@ -704,10 +400,7 @@ const AppLayout = ({
         
         <Content style={{ margin: '16px', padding: 0, overflowY: 'auto' }}>
           <MainPanel
-            activePanelId={activePanelId}
-            panels={panels}
-            onClosePanel={handleClosePanel}
-            onSwitchPanel={handleSwitchPanel}
+            ref={mainPanelRef}
             propertiesContent={
               <PropertiesPanel
                 selectedObject={selectedObject}

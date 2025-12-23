@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import './App.css'
 import ConnectionDialog from './components/ConnectionDialog'
 import QueryEditor from './components/QueryEditor'
