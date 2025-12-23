@@ -5,6 +5,7 @@ import { PlayCircleOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from
 import { useQueryStore } from '../store/queryStore'
 import { useConnectionStore } from '../store/connectionStore'
 import { QueryResult } from '../types/connection'
+import { generateUUID } from '../utils/formatUtils'
 
 const { TabPane } = Tabs
 
@@ -21,7 +22,7 @@ const QueryEditor = () => {
     executeQuery 
   } = useQueryStore()
   
-  const { connections } = useConnectionStore()
+  const { connections, activeConnectionId } = useConnectionStore()
   const editorRef = useRef<any>(null)
 
   // 表格选中状态
@@ -36,7 +37,9 @@ const QueryEditor = () => {
       message.warning('Please add a connection first')
       return
     }
-    const newTabId = addTab(connections[0].id)
+    // 使用当前激活的连接，如果没有激活的连接则使用第一个连接
+    const connectionId = activeConnectionId || connections[0].id
+    const newTabId = addTab(connectionId)
     setActiveTab(newTabId)
   }
 
@@ -169,15 +172,6 @@ const QueryEditor = () => {
     if (!activeTabId) return
     const result = queryResults.get(activeTabId)
     if (!result || selectedRowKeys.length === 0) return
-
-    // 生成UUID
-    const generateUUID = () => {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = (Math.random() * 16) | 0
-        const v = c === 'x' ? r : (r & 0x3) | 0x8
-        return v.toString(16)
-      })
-    }
 
     // 更新选中行的数据
     const updatedRows = result.rows.map((row, index) => {

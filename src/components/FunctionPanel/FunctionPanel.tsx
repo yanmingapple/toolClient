@@ -1,6 +1,7 @@
 // React import not needed
 import { Table, Button, Input, Space, Tooltip } from 'antd'
 import { SearchOutlined, PlayCircleOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useState } from 'react'
 
 const { Search } = Input
 
@@ -52,6 +53,9 @@ const FunctionPanel = ({
   onRunFunction,
   onSearch
 }: FunctionPanelProps) => {
+  // 选中的函数
+  const [selectedFunction, setSelectedFunction] = useState<FunctionData | null>(null)
+
   // 表格列配置
   const columns = [
     {
@@ -120,10 +124,10 @@ const FunctionPanel = ({
           <Button onClick={onNewFunction} type="default">
             <PlusOutlined /> 新建函数
           </Button>
-          <Button onClick={() => onDeleteFunction && onDeleteFunction(dataSource[0])} type="default" danger>
+          <Button onClick={() => selectedFunction && onDeleteFunction?.(selectedFunction)} type="default" danger disabled={!selectedFunction}>
             <DeleteOutlined /> 删除函数
           </Button>
-          <Button onClick={() => onRunFunction && onRunFunction(dataSource[0])} type="default">
+          <Button onClick={() => selectedFunction && onRunFunction?.(selectedFunction)} type="default" disabled={!selectedFunction}>
             <PlayCircleOutlined /> 运行函数
           </Button>
         </Space>
@@ -147,6 +151,10 @@ const FunctionPanel = ({
         style={{ flex: 1 }}
         bordered
         scroll={{ x: 800, y: 'calc(100vh - 280px)' }}
+        onRow={(record) => ({
+          onClick: () => setSelectedFunction(record),
+          className: selectedFunction?.name === record.name ? 'ant-table-row-selected' : ''
+        })}
       />
     </div>
   )

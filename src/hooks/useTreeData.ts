@@ -1,7 +1,7 @@
 /**
  * 树形数据处理相关Hook
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { Key } from 'rc-tree/lib/interface'
 
 import { useConnectionStore } from '../store/connectionStore'
@@ -89,9 +89,57 @@ export const useTreeData = (onSelect?: (node: TreeNode, info: any) => void) => {
     }
   }, [onSelect])
   
+  // 展开的节点keys
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>([])
+  // 选中的节点keys
+  const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
+
+  // 处理节点展开事件（包含状态更新）
+  const handleTreeExpand = useCallback(async (keys: Key[], info: any) => {
+    setExpandedKeys(keys)
+    await handleExpand(keys, info)
+  }, [handleExpand])
+
+  // 处理节点选择事件（包含状态更新）
+  const handleTreeSelect = useCallback((keys: Key[], info: any) => {
+    setSelectedKeys(keys)
+    handleSelect(keys, info)
+  }, [handleSelect])
+
+  // 处理节点双击事件
+  const handleTreeDoubleClick = useCallback(async (_e: React.MouseEvent, info: any) => {
+    if (!info) return
+
+    // 根据Tree组件事件类型确定节点获取方式
+    const node = info.node ? info.node as TreeNode : info as TreeNode
+
+    // 如果双击的是连接节点且未连接，则连接并加载数据库
+    if (node.type === TreeNodeType.CONNECTION) {
+      const connection = node.data?.metadata?.connection
+      if (connection) {
+        // 连接数据库的逻辑应该由外部处理
+        // 这里只处理展开逻辑
+        setExpandedKeys(prev => [...prev, node.key])
+      }
+    }
+
+    // 如果双击的是数据库节点，则加载表并展开
+    if (node.type === TreeNodeType.DATABASE) {
+      // 调用handleExpand来加载表
+      await handleExpand([], info)
+      // 数据库加载成功后自动展开
+      setExpandedKeys(prev => [...prev, node.key])
+    }
+  }, [handleExpand])
+
   return {
     treeData,
-    handleExpand,
-    handleSelect
+    expandedKeys,
+    setExpandedKeys,
+    selectedKeys,
+    setSelectedKeys,
+    handleExpand: handleTreeExpand,
+    handleSelect: handleTreeSelect,
+    handleDoubleClick: handleTreeDoubleClick
   }
 }

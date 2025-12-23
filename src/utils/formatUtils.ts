@@ -20,3 +20,15 @@ export const formatBytes = (bytes: number): string => {
   // 使用2位小数，避免科学计数法
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
+
+/**
+ * 生成UUID
+ * @returns UUID字符串
+ */
+export const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}

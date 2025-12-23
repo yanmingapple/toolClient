@@ -1,8 +1,7 @@
 /**
  * 连接树形菜单组件
  */
-import React, { useState, useCallback } from 'react'
-import type { Key } from 'rc-tree/lib/interface'
+import React, { useCallback } from 'react'
 
 import { Tree, Button, Empty, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
@@ -31,31 +30,19 @@ const ConnectionTree = ({
   onNodeSelect
 }: ConnectionTreeProps) => {
   // 使用自定义hooks获取树形数据和操作
-  const { treeData, handleExpand, handleSelect } = useTreeData(onNodeSelect)
+  const { 
+    treeData, 
+    expandedKeys, 
+    setExpandedKeys,
+    selectedKeys,
+    handleExpand, 
+    handleSelect,
+    handleDoubleClick: hookHandleDoubleClick
+  } = useTreeData(onNodeSelect)
   const { handleConnectAndLoadDatabases } = useConnection()
   
-  // 本地状态
-  const [expandedKeys, setExpandedKeys] = useState<Key[]>([])
-  const [selectedKeys, setSelectedKeys] = useState<Key[]>([])
-  
   /**
-   * 处理节点展开事件
-   */
-  const onExpand = useCallback(async (keys: Key[], info: any) => {
-    setExpandedKeys(keys)
-    await handleExpand(keys, info)
-  }, [handleExpand])
-  
-  /**
-   * 处理节点选择事件
-   */
-  const onSelect = useCallback((keys: Key[], info: any) => {
-    setSelectedKeys(keys)
-    handleSelect(keys, info.node)
-  }, [handleSelect])
-  
-  /**
-   * 处理节点双击事件
+   * 处理节点双击事件（扩展hook提供的双击处理）
    */
   const onDoubleClick = useCallback(async (_e: React.MouseEvent, info: any) => {
     if (!info) {
@@ -77,17 +64,18 @@ const ConnectionTree = ({
     
     // 如果双击的是数据库节点，则加载表并展开
     if (node.type === TreeNodeType.DATABASE) {
-      // 调用handleExpand来加载表
-      await handleExpand([], info)
-      // 数据库加载成功后自动展开
-      setExpandedKeys(prev => [...prev, node.key])
+      // 调用hook提供的双击处理
+      await hookHandleDoubleClick(_e, info)
       // 延迟执行handleSelect，确保树渲染完成后再更新右侧面板
       setTimeout(() => {
         // 触发节点点击事件
         handleSelect([node.key], info)
       }, 2000)
+    } else {
+      // 其他节点类型使用hook提供的双击处理
+      await hookHandleDoubleClick(_e, info)
     }
-  }, [handleConnectAndLoadDatabases, handleExpand, handleSelect])
+  }, [handleConnectAndLoadDatabases, setExpandedKeys, handleSelect, hookHandleDoubleClick])
   
   /**
    * 处理数据加载
@@ -105,8 +93,8 @@ const ConnectionTree = ({
         treeData={treeData}
         expandedKeys={expandedKeys}
         selectedKeys={selectedKeys}
-        onExpand={onExpand}
-        onSelect={onSelect}
+        onExpand={handleExpand}
+        onSelect={handleSelect}
         onDoubleClick={onDoubleClick}
         loadData={onLoadData}
         titleRender={(node) => node.title}

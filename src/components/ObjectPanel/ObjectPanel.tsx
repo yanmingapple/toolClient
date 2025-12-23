@@ -208,7 +208,7 @@ const ObjectPanel = ({
         <Space>
           <Button onClick={async () => {
             // 获取要打开的表，优先使用选中的表，如果没有选中表则使用第一个表
-            const tableToOpen = selectedTables.length > 0 ? selectedTables[0] : dataSource[0];
+            const tableToOpen = selectedTables.length > 0 ? selectedTables[0] : (dataSource.length > 0 ? dataSource[0] : undefined);
             if (tableToOpen && mainPanelRef?.current && connectionId && databaseName) {
               setTableLoading(true)
               try {
