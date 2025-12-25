@@ -1,4 +1,4 @@
-// React import not needed
+
 import { Card, Descriptions } from 'antd'
 import { DatabaseOutlined, TableOutlined, FunctionOutlined } from '@ant-design/icons'
 
@@ -45,9 +45,24 @@ export interface DatabaseObject {
   comment?: string
 }
 
-// 属性面板数据接口
-export type PropertiesObject = TableObject | FunctionObject | DatabaseObject
+// 连接对象接口
+export interface ConnectionObject {
+  name: string
+  type: 'connection'
+  host: string
+  port: number
+  user: string
+  database?: string
+  charset?: string
+  connectTimeout?: number
+}
 
+// 属性面板数据接口
+export type PropertiesObject = TableObject | FunctionObject | DatabaseObject | ConnectionObject
+
+/**
+ * 属性面板组件属性接口
+ */
 interface PropertiesPanelProps {
   /**
    * 当前选中的对象
@@ -58,14 +73,12 @@ interface PropertiesPanelProps {
 /**
  * 属性面板组件，用于显示不同对象的详细信息
  */
-const PropertiesPanel = ({
-  selectedObject,
-}: PropertiesPanelProps) => {
+const PropertiesPanel = ({ selectedObject }: PropertiesPanelProps) => {
+  console.log(selectedObject)
   // 获取对象类型对应的图标
-  debugger
   const getObjectIcon = () => {
     if (!selectedObject) return null
-    
+
     switch (selectedObject.type) {
       case 'table':
         return <TableOutlined style={{ color: '#1890ff', marginRight: '4px' }} />
@@ -73,6 +86,8 @@ const PropertiesPanel = ({
         return <FunctionOutlined style={{ color: '#52c41a', marginRight: '4px' }} />
       case 'database':
         return <DatabaseOutlined style={{ color: '#722ed1', marginRight: '4px' }} />
+      case 'connection':
+        return <DatabaseOutlined style={{ color: '#1890ff', marginRight: '4px' }} />
       default:
         return null
     }
@@ -128,6 +143,21 @@ const PropertiesPanel = ({
     )
   }
 
+  // 渲染连接对象的属性
+  const renderConnectionProperties = (conn: ConnectionObject) => {
+    return (
+      <Descriptions column={1} size="small" bordered>
+        <Descriptions.Item label="连接名">{conn.name}</Descriptions.Item>
+        <Descriptions.Item label="主机">{conn.host}</Descriptions.Item>
+        <Descriptions.Item label="端口">{conn.port}</Descriptions.Item>
+        <Descriptions.Item label="用户名">{conn.user}</Descriptions.Item>
+        {conn.database && <Descriptions.Item label="默认数据库">{conn.database}</Descriptions.Item>}
+        {conn.charset && <Descriptions.Item label="字符集">{conn.charset}</Descriptions.Item>}
+        {conn.connectTimeout && <Descriptions.Item label="连接超时">{conn.connectTimeout}ms</Descriptions.Item>}
+      </Descriptions>
+    )
+  }
+
   // 渲染对象属性
   const renderObjectProperties = () => {
     if (!selectedObject) return null
@@ -139,6 +169,8 @@ const PropertiesPanel = ({
         return renderFunctionProperties(selectedObject)
       case 'database':
         return renderDatabaseProperties(selectedObject)
+      case 'connection':
+        return renderConnectionProperties(selectedObject)
       default:
         return (
           <Descriptions column={1} size="small" bordered>
@@ -159,7 +191,7 @@ const PropertiesPanel = ({
   }
 
   return (
-    <Card 
+    <Card
       title={
         <span>
           {getObjectIcon()}

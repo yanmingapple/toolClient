@@ -1,8 +1,8 @@
 /**
  * 树形数据处理相关工具函数
  */
-import { TreeNode, TreeNodeType } from '../types/tree'
-import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/connection'
+import { TreeNode, TreeNodeType } from '../types/leftTree/tree'
+import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/leftTree/connection'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'
@@ -24,7 +24,7 @@ export const generateTreeData = (
   databaseStates: Map<string, DatabaseStatus>
 ): TreeNode[] => {
   const treeNodes: TreeNode[] = []
-  
+
   // 确保connectionStates是Map类型
   let safeConnectionStates: Map<string, ConnectionStatus>
   if (connectionStates instanceof Map) {
@@ -34,12 +34,12 @@ export const generateTreeData = (
   } else {
     safeConnectionStates = new Map()
   }
-  
+
   // 生成连接节点
   connections.forEach(connection => {
     const status = safeConnectionStates.get(connection.id) || ConnectionStatus.DISCONNECTED
     const isConnected = status === ConnectionStatus.CONNECTED
-    
+
     // 连接节点
     const connectionNode: TreeNode = {
       key: connection.id,
@@ -67,25 +67,25 @@ export const generateTreeData = (
       // 默认未连接时为叶子节点
       isLeaf: !isConnected
     }
-    
+
     // 如果已连接且有数据库对象，添加数据库节点
     if (isConnected && databases instanceof Map && tables instanceof Map) {
       // 获取该连接下的所有数据库
-      const connectionDatabases = Array.from(databases.values()).filter(obj => 
+      const connectionDatabases = Array.from(databases.values()).filter(obj =>
         obj.parentId === connection.id
       )
-      
+
       // 如果有数据库，则设置children并将isLeaf设为false
       if (connectionDatabases.length > 0) {
         connectionNode.children = connectionDatabases.map(database => {
           // 获取该数据库下的所有表
-          const databaseTables = Array.from(tables.values()).filter(obj => 
+          const databaseTables = Array.from(tables.values()).filter(obj =>
             obj.parentId === database.id
           )
-          
+
           // 检查是否已加载表
           const hasTables = databaseTables.length > 0
-          
+
           // 获取数据库状态
           let safeDatabaseStates: Map<string, DatabaseStatus>
           if (databaseStates instanceof Map) {
@@ -96,7 +96,7 @@ export const generateTreeData = (
             safeDatabaseStates = new Map()
           }
           const databaseStatus = safeDatabaseStates.get(database.id) || DatabaseStatus.LOADING
-          
+
           // 数据库节点
           const databaseNode: TreeNode = {
             key: database.id,
@@ -126,7 +126,7 @@ export const generateTreeData = (
             // 如果没有表，则根据是否加载过来决定是否为叶子节点
             isLeaf: !hasTables
           }
-          
+
           return databaseNode
         })
       } else {
@@ -135,7 +135,7 @@ export const generateTreeData = (
         connectionNode.children = undefined
       }
     }
-    
+
     treeNodes.push(connectionNode)
   })
 
@@ -150,16 +150,16 @@ export const generateTreeData = (
 export const getDatabaseNodeIcon = (status: DatabaseStatus) => {
   switch (status) {
     case DatabaseStatus.DISCONNECTED:
-      return <Icon name="database" size={16} color= '#d9d9d9' style={{ marginRight: '8px' }} />
+      return <Icon name="database" size={16} color='#d9d9d9' style={{ marginRight: '8px' }} />
     case DatabaseStatus.LOADING:
-      return <Icon name="database" size={16} color= '#1890ff' style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+      return <Icon name="database" size={16} color='#1890ff' style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
     case DatabaseStatus.LOADED:
-      return <Icon name="database" size={16} color= '#52c41a' style={{ marginRight: '8px' }} />
+      return <Icon name="database" size={16} color='#52c41a' style={{ marginRight: '8px' }} />
     case DatabaseStatus.ERROR:
-      return <Icon name="error" size={16} color= '#ff4d4f' style={{ marginRight: '8px' }} />
+      return <Icon name="error" size={16} color='#ff4d4f' style={{ marginRight: '8px' }} />
     case DatabaseStatus.EMPTY:
-      return <Icon name="database" size={16} color= '#faad14' style={{ marginRight: '8px' }} />
+      return <Icon name="database" size={16} color='#faad14' style={{ marginRight: '8px' }} />
     default:
-      return <Icon name="database" size={16} color= '#d9d9d9' style={{ marginRight: '8px' }} />
+      return <Icon name="database" size={16} color='#d9d9d9' style={{ marginRight: '8px' }} />
   }
 }

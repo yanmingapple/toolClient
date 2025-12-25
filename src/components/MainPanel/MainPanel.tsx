@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle } from 'react'
 import { Tabs, Layout } from 'antd'
 import { CloseOutlined } from '@ant-design/icons'
 import { usePanelManagement } from '../../hooks/usePanelManagement'
+import { PropertiesObject } from '../PropertiesPanel'
 
 const { Content, Sider } = Layout
 
@@ -27,13 +28,18 @@ interface MainPanelProps {
    * 右侧属性面板内容
    */
   propertiesContent?: React.ReactNode
+  /**
+   * 当前选中的对象
+   */
+  selectedObject?: PropertiesObject | null
 }
 
 /**
  * 主操作区面板组件
  */
 const MainPanel = forwardRef<MainPanelRef, MainPanelProps>(({
-  propertiesContent
+  propertiesContent,
+  selectedObject: _selectedObject
 }, ref) => {
   // 使用自定义hook管理面板状态
   const {
@@ -44,7 +50,6 @@ const MainPanel = forwardRef<MainPanelRef, MainPanelProps>(({
     handleClosePanel,
     handleSwitchPanel
   } = usePanelManagement()
-
   // 渲染标签页
   const renderTabs = () => {
     return panels.map(panel => ({
@@ -85,10 +90,10 @@ const MainPanel = forwardRef<MainPanelRef, MainPanelProps>(({
           tabBarStyle={{ borderBottom: '1px solid #f0f0f0', paddingLeft: '16px' }}
         />
       </Content>
-      <Sider 
-        width={280} 
-        style={{ 
-          borderLeft: '1px solid #f0f0f0', 
+      <Sider
+        width={280}
+        style={{
+          borderLeft: '1px solid #f0f0f0',
           background: '#fff',
           overflowY: 'auto'
         }}

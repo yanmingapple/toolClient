@@ -4,24 +4,24 @@ import { Button, Tabs, Table, Divider, Spin, message, Card, Space, Tooltip, Menu
 import { PlayCircleOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useQueryStore } from '../store/queryStore'
 import { useConnectionStore } from '../store/connectionStore'
-import { QueryResult } from '../types/connection'
+import { QueryResult } from '../types/leftTree/connection'
 import { generateUUID } from '../utils/formatUtils'
 
 const { TabPane } = Tabs
 
 const QueryEditor = () => {
-  const { 
-    tabs, 
-    activeTabId, 
-    queryResults, 
+  const {
+    tabs,
+    activeTabId,
+    queryResults,
     queryExecutionInProgress,
-    addTab, 
-    removeTab, 
-    setActiveTab, 
-    updateQuery, 
-    executeQuery 
+    addTab,
+    removeTab,
+    setActiveTab,
+    updateQuery,
+    executeQuery
   } = useQueryStore()
-  
+
   const { connections, activeConnectionId } = useConnectionStore()
   const editorRef = useRef<any>(null)
 
@@ -51,7 +51,7 @@ const QueryEditor = () => {
   // Execute current query
   const handleExecuteQuery = async () => {
     if (!activeTab) return
-    
+
     try {
       await executeQuery(activeTab.id, activeTab.query)
       message.success('Query executed successfully')
@@ -224,7 +224,7 @@ const QueryEditor = () => {
     const selectedRows = result.rows.filter((_, index) => selectedRowKeys.includes(index))
 
     // 转换为CSV格式
-    const csvContent = result.columns.join(",") + "\n" 
+    const csvContent = result.columns.join(",") + "\n"
       + selectedRows.map(row => result.columns.map(col => {
         const cell = row[col]
         if (typeof cell === 'string' && (cell.includes(',') || cell.includes('"') || cell.includes('\n'))) {
@@ -295,8 +295,8 @@ const QueryEditor = () => {
     if (!result) return
 
     // 保存为CSV格式
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + result.columns.join(",") + "\n" 
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + result.columns.join(",") + "\n"
       + result.rows.map(row => result.columns.map(col => {
         const cell = row[col]
         // 处理包含逗号、引号或换行符的单元格
@@ -474,7 +474,7 @@ const QueryEditor = () => {
                   Reload
                 </Button>
               </Tooltip>
-              
+
               {/* 编辑菜单 */}
               <Dropdown overlay={
                 <Menu onClick={handleEditMenuClick}>

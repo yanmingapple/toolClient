@@ -1,7 +1,7 @@
 /**
  * 连接管理相关工具函数
  */
-import { DatabaseType, ConnectionStatus } from '../types/connection'
+import { DatabaseType, ConnectionStatus } from '../types/leftTree/connection'
 import { Icon, IconName } from '../icons'
 
 /**

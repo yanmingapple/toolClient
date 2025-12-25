@@ -7,7 +7,7 @@ import { Tree, Button, Empty, Typography } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useTreeData } from '../../hooks/useTreeData'
 import { useConnection } from '../../hooks/useConnection'
-import { TreeNode, TreeNodeType } from '../../types/tree'
+import { TreeNode, TreeNodeType } from '../../types/leftTree/tree'
 
 const { Title, Paragraph } = Typography
 
@@ -20,6 +20,10 @@ interface ConnectionTreeProps {
    * 处理节点选择事件
    */
   onNodeSelect?: (node: TreeNode, info: any) => void
+  /**
+   * 更新选中节点的函数
+   */
+  updateSelectedNode?: (node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string }, connection?: any, database?: any, table?: any) => void
 }
 
 /**
@@ -27,20 +31,21 @@ interface ConnectionTreeProps {
  */
 const ConnectionTree = ({
   onNewConnection,
-  onNodeSelect
+  onNodeSelect,
+  updateSelectedNode
 }: ConnectionTreeProps) => {
   // 使用自定义hooks获取树形数据和操作
-  const { 
-    treeData, 
-    expandedKeys, 
+  const {
+    treeData,
+    expandedKeys,
     setExpandedKeys,
     selectedKeys,
-    handleExpand, 
+    handleExpand,
     handleSelect,
     handleDoubleClick: hookHandleDoubleClick
-  } = useTreeData(onNodeSelect)
+  } = useTreeData(onNodeSelect, updateSelectedNode)
   const { handleConnectAndLoadDatabases } = useConnection()
-  
+
   /**
    * 处理节点双击事件（扩展hook提供的双击处理）
    */
@@ -48,10 +53,10 @@ const ConnectionTree = ({
     if (!info) {
       return
     }
-    
+
     // 根据Tree组件事件类型确定节点获取方式
     const node = info.node ? info.node as TreeNode : info as TreeNode
-    
+
     // 如果双击的是连接节点且未连接，则连接并加载数据库
     if (node.type === TreeNodeType.CONNECTION) {
       const connection = node.data?.metadata?.connection
@@ -61,7 +66,7 @@ const ConnectionTree = ({
         setExpandedKeys(prev => [...prev, node.key])
       }
     }
-    
+
     // 如果双击的是数据库节点，则加载表并展开
     if (node.type === TreeNodeType.DATABASE) {
       // 调用hook提供的双击处理
@@ -76,7 +81,7 @@ const ConnectionTree = ({
       await hookHandleDoubleClick(_e, info)
     }
   }, [handleConnectAndLoadDatabases, setExpandedKeys, handleSelect, hookHandleDoubleClick])
-  
+
   /**
    * 处理数据加载
    */
@@ -84,11 +89,11 @@ const ConnectionTree = ({
     // 加载数据的逻辑已经在handleExpand中处理
     return Promise.resolve()
   }, [])
-  
+
   return (
     <div style={{ padding: '16px', height: 'calc(100vh - 70px)', overflowY: 'auto', overflowX: 'hidden', boxSizing: 'border-box' }}>
       <Title level={4} style={{ margin: 0, marginBottom: '16px' }}>我的连接</Title>
-      
+
       <Tree
         treeData={treeData}
         expandedKeys={expandedKeys}
@@ -101,7 +106,7 @@ const ConnectionTree = ({
         showLine={{ showLeafIcon: false }}
         blockNode
       />
-      
+
       {treeData.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px 0' }}>
           <Empty

@@ -1,2 +1,2 @@
 export { default } from './ObjectPanel'
-export type { TableData } from './ObjectPanel'
+export type { TableData, ViewData, FunctionData } from '../../types'

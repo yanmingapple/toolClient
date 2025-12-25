@@ -4,7 +4,7 @@ import ConnectionDialog from './components/ConnectionDialog'
 import QueryEditor from './components/QueryEditor'
 import AppLayout from './components/AppLayout'
 import { useConnectionStore } from './store/connectionStore'
-import { ConnectionConfig } from './types/connection'
+import { ConnectionConfig } from './types/leftTree/connection'
 import { useIpcCommunication } from './hooks/useIpcCommunication'
 
 const App = () => {

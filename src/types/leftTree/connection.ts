@@ -1,11 +1,4 @@
-export enum DatabaseType {
-  MYSQL = 'mysql',
-  POSTGRESQL = 'postgresql',
-  MONGODB = 'mongodb',
-  REDIS = 'redis',
-  SQLSERVER = 'sqlserver',
-  SQLITE = 'sqlite',
-}
+import { DatabaseType, ConnectionStatus, DatabaseStatus } from '../../enum'
 
 export interface ConnectionConfig {
   id: string;
@@ -27,21 +20,6 @@ export interface ConnectionConfig {
   timeout?: number;
   charset?: string;
   maxConnections?: number;
-}
-
-export enum ConnectionStatus {
-  DISCONNECTED = 'disconnected',
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-  ERROR = 'error',
-}
-
-export enum DatabaseStatus {
-  DISCONNECTED = 'disconnected',
-  LOADING = 'loading',
-  LOADED = 'loaded',
-  ERROR = 'error',
-  EMPTY = 'empty',
 }
 
 export interface ConnectionState {
@@ -68,3 +46,5 @@ export interface QueryHistory {
   executionTime?: number;
   error?: string;
 }
+
+export { DatabaseType, ConnectionStatus, DatabaseStatus }

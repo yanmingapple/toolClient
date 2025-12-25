@@ -3,7 +3,7 @@
  */
 import { useCallback, useEffect } from 'react'
 import { useConnectionStore } from '../store/connectionStore'
-import { ConnectionConfig, ConnectionStatus } from '../types/connection'
+import { ConnectionConfig, ConnectionStatus } from '../types/leftTree/connection'
 import { ensureConnectionStatesMap } from '../utils/connectionUtils'
 import { message } from 'antd'
 
@@ -16,12 +16,12 @@ export const useConnection = () => {
   const connections = useConnectionStore((state) => state.connections)
   const connectionStates = useConnectionStore((state) => state.connectionStates)
   const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)
-  
+
   const setActiveConnection = useConnectionStore((state) => state.setActiveConnection)
   const setConnectionStatus = useConnectionStore((state) => state.setConnectionStatus)
   const testConnection = useConnectionStore((state) => state.testConnection)
   const getDatabaseList = useConnectionStore((state) => state.getDatabaseList)
-  
+
   /**
    * 确保所有连接都有正确的初始状态（DISCONNECTED）
    */
@@ -43,7 +43,7 @@ export const useConnection = () => {
     // 如果没有需要更改的状态，不做任何操作
     if (!hasChanges) return
   }, [connections, connectionStates, setConnectionStatus])
-  
+
   /**
    * 连接并加载数据库
    * @param connection 连接配置
@@ -58,19 +58,19 @@ export const useConnection = () => {
     } catch (error) {
       console.error('Failed to get connection status:', error)
     }
-    
+
     if (currentStatus === ConnectionStatus.CONNECTED) {
       message.info('连接已建立')
       // 加载数据库列表
       await getDatabaseList(connection.id)
       return
     }
-    
+
     if (currentStatus === ConnectionStatus.CONNECTING) {
       message.info('正在连接中，请稍候...')
       return
     }
-    
+
     setConnectionStatus(connection.id, ConnectionStatus.CONNECTING)
     try {
       const success = await testConnection(connection)
@@ -78,7 +78,7 @@ export const useConnection = () => {
         setConnectionStatus(connection.id, ConnectionStatus.CONNECTED)
         setActiveConnection(connection.id)
         message.success('连接成功')
-        
+
         // 加载数据库列表
         await getDatabaseList(connection.id)
       } else {
@@ -90,7 +90,7 @@ export const useConnection = () => {
       message.error('连接失败: ' + error)
     }
   }, [connectionStates, testConnection, setConnectionStatus, setActiveConnection, getDatabaseList])
-  
+
   /**
    * 处理节点选择
    * @param key 节点key
@@ -98,7 +98,7 @@ export const useConnection = () => {
   const handleSelectConnection = useCallback((key: string) => {
     setActiveConnection(key)
   }, [setActiveConnection])
-  
+
   return {
     connections,
     connectionStates,

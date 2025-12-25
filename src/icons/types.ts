@@ -1,23 +1,12 @@
-export enum DatabaseType {
-  MySQL = 'mysql',
-  PostgreSQL = 'postgresql',
-  MongoDB = 'mongodb',
-  Redis = 'redis',
-  SQLServer = 'sqlserver',
-  SQLite = 'sqlite'
-}
+import { DatabaseType } from '../enum'
 
-// ConnectionStatus moved to src/types/connection.ts
-
-export type IconName = 
-  // 数据库类型图标
+export type IconName =
   | 'mysql'
   | 'postgresql'
   | 'mongodb'
   | 'redis'
   | 'sqlserver'
   | 'sqlite'
-  // 通用图标
   | 'database'
   | 'folder'
   | 'folder-open'
@@ -41,3 +30,5 @@ export interface IconProps {
   className?: string;
   style?: React.CSSProperties;
 }
+
+export { DatabaseType }

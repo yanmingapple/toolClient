@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, StorageValue } from 'zustand/middleware'
-import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/connection'
-import { DatabaseObject } from '../types/tree'
+import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/leftTree/connection'
+import { DatabaseObject } from '../types/leftTree/tree'
 import CryptoJS from 'crypto-js'
 import { getSafeIpcRenderer } from '../utils/electronUtils'
 
@@ -14,7 +14,7 @@ interface ConnectionStore {
   databaseStates: Map<string, DatabaseStatus>
   databases: Map<string, DatabaseObject>
   tables: Map<string, DatabaseObject>
-  
+
   // Actions
   addConnection: (config: Omit<ConnectionConfig, 'id'>) => void
   updateConnection: (id: string, config: Partial<ConnectionConfig>) => void
@@ -41,7 +41,7 @@ const decryptPassword = (encryptedPassword: string): string => {
   if (!encryptedPassword || typeof encryptedPassword !== 'string' || !encryptedPassword.startsWith('U2FsdGVkX1')) {
     return encryptedPassword
   }
-  
+
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedPassword, SECRET_KEY)
     const decrypted = bytes.toString(CryptoJS.enc.Utf8)
@@ -75,7 +75,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         set((state) => {
           const currentStates = state.connectionStates
           let newMap
-          
+
           if (currentStates instanceof Map) {
             newMap = new Map(currentStates)
           } else if (Array.isArray(currentStates)) {
@@ -83,9 +83,9 @@ export const useConnectionStore = create<ConnectionStore>()(
           } else {
             newMap = new Map()
           }
-          
+
           newMap.set(newConnection.id, ConnectionStatus.DISCONNECTED)
-          
+
           return {
             connections: [...state.connections, newConnection],
             connectionStates: newMap
@@ -115,7 +115,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           const newConnections = state.connections.filter((conn) => conn.id !== id)
           const currentStates = state.connectionStates
           let newConnectionStates
-          
+
           if (currentStates instanceof Map) {
             newConnectionStates = new Map(currentStates)
           } else if (Array.isArray(currentStates)) {
@@ -123,9 +123,9 @@ export const useConnectionStore = create<ConnectionStore>()(
           } else {
             newConnectionStates = new Map()
           }
-          
+
           newConnectionStates.delete(id)
-          
+
           // 删除该连接下的所有数据库对象
           let newDatabases = new Map()
           if (state.databases instanceof Map) {
@@ -135,7 +135,7 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             }
           }
-          
+
           // 删除该连接下的所有表对象
           let newTables = new Map()
           if (state.tables instanceof Map) {
@@ -145,7 +145,7 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             }
           }
-          
+
           return {
             connections: newConnections,
             connectionStates: newConnectionStates,
@@ -155,23 +155,23 @@ export const useConnectionStore = create<ConnectionStore>()(
           }
         })
       },
-      
+
       // 获取数据库列表
       getDatabaseList: async (connectionId: string): Promise<DatabaseObject[]> => {
         const store = get()
         const connection = store.connections.find(conn => conn.id === connectionId)
-        
+
         if (!connection) {
           throw new Error('Connection not found')
         }
-        
+
         // 检查 ipcRenderer 是否可用
         const ipcRenderer = getSafeIpcRenderer()
         if (!ipcRenderer) {
           console.error('ipcRenderer is not available')
           return []
         }
-        
+
         try {
           const isPasswordEncrypted = connection.password && connection.password.startsWith('U2FsdGVkX1')
           const decryptedConfig = {
@@ -179,13 +179,13 @@ export const useConnectionStore = create<ConnectionStore>()(
             password: isPasswordEncrypted ? decryptPassword(connection.password) : connection.password || '',
             id: connectionId
           }
-          
-        const result = await ipcRenderer.invoke('get-database-list', decryptedConfig)
-          
+
+          const result = await ipcRenderer.invoke('get-database-list', decryptedConfig)
+
           if (result.success) {
             const databases = result.data as DatabaseObject[]
             store.addDatabaseObjects(databases)
-            
+
             // 设置每个数据库的状态为LOADED或EMPTY
             databases.forEach(database => {
               // 这里暂时设置为LOADED，实际应该根据数据库是否有表来决定
@@ -202,27 +202,27 @@ export const useConnectionStore = create<ConnectionStore>()(
           return []
         }
       },
-      
+
       // 获取表列表
       getTableList: async (connectionId: string, databaseName: string, databaseId: string): Promise<DatabaseObject[]> => {
         const store = get()
         const connection = store.connections.find(conn => conn.id === connectionId)
-        
+
         if (!connection) {
           throw new Error('Connection not found')
         }
-        
+
         // 检查 ipcRenderer 是否可用
         const ipcRenderer = getSafeIpcRenderer()
         if (!ipcRenderer) {
           console.error('ipcRenderer is not available')
           return []
         }
-        
+
         try {
           // 设置数据库状态为加载中
           store.setDatabaseStatus(databaseId, DatabaseStatus.LOADING)
-          
+
           const isPasswordEncrypted = connection.password && connection.password.startsWith('U2FsdGVkX1')
           const decryptedConfig = {
             ...connection,
@@ -230,19 +230,19 @@ export const useConnectionStore = create<ConnectionStore>()(
             databaseName,
             databaseId
           }
-          
+
           const ipcRenderer = getSafeIpcRenderer()
-        const result = await ipcRenderer.invoke('get-table-list', decryptedConfig)
-          
+          const result = await ipcRenderer.invoke('get-table-list', decryptedConfig)
+
           if (result.success) {
             const tables = result.data as DatabaseObject[]
             // 先删除该数据库下的所有表（如果有）
             store.removeDatabaseObjectsByParentId(databaseId)
             // 再添加新的表
             store.addDatabaseObjects(tables)
-            
+
             // 设置数据库状态为已加载或空
-            store.setDatabaseStatus(databaseId,  DatabaseStatus.LOADED)
+            store.setDatabaseStatus(databaseId, DatabaseStatus.LOADED)
             return tables
           } else {
             console.error('Failed to get table list:', result.message)
@@ -257,7 +257,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           return []
         }
       },
-      
+
       // 添加单个数据库对象
       addDatabaseObject: (object: DatabaseObject) => {
         set((state) => {
@@ -265,13 +265,13 @@ export const useConnectionStore = create<ConnectionStore>()(
             // 存储到tables Map
             const currentTables = state.tables
             let newTables = new Map()
-            
+
             if (currentTables instanceof Map) {
               newTables = new Map(currentTables)
             }
-            
+
             newTables.set(object.id, object)
-            
+
             return {
               tables: newTables
             }
@@ -279,33 +279,33 @@ export const useConnectionStore = create<ConnectionStore>()(
             // 存储到databases Map
             const currentDatabases = state.databases
             let newDatabases = new Map()
-            
+
             if (currentDatabases instanceof Map) {
               newDatabases = new Map(currentDatabases)
             }
-            
+
             newDatabases.set(object.id, object)
-            
+
             return {
               databases: newDatabases
             }
           }
         })
       },
-      
+
       // 批量添加数据库对象
       addDatabaseObjects: (objects: DatabaseObject[]) => {
         set((state) => {
           if (objects.length === 0) return state;
-          
+
           // 将对象按类型分组
           const tableObjects = objects.filter(obj => obj.type === 'table');
           const databaseObjects = objects.filter(obj => obj.type !== 'table');
-          
+
           let newDatabases = new Map(state.databases);
           let newTables = new Map(state.tables);
           let needsUpdate = false;
-          
+
           // 处理数据库对象
           if (databaseObjects.length > 0) {
             databaseObjects.forEach(obj => {
@@ -315,7 +315,7 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             });
           }
-          
+
           // 处理表对象
           if (tableObjects.length > 0) {
             tableObjects.forEach(obj => {
@@ -325,16 +325,16 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             });
           }
-          
+
           if (!needsUpdate) return state;
-          
+
           return {
             databases: newDatabases,
             tables: newTables
           };
         });
       },
-      
+
       // 删除指定父ID下的所有数据库对象
       removeDatabaseObjectsByParentId: (parentId: string) => {
         set((state) => {
@@ -347,7 +347,7 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             }
           }
-          
+
           // 处理tables Map
           let newTables = new Map()
           if (state.tables instanceof Map) {
@@ -357,11 +357,11 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             }
           }
-          
+
           // 同时清理相关的数据库状态
           const currentDatabaseStates = state.databaseStates
           let newDatabaseStates = new Map()
-          
+
           if (currentDatabaseStates instanceof Map) {
             for (const [key, status] of currentDatabaseStates.entries()) {
               if (key !== parentId) {
@@ -369,7 +369,7 @@ export const useConnectionStore = create<ConnectionStore>()(
               }
             }
           }
-          
+
           return {
             databases: newDatabases,
             tables: newTables,
@@ -382,7 +382,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         set((state) => {
           const currentStates = state.databaseStates
           let newMap
-          
+
           // 获取当前状态
           if (currentStates instanceof Map) {
             newMap = new Map(currentStates)
@@ -391,9 +391,9 @@ export const useConnectionStore = create<ConnectionStore>()(
           } else {
             newMap = new Map()
           }
-          
+
           newMap.set(databaseId, status)
-          
+
           return {
             databaseStates: newMap
           }
@@ -405,7 +405,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           const currentStates = state.connectionStates
           let newMap
           let currentStatus = null
-          
+
           // 获取当前状态
           if (currentStates instanceof Map) {
             currentStatus = currentStates.get(id)
@@ -418,11 +418,11 @@ export const useConnectionStore = create<ConnectionStore>()(
           } else {
             newMap = new Map()
           }
-          
+
           // 只有当状态真正变化时才更新
           if (currentStatus !== status) {
             newMap.set(id, status)
-            
+
             // 如果状态变为DISCONNECTED，清理相关的数据库对象
             if (status === ConnectionStatus.DISCONNECTED) {
               // 清理databases
@@ -434,7 +434,7 @@ export const useConnectionStore = create<ConnectionStore>()(
                   }
                 }
               }
-              
+
               // 清理tables
               let newTables = new Map()
               if (state.tables instanceof Map) {
@@ -444,19 +444,19 @@ export const useConnectionStore = create<ConnectionStore>()(
                   }
                 }
               }
-              
+
               return {
                 connectionStates: newMap,
                 databases: newDatabases,
                 tables: newTables
               }
             }
-            
+
             return {
               connectionStates: newMap
             }
           }
-          
+
           // 状态没有变化，不更新
           return state
         })
@@ -475,14 +475,14 @@ export const useConnectionStore = create<ConnectionStore>()(
             get().setConnectionStatus(config.id, ConnectionStatus.ERROR)
             return false
           }
-          
+
           // 在测试连接时，密码可能是用户刚刚输入的未加密密码
           // 只有在密码以 AES 加密格式开头且不为空时才尝试解密
           // AES 加密后的字符串通常以 U2FsdGVkX1 开头（CryptoJS 的默认格式）
           const isPasswordEncrypted = config.password && config.password.startsWith('U2FsdGVkX1')
           const isSshPasswordEncrypted = config.sshPassword && config.sshPassword.startsWith('U2FsdGVkX1')
           const isSshPassphraseEncrypted = config.sshPassphrase && config.sshPassphrase.startsWith('U2FsdGVkX1')
-          
+
           const decryptedConfig = {
             ...config,
             password: isPasswordEncrypted ? decryptPassword(config.password) : config.password || '',
@@ -537,7 +537,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           console.error('Failed to deserialize connectionStates:', error)
           connectionStates = new Map()
         }
-        
+
         // 确保databases是可迭代的
         let databases = new Map()
         try {
@@ -551,7 +551,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           console.error('Failed to deserialize databases:', error)
           databases = new Map()
         }
-        
+
         // 确保tables是可迭代的
         let tables = new Map()
         try {
@@ -565,7 +565,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           console.error('Failed to deserialize tables:', error)
           tables = new Map()
         }
-        
+
         // 处理向后兼容性 - 如果存在旧的databaseObjects，则将其迁移到新结构
         if (state.databaseObjects) {
           let oldDatabaseObjects = new Map()
@@ -575,7 +575,7 @@ export const useConnectionStore = create<ConnectionStore>()(
             } else if (typeof state.databaseObjects === 'object') {
               oldDatabaseObjects = new Map(Object.entries(state.databaseObjects))
             }
-            
+
             // 将旧数据迁移到新结构
             for (const [key, obj] of oldDatabaseObjects.entries()) {
               if (obj.type === 'table') {
@@ -588,7 +588,7 @@ export const useConnectionStore = create<ConnectionStore>()(
             console.error('Failed to migrate old databaseObjects:', error)
           }
         }
-        
+
         // 确保databaseStates是可迭代的
         let databaseStates = new Map()
         try {
@@ -602,7 +602,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           console.error('Failed to deserialize databaseStates:', error)
           databaseStates = new Map()
         }
-        
+
         return {
           ...state,
           connectionStates,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Modal, Form, Input, Select, Switch, InputNumber, Button, message, Space, Card, Tabs } from 'antd'
 import { DatabaseOutlined, CheckCircleOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
-import { ConnectionConfig, DatabaseType } from '../types/connection'
+import { ConnectionConfig, DatabaseType } from '../types/leftTree/connection'
 import { useConnectionStore } from '../store/connectionStore'
 
 interface ConnectionDialogProps {
@@ -18,19 +18,19 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('basic')
-  
+
   const addConnection = useConnectionStore((state) => state.addConnection)
   const updateConnection = useConnectionStore((state) => state.updateConnection)
   const testConnection = useConnectionStore((state) => state.testConnection)
 
   // 数据库默认端口映射
   const defaultPorts: Record<DatabaseType, number> = {
-    [DatabaseType.MYSQL]: 3306,
-    [DatabaseType.POSTGRESQL]: 5432,
-    [DatabaseType.MONGODB]: 27017,
-    [DatabaseType.REDIS]: 6379,
-    [DatabaseType.SQLSERVER]: 1433,
-    [DatabaseType.SQLITE]: 0
+    [DatabaseType.MySQL]: 3306,
+    [DatabaseType.PostgreSQL]: 5432,
+    [DatabaseType.MongoDB]: 27017,
+    [DatabaseType.Redis]: 6379,
+    [DatabaseType.SQLServer]: 1433,
+    [DatabaseType.SQLite]: 0
   }
 
   // 当连接变化时更新表单
@@ -43,7 +43,7 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
       })
     } else {
       form.resetFields()
-      form.setFieldsValue({ host: '127.0.0.1', username: 'root', password: '123456', type: DatabaseType.MYSQL, port: defaultPorts[DatabaseType.MYSQL] })
+      form.setFieldsValue({ host: '127.0.0.1', username: 'root', password: '123456', type: DatabaseType.MySQL, port: defaultPorts[DatabaseType.MySQL] })
     }
   }, [connection, form])
 
@@ -62,7 +62,7 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
         id: 'test-connection',
         password: values.password || ''
       }
-      
+
       const success = await testConnection(testConfig)
       if (success) {
         message.success('连接测试成功！')
@@ -81,7 +81,7 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
     try {
       setLoading(true)
       const values = await form.validateFields()
-      
+
       if (connection) {
         // 更新现有连接
         updateConnection(connection.id, values)
@@ -91,7 +91,7 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
         addConnection(values)
         message.success('连接添加成功！')
       }
-      
+
       onCancel()
     } catch (error) {
       message.error('保存失败，请检查输入')
@@ -114,7 +114,7 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
       <Form
         form={form}
         layout="horizontal"
-        initialValues={{ type: DatabaseType.MYSQL, port: defaultPorts[DatabaseType.MYSQL] }}
+        initialValues={{ type: DatabaseType.MySQL, port: defaultPorts[DatabaseType.MySQL] }}
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
       >
@@ -123,40 +123,40 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
             <Form.Item name="name" label="连接名称" rules={[{ required: true, message: '请输入连接名称' }]}>
               <Input placeholder="例如: 本地MySQL" />
             </Form.Item>
-            
+
             <Form.Item name="type" label="数据库类型" rules={[{ required: true, message: '请选择数据库类型' }]}>
               <Select onChange={handleTypeChange}>
-                <Option value={DatabaseType.MYSQL}>
+                <Option value={DatabaseType.MySQL}>
                   <Space>
                     <DatabaseOutlined />
                     MySQL
                   </Space>
                 </Option>
-                <Option value={DatabaseType.POSTGRESQL}>
+                <Option value={DatabaseType.PostgreSQL}>
                   <Space>
                     <DatabaseOutlined />
                     PostgreSQL
                   </Space>
                 </Option>
-                <Option value={DatabaseType.MONGODB}>
+                <Option value={DatabaseType.MongoDB}>
                   <Space>
                     <DatabaseOutlined />
                     MongoDB
                   </Space>
                 </Option>
-                <Option value={DatabaseType.REDIS}>
+                <Option value={DatabaseType.Redis}>
                   <Space>
                     <DatabaseOutlined />
                     Redis
                   </Space>
                 </Option>
-                <Option value={DatabaseType.SQLSERVER}>
+                <Option value={DatabaseType.SQLServer}>
                   <Space>
                     <DatabaseOutlined />
                     SQL Server
                   </Space>
                 </Option>
-                <Option value={DatabaseType.SQLITE}>
+                <Option value={DatabaseType.SQLite}>
                   <Space>
                     <DatabaseOutlined />
                     SQLite
@@ -167,9 +167,9 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
 
             {/* 主机和端口在同一行 */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-              <Form.Item 
-                name="host" 
-                label="主机名" 
+              <Form.Item
+                name="host"
+                label="主机名"
                 rules={[{ required: true, message: '请输入主机名' }]}
                 style={{ flex: 1, marginBottom: 0 }}
                 labelCol={{ span: 6 }}
@@ -177,9 +177,9 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
               >
                 <Input placeholder="localhost" />
               </Form.Item>
-              <Form.Item 
-                name="port" 
-                label="端口" 
+              <Form.Item
+                name="port"
+                label="端口"
                 rules={[{ required: true, message: '请输入端口号' }]}
                 style={{ flex: 1, marginBottom: 0 }}
                 labelCol={{ span: 6 }}
@@ -191,9 +191,9 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
 
             {/* 用户名和密码在同一行 */}
             <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-              <Form.Item 
-                name="username" 
-                label="用户名" 
+              <Form.Item
+                name="username"
+                label="用户名"
                 rules={[{ required: true, message: '请输入用户名' }]}
                 style={{ flex: 1, marginBottom: 0 }}
                 labelCol={{ span: 6 }}
@@ -201,8 +201,8 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
               >
                 <Input placeholder="root" />
               </Form.Item>
-              <Form.Item 
-                name="password" 
+              <Form.Item
+                name="password"
                 label="密码"
                 style={{ flex: 1, marginBottom: 0 }}
                 labelCol={{ span: 6 }}
@@ -217,22 +217,22 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
               <Input placeholder="默认数据库" />
             </Form.Item>
           </TabPane>
-          
+
           <TabPane tab="高级配置" key="advanced">
             <Card type="inner" title="SSL配置" style={{ marginBottom: 16 }}>
               <Form.Item name="ssl" label="启用SSL">
                 <Switch />
               </Form.Item>
             </Card>
-            
+
             <Card type="inner" title="SSH隧道" style={{ marginBottom: 16 }}>
               <Form.Item name="ssh" label="启用SSH隧道">
                 <Switch />
               </Form.Item>
-              
+
               <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <Form.Item 
-                  name="sshHost" 
+                <Form.Item
+                  name="sshHost"
                   label="SSH主机名"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -240,8 +240,8 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                 >
                   <Input placeholder="SSH服务器地址" />
                 </Form.Item>
-                <Form.Item 
-                  name="sshPort" 
+                <Form.Item
+                  name="sshPort"
                   label="SSH端口"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -250,10 +250,10 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                   <InputNumber min={1} max={65535} defaultValue={22} style={{ width: '100%' }} />
                 </Form.Item>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <Form.Item 
-                  name="sshUsername" 
+                <Form.Item
+                  name="sshUsername"
                   label="SSH用户名"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -261,8 +261,8 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                 >
                   <Input placeholder="SSH用户名" />
                 </Form.Item>
-                <Form.Item 
-                  name="sshPassword" 
+                <Form.Item
+                  name="sshPassword"
                   label="SSH密码"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -271,20 +271,20 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                   <Input.Password placeholder="SSH密码" />
                 </Form.Item>
               </div>
-              
+
               <Form.Item name="sshPrivateKey" label="SSH私钥">
                 <Input.TextArea rows={4} placeholder="SSH私钥内容" />
               </Form.Item>
-              
+
               <Form.Item name="sshPassphrase" label="SSH私钥密码">
                 <Input.Password placeholder="SSH私钥密码" />
               </Form.Item>
             </Card>
-            
+
             <Card type="inner" title="连接选项">
               <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <Form.Item 
-                  name="timeout" 
+                <Form.Item
+                  name="timeout"
                   label="连接超时(秒)"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -292,8 +292,8 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                 >
                   <InputNumber min={1} max={300} style={{ width: '100%' }} />
                 </Form.Item>
-                <Form.Item 
-                  name="charset" 
+                <Form.Item
+                  name="charset"
                   label="字符集"
                   style={{ flex: 1, marginBottom: 0 }}
                   labelCol={{ span: 6 }}
@@ -302,14 +302,14 @@ const ConnectionDialog = ({ visible, onCancel, connection }: ConnectionDialogPro
                   <Input placeholder="例如: utf8mb4" />
                 </Form.Item>
               </div>
-              
+
               <Form.Item name="maxConnections" label="最大连接数">
                 <InputNumber min={1} max={100} style={{ width: '100%' }} />
               </Form.Item>
             </Card>
           </TabPane>
         </Tabs>
-        
+
         <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 24 }}>
           <Button
             icon={<CheckCircleOutlined />}

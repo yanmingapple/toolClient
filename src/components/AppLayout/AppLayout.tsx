@@ -8,14 +8,15 @@ import ConnectionTree from '../ConnectionTree'
 import MainPanel from '../MainPanel/MainPanel'
 import ObjectPanel, { TableData } from '../ObjectPanel'
 import FunctionPanel, { FunctionData } from '../FunctionPanel'
-import PropertiesPanel, { TableObject } from '../PropertiesPanel'
-import { TreeNode, TreeNodeType } from '../../types/tree'
+import PropertiesPanel from '../PropertiesPanel'
+import { TreeNode, TreeNodeType } from '../../types/leftTree/tree'
 import { useConnection } from '../../hooks/useConnection'
 import { useDatabaseOperations } from '../../hooks/useDatabaseOperations'
 import { useConnectionStore } from '../../store/connectionStore'
 import { useSelection } from '../../hooks/useSelection'
 import { formatBytes } from '../../utils/formatUtils'
-import { ConnectionStatus, DatabaseStatus } from '../../types/connection'
+import { ConnectionStatus, DatabaseStatus } from '../../types/leftTree/connection'
+import { ObjectPanelType } from '../../types/headerBar/headerBar'
 
 const { Sider, Content } = Layout
 
@@ -103,9 +104,9 @@ const AppLayout = ({
 }: AppLayoutProps) => {
   // 从hooks获取连接和数据库操作相关的状态和函数
   const { connectionStates, activeConnectionId: storeActiveConnectionId } = useConnection()
-  const { tables, databaseStates } = useConnectionStore()
+  const { databases, tables, databaseStates } = useConnectionStore()
   const { } = useDatabaseOperations()
-  
+
   // 使用useSelection hook管理选中状态
   const {
     selectedTables,
@@ -113,51 +114,47 @@ const AppLayout = ({
     currentConnectionStatus,
     setCurrentConnectionStatus,
     selectedNode,
-    setSelectedNode,
+    setSelectedNode: updateSelectedNode,
     mainPanelRef,
-    selectedObject,
-    setSelectedObject
+    selectedObject
   } = useSelection()
-  
+
   // 处理表打开事件，创建TableObject对象
-  const handleTableOpen = (record: TableData): void => {
-    const tableObject: TableObject = {
-      name: record.name,
-      type: TreeNodeType.TABLE,
-      engine: record.engine,
-      rows: record.rows,
-      dataLength: record.dataLength,
-      createTime: record.createTime || '',
-      updateTime: record.modifyDate || '',
-      collation: record.collation || '',
-      autoIncrement: record.autoIncrement || null,
-      rowFormat: record.rowFormat || '',
-      checkTime: record.checkTime || null,
-      indexLength: record.indexLength || '0 KB',
-      maxDataLength: record.maxDataLength || '0 KB',
-      dataFree: record.dataFree || '0 KB',
-      comment: record.comment
-    }
-    debugger
-    setSelectedObject(tableObject)
+  const handleTableOpen = (_record: TableData): void => {
+    // 表打开事件由useSelection内部的useEffect自动处理selectedObject更新
   }
 
   // 创建ObjectPanel组件
-  const createObjectPanelContent = (dataSource: TableData[] = [], nodeType?: TreeNodeType, nodeName?: string, databaseStatus?: DatabaseStatus) => (
-    <ObjectPanel
-      dataSource={dataSource}
-      selectedTables={selectedTables}
-      onSelectTables={setSelectedTables}
-      selectedNodeType={nodeType}
-      selectedNodeName={nodeName}
-      onOpenTable={handleTableOpen}
-      connectionStatus={currentConnectionStatus}
-      databaseStatus={databaseStatus}
-      mainPanelRef={mainPanelRef}
-      connectionId={propActiveConnectionId || storeActiveConnectionId || undefined}
-      databaseName={selectedNode.name}
-    />
-  )
+  const createObjectPanelContent = (dataSource: TableData[] = [], nodeType?: TreeNodeType, nodeName?: string, databaseStatus?: DatabaseStatus) => {
+    // 根据TreeNodeType映射到ObjectPanelType
+    let objectPanelType: ObjectPanelType | undefined;
+    if (nodeType === TreeNodeType.CONNECTION || nodeType === TreeNodeType.DATABASE || nodeType === TreeNodeType.TABLE) {
+      objectPanelType = 'table';
+    } else if (nodeType === TreeNodeType.VIEW) {
+      objectPanelType = 'view';
+    } else if (nodeType === TreeNodeType.FUNCTION) {
+      objectPanelType = 'function';
+    } else if (nodeType === TreeNodeType.USER) {
+      objectPanelType = 'user';
+    }
+
+    return (
+      <ObjectPanel
+        dataSource={dataSource}
+        selectedObjects={selectedTables}
+        onSelectObjects={setSelectedTables}
+        objectPanelType={objectPanelType}
+        selectedNodeName={nodeName}
+        onOpenObject={handleTableOpen}
+        connectionStatus={currentConnectionStatus}
+        databaseStatus={databaseStatus}
+        mainPanelRef={mainPanelRef}
+        connectionId={propActiveConnectionId || storeActiveConnectionId || undefined}
+        databaseName={selectedNode.name}
+        setSelectedNode={updateSelectedNode}
+      />
+    );
+  }
 
   // 处理表按钮点击
   const handleTableClick = () => {
@@ -236,16 +233,34 @@ const AppLayout = ({
 
   // 处理节点选择事件
   const handleNodeSelect = (node: TreeNode) => {
-    // 更新选中节点状态
-    setSelectedNode({ type: node.type, name: typeof node.title === 'string' ? node.title : undefined })
-    
-    // 根据节点类型处理不同的选择事件
-    if (node.type === TreeNodeType.TABLE) {
-      // 从tables中查找选中的表
-      const tableObject = tables.get(node.key)
-      
+    // 获取节点的title字符串
+    const nodeName = typeof node.title === 'string' ? node.title : undefined;
+
+    // 初始化变量
+    let connectionConfig = null;
+    let databaseObj = null;
+    let tableObj = null;
+
+    // 根据节点类型获取对应的对象
+    if (node.type === TreeNodeType.CONNECTION) {
+      // 获取连接配置
+      connectionConfig = node.data?.metadata?.connection || null;
+    } else if (node.type === TreeNodeType.DATABASE) {
+      // 获取数据库对象
+      databaseObj = databases.get(node.key) || null;
+      if (databaseObj?.parentId) {
+        // 获取数据库所属的连接
+        const connection = databases.get(databaseObj.parentId)?.metadata?.connection || null;
+        if (connection) {
+          connectionConfig = connection;
+        }
+      }
+    } else if (node.type === TreeNodeType.TABLE) {
+      // 获取表对象
+      const tableObject = tables.get(node.key);
       if (tableObject) {
-        const table: TableData = {
+        // 构建TableData对象
+        tableObj = {
           name: tableObject.name,
           rows: tableObject.metadata?.rows || 0,
           dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
@@ -254,59 +269,42 @@ const AppLayout = ({
           collation: tableObject.metadata?.collation || '',
           rowFormat: tableObject.metadata?.rowFormat || '',
           comment: tableObject.metadata?.comment || ''
+        };
+
+        // 获取表所属的数据库
+        if (tableObject.parentId) {
+          databaseObj = databases.get(tableObject.parentId) || null;
+
+          // 获取数据库所属的连接
+          if (databaseObj?.parentId) {
+            const connection = databases.get(databaseObj.parentId)?.metadata?.connection || null;
+            if (connection) {
+              connectionConfig = connection;
+            }
+          }
         }
+      }
+    }
+
+    // 更新选中节点状态
+    updateSelectedNode({ type: node.type, name: nodeName, id: node.key, parentId: node.data?.parentId || undefined }, connectionConfig, databaseObj || undefined, tableObj || undefined);
+
+    // 根据节点类型处理不同的选择事件
+    if (node.type === TreeNodeType.TABLE) {
+      // 从tables中查找选中的表
+      const tableObject = tables.get(node.key)
+
+      if (tableObject) {
+        // 构建TableData对象（用于后续处理）
+        // 表打开事件由useSelection内部的useEffect自动处理selectedObject更新
         // 设置选中对象
-        const tableDetails: TableObject = {
-          name: table.name,
-          type: TreeNodeType.TABLE,
-          engine: tableObject.metadata?.engine || '',
-          rows: tableObject.metadata?.rows || 0,
-          dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
-          createTime: tableObject.metadata?.createTime || '',
-          updateTime: tableObject.metadata?.updateTime || '',
-          collation: tableObject.metadata?.collation || '',
-          autoIncrement: tableObject.metadata?.autoIncrement || null,
-          rowFormat: tableObject.metadata?.rowFormat || '',
-          checkTime: tableObject.metadata?.checkTime || null,
-          indexLength: typeof tableObject.metadata?.indexLength === 'number' ? formatBytes(tableObject.metadata.indexLength) : '0 KB',
-          maxDataLength: typeof tableObject.metadata?.maxDataLength === 'number' ? formatBytes(tableObject.metadata.maxDataLength) : '0 KB',
-          dataFree: typeof tableObject.metadata?.dataFree === 'number' ? formatBytes(tableObject.metadata.dataFree) : '0 KB',
-          comment: tableObject.metadata?.comment || ''
-        }
-        debugger
-        setSelectedObject(tableDetails)
-        
+        // 表节点的selectedObject由useSelection内部的useEffect自动处理更新
+
         // 从tables中获取该表所在数据库的所有表
         const databaseId = tableObject.parentId
-        const actualTables = tables instanceof Map 
+        const actualTables = tables instanceof Map
           ? Array.from(tables.values())
-              .filter(obj => obj.parentId === databaseId)
-              .map(obj => ({
-                name: obj.name,
-                rows: obj.metadata?.rows || 0,
-                dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
-                engine: obj.metadata?.engine || '',
-                modifyDate: obj.metadata?.updateTime || '--',
-                collation: obj.metadata?.collation || '',
-                rowFormat: obj.metadata?.rowFormat || '',
-                comment: obj.metadata?.comment || ''
-              }))
-          : []
-        
-        // 更新默认对象面板的内容
-        mainPanelRef.current?.updatePanelContent('object-0', createObjectPanelContent(
-          currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : [],
-          node.type,
-          typeof node.title === 'string' ? node.title : undefined,
-          databaseId && databaseStates instanceof Map ? databaseStates.get(databaseId) : undefined // 获取表所在数据库的状态
-        ))
-      }
-    } else if (node.type === TreeNodeType.DATABASE) {
-      // 双击数据库节点可以加载表并显示表列表
-      // 从tables中获取该数据库下的所有表
-      const actualTables = tables instanceof Map 
-        ? Array.from(tables.values())
-            .filter(obj => obj.parentId === node.key)
+            .filter(obj => obj.parentId === databaseId)
             .map(obj => ({
               name: obj.name,
               rows: obj.metadata?.rows || 0,
@@ -317,51 +315,75 @@ const AppLayout = ({
               rowFormat: obj.metadata?.rowFormat || '',
               comment: obj.metadata?.comment || ''
             }))
-        : []
-      
-      // 更新默认对象面板的内容
+          : []
+
+        // 更新默认对象面板的内容
         mainPanelRef.current?.updatePanelContent('object-0', createObjectPanelContent(
           currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : [],
           node.type,
           typeof node.title === 'string' ? node.title : undefined,
-          databaseStates instanceof Map ? databaseStates.get(node.key) : undefined
+          databaseId && databaseStates instanceof Map ? databaseStates.get(databaseId) : undefined // 获取表所在数据库的状态
         ))
+      }
+    } else if (node.type === TreeNodeType.DATABASE) {
+      // 从databases中查找选中的数据库
+      const databaseObject = databases.get(node.key)
+
+      if (databaseObject) {
+        // 数据库节点的selectedObject由useSelection内部的useEffect自动处理更新
+      }
+
+      // 双击数据库节点可以加载表并显示表列表
+      // 从tables中获取该数据库下的所有表
+      const actualTables = tables instanceof Map
+        ? Array.from(tables.values())
+          .filter(obj => obj.parentId === node.key)
+          .map(obj => ({
+            name: obj.name,
+            rows: obj.metadata?.rows || 0,
+            dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+            engine: obj.metadata?.engine || '',
+            modifyDate: obj.metadata?.updateTime || '--',
+            collation: obj.metadata?.collation || '',
+            rowFormat: obj.metadata?.rowFormat || '',
+            comment: obj.metadata?.comment || ''
+          }))
+        : []
+
+      // 更新默认对象面板的内容
+      mainPanelRef.current?.updatePanelContent('object-0', createObjectPanelContent(
+        currentConnectionStatus === ConnectionStatus.CONNECTED ? actualTables : [],
+        node.type,
+        typeof node.title === 'string' ? node.title : undefined,
+        databaseStates instanceof Map ? databaseStates.get(node.key) : undefined
+      ))
     } else if (node.type === TreeNodeType.CONNECTION) {
+      // 连接节点的selectedObject由useSelection内部的useEffect自动处理更新
+
       // 处理连接节点点击
       // 更新默认对象面板的内容
-        mainPanelRef.current?.updatePanelContent('object-0', (
-          <ObjectPanel
-            dataSource={[]} // 连接节点选中时显示空表列表
-            selectedTables={selectedTables}
-            onSelectTables={setSelectedTables}
-            selectedNodeType={node.type}
-            selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
-            connectionStatus={currentConnectionStatus}
-            onOpenTable={(record) => {
-              // 打开表时，显示表的详细信息
-              const tableObject: TableObject = {
-                name: record.name,
-                type: TreeNodeType.TABLE,
-                engine: record.engine,
-                rows: record.rows,
-                dataLength: record.dataLength,
-                createTime: record.createTime || '',
-                updateTime: record.modifyDate || '',
-                collation: record.collation || '',
-                autoIncrement: record.autoIncrement || null,
-                rowFormat: record.rowFormat || '',
-                checkTime: record.checkTime || null,
-                indexLength: record.indexLength || '0 KB',
-                maxDataLength: record.maxDataLength || '0 KB',
-                dataFree: record.dataFree || '0 KB',
-                comment: record.comment
-              }
-              debugger
-              setSelectedObject(tableObject)
-            }}
-          />
-        ))
+      mainPanelRef.current?.updatePanelContent('object-0', (
+        <ObjectPanel
+          dataSource={[]} // 连接节点选中时显示空表列表
+          selectedObjects={selectedTables}
+          onSelectObjects={setSelectedTables}
+          objectPanelType='table'
+          selectedNodeName={typeof node.title === 'string' ? node.title : undefined}
+          connectionStatus={currentConnectionStatus}
+          onOpenObject={(_record) => {
+            // 表打开事件的selectedObject由useSelection内部的useEffect自动处理更新
+          }}
+          setSelectedNode={updateSelectedNode}
+        />
+      ))
     } else if (node.type === TreeNodeType.FUNCTION) {
+      // 从databases或tables中查找选中的函数（根据实际存储位置）
+      const functionObject = tables.get(node.key) || databases.get(node.key)
+
+      if (functionObject) {
+        // 函数节点的selectedObject由useSelection内部的useEffect自动处理更新
+      }
+
       // 处理函数节点双击
       mainPanelRef.current?.createPanel('function', '函数', (
         <FunctionPanel
@@ -389,22 +411,21 @@ const AppLayout = ({
         onModel={handleModelClick}
         onBI={handleBIClick}
       />
-      
+
       <Layout>
         <Sider width={280} style={{ background: '#fff', borderRight: '1px solid #f0f0f0' }}>
           <ConnectionTree
             onNewConnection={onNewConnection}
             onNodeSelect={handleNodeSelect}
+            updateSelectedNode={updateSelectedNode}
           />
         </Sider>
-        
+
         <Content style={{ margin: '16px', padding: 0, overflowY: 'auto' }}>
           <MainPanel
             ref={mainPanelRef}
             propertiesContent={
-              <PropertiesPanel
-                selectedObject={selectedObject}
-              />
+              <PropertiesPanel selectedObject={selectedObject} />
             }
           />
         </Content>

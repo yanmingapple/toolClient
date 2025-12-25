@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { QueryHistory, QueryResult } from '../types/connection'
+import { QueryHistory, QueryResult } from '../types/leftTree/connection'
 
 interface QueryTab {
   id: string;
