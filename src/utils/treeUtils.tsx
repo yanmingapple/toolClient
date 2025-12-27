@@ -2,7 +2,8 @@
  * 树形数据处理相关工具函数
  */
 import { TreeNode, TreeNodeType } from '../types/leftTree/tree'
-import { ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../types/leftTree/connection'
+import { ConnectionConfig } from '../types/leftTree/connection'
+import { ConnectionStatus, DatabaseStatus } from '../enum/database'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'

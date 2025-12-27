@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, MenuItemConstructorOptions, ipcMain } from 'electron'
-import path from 'path'
-import url from 'url'
+import * as path from 'path'
+import * as url from 'url'
 
 let mainWindow: BrowserWindow | null
 let tray: Tray | null

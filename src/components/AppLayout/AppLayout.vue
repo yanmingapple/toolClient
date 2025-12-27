@@ -1,0 +1,355 @@
+<template>
+  <el-container class="app-layout">
+    <el-header style="padding: 0; height: auto;">
+      <HeaderBar
+        :on-connect="onConnect"
+        :on-new-query="handleNewQueryClick"
+        :on-table="handleTableClick"
+        :on-view="handleViewClick"
+        :on-function="handleFunctionClick"
+        :on-user="onUser"
+        :on-other="onOther"
+        :on-search="onSearch"
+        :on-backup="handleBackupClick"
+        :on-auto-run="onAutoRun"
+        :on-model="handleModelClick"
+        :on-b-i="handleBIClick"
+      />
+    </el-header>
+
+    <el-container>
+      <el-aside width="280px" class="layout-sider">
+        <ConnectionTree
+          :on-new-connection="onNewConnection"
+          :on-node-select="handleNodeSelect"
+          :update-selected-node="updateSelectedNode"
+        />
+      </el-aside>
+
+      <el-main class="layout-content">
+        <MainPanel
+          ref="mainPanelRef"
+          :properties-content="propertiesContent"
+        />
+      </el-main>
+    </el-container>
+  </el-container>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, h } from 'vue'
+import type { VNode } from 'vue'
+import HeaderBar from '../HeaderBar/HeaderBar.vue'
+import ConnectionTree from '../ConnectionTree/ConnectionTree.vue'
+import MainPanel from '../MainPanel/MainPanel.vue'
+import ObjectPanel from '../ObjectPanel/ObjectPanel.vue'
+import FunctionPanel from '../ObjectPanel/components/ObjectFunctionPanel.vue'
+import PropertiesPanel from '../PropertiesPanel/PropertiesPanel.vue'
+import type { TreeNode } from '../../types/leftTree/tree'
+import type { TreeNodeType } from '../../types/leftTree/tree'
+import { useConnectionStore } from '../../stores/connection'
+import { ConnectionStatus } from '../../enum/database'
+import type { ObjectPanelType } from '../../types/headerBar/headerBar'
+import type { TableData } from '../../types/objectPanel'
+import type { FunctionData } from '../../types/objectPanel'
+import { formatBytes } from '../../utils/formatUtils'
+import type { MainPanelRef } from '../MainPanel/MainPanel.vue'
+
+interface AppLayoutProps {
+  activeConnectionId?: string | null
+  onNewConnection?: () => void
+  onConnect?: () => void
+  onNewQuery?: () => void
+  onTable?: () => void
+  onView?: () => void
+  onFunction?: () => void
+  onUser?: () => void
+  onOther?: () => void
+  onSearch?: () => void
+  onBackup?: () => void
+  onAutoRun?: () => void
+  onModel?: () => void
+  onBI?: () => void
+}
+
+const props = withDefaults(defineProps<AppLayoutProps>(), {
+  activeConnectionId: null
+})
+
+const connectionStore = useConnectionStore()
+
+const mainPanelRef = ref<MainPanelRef | null>(null)
+
+const databases = computed(() => connectionStore.databases)
+const tables = computed(() => connectionStore.tables)
+const connectionStates = computed(() => connectionStore.connectionStates)
+const databaseStates = computed(() => connectionStore.databaseStates)
+
+const selectedTables = ref<TableData[]>([])
+const currentConnectionStatus = ref<ConnectionStatus>(ConnectionStatus.DISCONNECTED)
+const selectedNode = ref<{ type?: TreeNodeType; name?: string; id?: string; parentId?: string }>({})
+
+const mockFunctions: FunctionData[] = [
+  { name: 'get_format', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: true, comment: 'Format a date or time value' },
+  { name: 'uuid', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: false, comment: 'Generate a UUID value' },
+  { name: 'version', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: false, comment: 'Return version of MySQL server' },
+]
+
+const propertiesContent = computed(() => {
+  return h('div', { class: 'properties-content' })
+})
+
+const setSelectedTables = (records: TableData[]) => {
+  selectedTables.value = records
+}
+
+const setCurrentConnectionStatus = (status: ConnectionStatus) => {
+  currentConnectionStatus.value = status
+}
+
+const updateSelectedNode = (
+  node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string },
+  _connection?: any,
+  _database?: any,
+  _table?: TableData
+) => {
+  selectedNode.value = node
+}
+
+const createObjectPanelContent = (
+  dataSource: TableData[] = [],
+  nodeType?: TreeNodeType,
+  nodeName?: string,
+  databaseStatus?: any
+): VNode => {
+  let objectPanelType: ObjectPanelType | undefined
+  if (nodeType === TreeNodeType.CONNECTION || nodeType === TreeNodeType.DATABASE || nodeType === TreeNodeType.TABLE) {
+    objectPanelType = 'table'
+  } else if (nodeType === TreeNodeType.VIEW) {
+    objectPanelType = 'view'
+  } else if (nodeType === TreeNodeType.FUNCTION) {
+    objectPanelType = 'function'
+  } else if (nodeType === TreeNodeType.USER) {
+    objectPanelType = 'user'
+  }
+
+  return h(ObjectPanel, {
+    dataSource,
+    selectedObjects: selectedTables.value,
+    onSelectObjects: setSelectedTables,
+    objectPanelType,
+    selectedNodeName: nodeName,
+    connectionStatus: currentConnectionStatus.value,
+    databaseStatus,
+    mainPanelRef: mainPanelRef.value,
+    connectionId: props.activeConnectionId || undefined,
+    databaseName: selectedNode.value.name,
+    setSelectedNode: updateSelectedNode
+  })
+}
+
+const handleTableClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('table', '表', createObjectPanelContent([], selectedNode.value.type, selectedNode.value.name))
+  }
+}
+
+const handleFunctionClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('function', '函数', h(FunctionPanel, { dataSource: mockFunctions }))
+  }
+}
+
+const handleNewQueryClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('query', '查询', h('div', { style: { padding: '20px' } }, [
+      h('h3', {}, '新建查询'),
+      h('p', {}, '查询编辑器将在这里显示')
+    ]))
+  }
+}
+
+const handleViewClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('view', '视图', h('div', { style: { padding: '20px' } }, [
+      h('h3', {}, '视图'),
+      h('p', {}, '视图列表将在这里显示')
+    ]))
+  }
+}
+
+const handleBackupClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('backup', '备份', h('div', { style: { padding: '20px' } }, [
+      h('h3', {}, '备份'),
+      h('p', {}, '备份功能将在这里显示')
+    ]))
+  }
+}
+
+const handleModelClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('model', '模型', h('div', { style: { padding: '20px' } }, [
+      h('h3', {}, '模型'),
+      h('p', {}, '模型功能将在这里显示')
+    ]))
+  }
+}
+
+const handleBIClick = () => {
+  if (mainPanelRef.value) {
+    mainPanelRef.value.createPanel('bi', 'BI', h('div', { style: { padding: '20px' } }, [
+      h('h3', {}, 'BI'),
+      h('p', {}, 'BI功能将在这里显示')
+    ]))
+  }
+}
+
+const handleNodeSelect = (node: TreeNode) => {
+  const nodeName = typeof node.title === 'string' ? node.title : undefined
+
+  let connectionConfig = null
+  let databaseObj = null
+  let tableObj = null
+
+  if (node.type === TreeNodeType.CONNECTION) {
+    connectionConfig = node.data?.metadata?.connection || null
+  } else if (node.type === TreeNodeType.DATABASE) {
+    databaseObj = databases.value.get(node.key) || null
+    if (databaseObj?.parentId) {
+      const connection = databases.value.get(databaseObj.parentId)?.metadata?.connection || null
+      if (connection) {
+        connectionConfig = connection
+      }
+    }
+  } else if (node.type === TreeNodeType.TABLE) {
+    const tableObject = tables.value.get(node.key)
+    if (tableObject) {
+      tableObj = {
+        name: tableObject.name,
+        rows: tableObject.metadata?.rows || 0,
+        dataLength: typeof tableObject.metadata?.dataLength === 'number' ? formatBytes(tableObject.metadata.dataLength) : '0 KB',
+        engine: tableObject.metadata?.engine || '',
+        modifyDate: tableObject.metadata?.updateTime || '--',
+        collation: tableObject.metadata?.collation || '',
+        rowFormat: tableObject.metadata?.rowFormat || '',
+        comment: tableObject.metadata?.comment || ''
+      }
+
+      if (tableObject.parentId) {
+        databaseObj = databases.value.get(tableObject.parentId) || null
+        if (databaseObj?.parentId) {
+          const connection = databases.value.get(databaseObj.parentId)?.metadata?.connection || null
+          if (connection) {
+            connectionConfig = connection
+          }
+        }
+      }
+    }
+  }
+
+  updateSelectedNode(
+    { type: node.type, name: nodeName, id: node.key, parentId: node.data?.parentId || undefined },
+    connectionConfig,
+    databaseObj || undefined,
+    tableObj || undefined
+  )
+
+  if (node.type === TreeNodeType.TABLE) {
+    const tableObject = tables.value.get(node.key)
+    if (tableObject) {
+      const databaseId = tableObject.parentId
+      const actualTables = Array.from(tables.value.values())
+        .filter(obj => obj.parentId === databaseId)
+        .map(obj => ({
+          name: obj.name,
+          rows: obj.metadata?.rows || 0,
+          dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+          engine: obj.metadata?.engine || '',
+          modifyDate: obj.metadata?.updateTime || '--',
+          collation: obj.metadata?.collation || '',
+          rowFormat: obj.metadata?.rowFormat || '',
+          comment: obj.metadata?.comment || ''
+        }))
+
+      if (mainPanelRef.value) {
+        mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent(
+          currentConnectionStatus.value === ConnectionStatus.CONNECTED ? actualTables : [],
+          node.type,
+          nodeName,
+          databaseId ? databaseStates.value.get(databaseId) : undefined
+        ))
+      }
+    }
+  } else if (node.type === TreeNodeType.DATABASE) {
+    const actualTables = Array.from(tables.value.values())
+      .filter(obj => obj.parentId === node.key)
+      .map(obj => ({
+        name: obj.name,
+        rows: obj.metadata?.rows || 0,
+        dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+        engine: obj.metadata?.engine || '',
+        modifyDate: obj.metadata?.updateTime || '--',
+        collation: obj.metadata?.collation || '',
+        rowFormat: obj.metadata?.rowFormat || '',
+        comment: obj.metadata?.comment || ''
+      }))
+
+    if (mainPanelRef.value) {
+      mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent(
+        currentConnectionStatus.value === ConnectionStatus.CONNECTED ? actualTables : [],
+        node.type,
+        nodeName,
+        databaseStates.value.get(node.key)
+      ))
+    }
+  } else if (node.type === TreeNodeType.CONNECTION) {
+    if (mainPanelRef.value) {
+      mainPanelRef.value.updatePanelContent('object-0', h(ObjectPanel, {
+        dataSource: [],
+        selectedObjects: selectedTables.value,
+        onSelectObjects: setSelectedTables,
+        objectPanelType: 'table',
+        selectedNodeName: nodeName,
+        connectionStatus: currentConnectionStatus.value,
+        setSelectedNode: updateSelectedNode
+      }))
+    }
+  } else if (node.type === TreeNodeType.FUNCTION) {
+    if (mainPanelRef.value) {
+      mainPanelRef.value.createPanel('function', '函数', h(FunctionPanel, { dataSource: mockFunctions }))
+    }
+  }
+}
+
+watch(
+  () => [props.activeConnectionId, connectionStates.value],
+  () => {
+    const activeId = props.activeConnectionId
+    if (activeId && connectionStates.value instanceof Map) {
+      const status = connectionStates.value.get(activeId) || ConnectionStatus.DISCONNECTED
+      setCurrentConnectionStatus(status)
+    } else {
+      setCurrentConnectionStatus(ConnectionStatus.DISCONNECTED)
+    }
+  },
+  { immediate: true }
+)
+</script>
+
+<style scoped>
+.app-layout {
+  min-height: 100vh;
+}
+
+.layout-sider {
+  background: #fff;
+  border-right: 1px solid #f0f0f0;
+}
+
+.layout-content {
+  margin: 16px;
+  padding: 0;
+  overflow-y: auto;
+}
+</style>

@@ -1,7 +1,8 @@
-import { DatabaseType } from '../enum'
+import { ConnectionType } from '../enum/database'
 
 export type IconName =
   | 'mysql'
+  | 'mysql-filled'
   | 'postgresql'
   | 'mongodb'
   | 'redis'
@@ -11,6 +12,7 @@ export type IconName =
   | 'folder'
   | 'folder-open'
   | 'table'
+  | 'table-filled'
   | 'cloud'
   | 'cloud-filled'
   | 'file-text-filled'
@@ -31,4 +33,4 @@ export interface IconProps {
   style?: React.CSSProperties;
 }
 
-export { DatabaseType }
+export { ConnectionType }

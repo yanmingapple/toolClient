@@ -1,2 +1,2 @@
 export * from './types';
-export { default as Icon } from './Icon';
+export { default as Icon } from './Icon.vue';

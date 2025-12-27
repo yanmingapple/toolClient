@@ -1,36 +1,38 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
-import svgr from 'vite-plugin-svgr'
+import vue from '@vitejs/plugin-vue'
+import svgLoader from 'vite-plugin-vue-svg'
+import { resolve } from 'path'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
-  plugins: [react(), svgr({ svgrOptions: { icon: true }, include: '**/*.svg' })],
-  server: {
-    port: 3000,
-  },
+  plugins: [
+    vue(),
+    svgLoader({ defaultImport: 'component' }),
+    AutoImport({
+      imports: ['vue', 'vue-router', 'pinia'],
+      resolvers: [ElementPlusResolver()],
+      dts: 'src/auto-imports.d.ts'
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+      dts: 'src/components.d.ts'
+    })
+  ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+      '@': resolve(__dirname, 'src')
+    }
   },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-    rollupOptions: {
-      external: ['electron'],
-    },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "@/styles/variables.scss" as *;`
+      }
+    }
   },
-  optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      'antd',
-      'zustand',
-      '@monaco-editor/react'
-    ],
-  },
-  define: {
-    '__dirname': JSON.stringify(path.resolve(__dirname)),
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-  },
+  server: {
+    port: 3000
+  }
 })
