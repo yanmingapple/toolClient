@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue'
-import type { PanelType, PanelItem } from '../components/MainPanel/MainPanel'
+import type { PanelType, PanelItem } from '../components/MainPanel/index.vue'
 
 export const usePanelManagement = () => {
   const panels = ref<PanelItem[]>([
@@ -26,7 +26,7 @@ export const usePanelManagement = () => {
   }
 
   const updatePanelContent = (panelId: string, content: any) => {
-    panels.value = panels.value.map(panel => {
+    panels.value = panels.value.map((panel: PanelItem) => {
       if (panel.id === panelId) {
         return {
           ...panel,
@@ -42,7 +42,7 @@ export const usePanelManagement = () => {
       return
     }
 
-    const updatedPanels = panels.value.filter(panel => panel.id !== panelId)
+    const updatedPanels = panels.value.filter((panel: { id: string }) => panel.id !== panelId)
     panels.value = updatedPanels
 
     if (panelId === activePanelId.value) {

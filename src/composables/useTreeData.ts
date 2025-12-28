@@ -4,14 +4,21 @@ import { useConnectionStore } from '../stores/connection'
 import { DatabaseStatus, ConnectionStatus, ConnectionType } from '../enum/database'
 import type { ConnectionConfig } from '../types/leftTree/connection'
 
+/** 图标名称类型定义 */
 type IconName = string
 
+/**
+ * 获取连接节点的图标名称
+ * 根据连接类型和当前状态返回对应的图标名称
+ * @param connectionConfig 连接配置信息
+ * @param status 当前连接状态，可选
+ * @returns 图标名称字符串
+ */
 const getConnectionIconName = (connectionConfig: ConnectionConfig, status?: ConnectionStatus): IconName => {
   const connectionType = connectionConfig.type;
 
   if (connectionType === ConnectionType.MySQL) {
     if (status === ConnectionStatus.CONNECTED) return 'mysql-filled'
-
     return 'mysql'
   }
   if (connectionType === ConnectionType.PostgreSQL) {
@@ -30,16 +37,39 @@ const getConnectionIconName = (connectionConfig: ConnectionConfig, status?: Conn
   return 'database'
 }
 
-const getDatabaseIconName = (): IconName => 'folder'
+/**
+ * 获取数据库节点的图标名称
+ * 根据数据库加载状态返回对应的图标
+ * @param dbState 数据库当前状态，可选
+ * @returns 图标名称字符串
+ */
+const getDatabaseIconName = (dbState?: DatabaseStatus): IconName => {
+  if (dbState === DatabaseStatus.LOADED) return 'database-filled'
+  return 'database'
+}
 
+/** 获取数据库节点展开时的图标 */
 const getDatabaseExpandedIconName = (): IconName => 'folder-open'
 
+/** 获取表节点的图标 */
 const getTableIconName = (): IconName => 'table'
 
+/** 获取视图节点的图标 */
 const getViewIconName = (): IconName => 'file-text-filled'
 
+/** 获取函数节点的图标 */
 const getFunctionIconName = (): IconName => 'settings'
 
+/**
+ * 生成树形结构数据
+ * 将连接、数据库、表等数据转换为 el-tree 所需的树节点格式
+ * @param connections 所有连接配置列表
+ * @param connectionStates 所有连接状态映射
+ * @param databases 所有数据库对象映射
+ * @param tables 所有表对象映射
+ * @param databaseStates 所有数据库状态映射
+ * @returns 树节点数组
+ */
 const generateTreeData = (
   connections: ConnectionConfig[],
   connectionStates: Map<string, any>,
@@ -86,8 +116,7 @@ const generateTreeData = (
           children: tableNodes.length > 0 ? tableNodes : undefined,
           isLeaf: tableNodes.length === 0,
           loading: dbState === DatabaseStatus.LOADING,
-          icon: getDatabaseIconName(),
-          expandedIcon: getDatabaseExpandedIconName()
+          icon: getDatabaseIconName(dbState),
         })
       }
     })
@@ -110,7 +139,7 @@ const generateTreeData = (
       },
       children: databaseNodes.length > 0 ? databaseNodes : undefined,
       isLeaf: databaseNodes.length === 0,
-      icon: getConnectionIconName(connectionState)
+      icon: getConnectionIconName(conn, connectionState)
     }
 
     treeData.push(connectionNode)
@@ -119,16 +148,29 @@ const generateTreeData = (
   return treeData
 }
 
+/** 树数据配置选项接口 */
 export interface UseTreeDataOptions {
+  /** 节点选中时的回调函数 */
   onSelect?: (node: TreeNode, info: any) => void
+  /** 更新选中节点的回调函数 */
   updateSelectedNode?: (node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string }, connection?: any, database?: any, table?: any) => void
 }
 
+/**
+ * 树数据管理组合式函数
+ * 负责生成和管理连接树的数据、展开状态、选中状态等
+ * @param options 配置选项，包括节点选择回调和更新选中节点回调
+ * @returns 树数据管理相关的状态和方法
+ */
 export const useTreeData = (options: UseTreeDataOptions = {}) => {
   const { onSelect, updateSelectedNode } = options
 
   const connectionStore = useConnectionStore()
 
+  /**
+   * 计算属性：生成树形数据
+   * 监听 store 中的数据变化，自动更新树数据
+   */
   const treeData = computed(() => {
     return generateTreeData(
       connectionStore.connections,
@@ -139,9 +181,17 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
     )
   })
 
+  /** 当前展开的节点键列表 */
   const expandedKeys = ref<string[]>([])
+  /** 当前选中的节点键列表 */
   const selectedKeys = ref<string[]>([])
 
+  /**
+   * 处理节点展开事件
+   * 当展开数据库节点时，异步加载该数据库下的表列表
+   * @param keys 已展开的节点键列表
+   * @param info 展开事件相关信息
+   */
   const handleExpand = async (keys: string[], info: any) => {
     const node = info as TreeNode
 
@@ -154,6 +204,10 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
         try {
           connectionStore.setDatabaseStatus(databaseId, DatabaseStatus.LOADING)
           await connectionStore.getTableList(connectionId, databaseName, databaseId)
+          // 加载成功后自动将数据库节点添加到展开状态
+          if (!expandedKeys.value.includes(databaseId)) {
+            expandedKeys.value.push(databaseId)
+          }
         } catch (error) {
           console.error('Failed to load tables:', error)
           connectionStore.setDatabaseStatus(databaseId, DatabaseStatus.ERROR)
@@ -162,6 +216,12 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
     }
   }
 
+  /**
+   * 处理节点选择事件
+   * 根据选中节点类型，收集关联的连接、数据库、表信息
+   * @param keys 已选中的节点键列表
+   * @param info 选择事件相关信息
+   */
   const handleSelect = (keys: string[], info: any) => {
     console.log('Selected node:', keys, info)
 
@@ -212,16 +272,34 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
     }
   }
 
+  /**
+   * 处理树节点展开（包装函数）
+   * 同步更新展开状态后执行展开处理逻辑
+   * @param keys 已展开的节点键列表
+   * @param info 展开事件相关信息
+   */
   const handleTreeExpand = async (keys: string[], info: any) => {
     expandedKeys.value = keys
     await handleExpand(keys, info)
   }
 
+  /**
+   * 处理树节点选择（包装函数）
+   * 同步更新选中状态后执行选择处理逻辑
+   * @param keys 已选中的节点键列表
+   * @param info 选择事件相关信息
+   */
   const handleTreeSelect = (keys: string[], info: any) => {
     selectedKeys.value = keys
     handleSelect(keys, info)
   }
 
+  /**
+   * 处理树节点双击事件
+   * 根据节点类型执行相应的操作（连接数据库或展开节点）
+   * @param event 双击事件对象
+   * @param info 节点相关信息
+   */
   const handleTreeDoubleClick = async (event: MouseEvent, info: any) => {
     if (!info) return
 
@@ -230,20 +308,28 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
     if (node.type === TreeNodeType.CONNECTION) {
       const connection = node.data?.metadata?.connection
       if (connection) {
-        expandedKeys.value = [...expandedKeys.value, node.key]
+        expandedKeys.value = [node.key]
       }
     }
 
     if (node.type === TreeNodeType.DATABASE) {
       await handleExpand([], info)
-      expandedKeys.value = [...expandedKeys.value, node.key]
+      expandedKeys.value = [node.key]
     }
   }
 
+  /**
+   * 设置展开状态
+   * @param keys 要设置为展开状态的节点键数组
+   */
   const setExpandedKeys = (keys: string[]) => {
     expandedKeys.value = keys
   }
 
+  /**
+   * 设置选中状态
+   * @param keys 要设置为选中状态的节点键数组
+   */
   const setSelectedKeys = (keys: string[]) => {
     selectedKeys.value = keys
   }

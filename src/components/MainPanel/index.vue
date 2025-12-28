@@ -3,7 +3,7 @@
     <el-main style="padding: 0; overflow: auto; height: 100%">
       <el-tabs
         v-model="activePanelId"
-        @tab-change="handleSwitchPanel"
+        @onTabChange="handleSwitchPanel"
         :style="{ height: '100%' }"
       >
         <el-tab-pane

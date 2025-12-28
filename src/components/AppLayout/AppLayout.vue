@@ -21,8 +21,10 @@
       <el-aside width="280px" class="layout-sider">
         <ConnectionTree
           :on-new-connection="onNewConnection"
+          :on-edit-connection="onEditConnection"
           :on-node-select="handleNodeSelect"
           :update-selected-node="updateSelectedNode"
+          @close-database="handleCloseDatabase"
         />
       </el-aside>
 
@@ -41,7 +43,7 @@ import { ref, computed, watch, h } from 'vue'
 import type { VNode } from 'vue'
 import HeaderBar from '../HeaderBar/HeaderBar.vue'
 import ConnectionTree from '../ConnectionTree/ConnectionTree.vue'
-import MainPanel from '../MainPanel/MainPanel.vue'
+import MainPanel from '../MainPanel/index.vue'
 import ObjectPanel from '../ObjectPanel/ObjectPanel.vue'
 import FunctionPanel from '../ObjectPanel/components/ObjectFunctionPanel.vue'
 import PropertiesPanel from '../PropertiesPanel/PropertiesPanel.vue'
@@ -53,11 +55,12 @@ import type { ObjectPanelType } from '../../types/headerBar/headerBar'
 import type { TableData } from '../../types/objectPanel'
 import type { FunctionData } from '../../types/objectPanel'
 import { formatBytes } from '../../utils/formatUtils'
-import type { MainPanelRef } from '../MainPanel/MainPanel.vue'
+import type { MainPanelRef } from '../MainPanel/index.vue'
 
 interface AppLayoutProps {
   activeConnectionId?: string | null
   onNewConnection?: () => void
+  onEditConnection?: (connection: any) => void
   onConnect?: () => void
   onNewQuery?: () => void
   onTable?: () => void
@@ -73,8 +76,15 @@ interface AppLayoutProps {
 }
 
 const props = withDefaults(defineProps<AppLayoutProps>(), {
-  activeConnectionId: null
+  activeConnectionId: null,
+  onNewConnection: () => {},
+  onEditConnection: () => {}
 })
+
+const emit = defineEmits<{
+  (e: 'newConnection'): void
+  (e: 'editConnection', connection: any): void
+}>()
 
 const connectionStore = useConnectionStore()
 
@@ -152,6 +162,18 @@ const handleTableClick = () => {
   if (mainPanelRef.value) {
     mainPanelRef.value.createPanel('table', '表', createObjectPanelContent([], selectedNode.value.type, selectedNode.value.name))
   }
+}
+
+const onConnect = () => {
+  emit('newConnection')
+}
+
+const onEditConnection = (connection: any) => {
+  emit('editConnection', connection)
+}
+
+const handleCloseDatabase = (database: any) => {
+  connectionStore.closeDatabase(database.id)
 }
 
 const handleFunctionClick = () => {

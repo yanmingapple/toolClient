@@ -1,10 +1,10 @@
 import { ref, watch, computed } from 'vue'
-import type { TreeNodeType } from '../types/leftTree/tree'
+import { TreeNodeType } from '../types/leftTree/tree'
 import { ConnectionStatus } from '../enum/database'
 import type { ConnectionConfig } from '../types/leftTree/connection'
 import type { TableData } from '../types/objectPanel'
 import type { PropertiesObject } from '../components/PropertiesPanel'
-import type { MainPanelRef } from '../components/MainPanel/MainPanel'
+import type { MainPanelRef } from '../components/MainPanel/index.vue'
 import type { DatabaseObject } from '../types/leftTree/tree'
 import type { ObjectPanelType } from '../types/headerBar/headerBar'
 
@@ -29,23 +29,17 @@ export const useSelection = () => {
     selectedTable.value = null
   }
 
-  const updateStateIfIdChanged = <T extends Record<string, any> | null | undefined>(
+  const updateStateIfIdChanged = <T extends { id: string } | null>(
     currentState: T,
-    newValue: T,
-    setState: (value: T) => void
+    newValue: T | undefined,
+    setState: (value: T | null) => void
   ) => {
-    if (newValue) {
-      if (typeof newValue === 'object' && newValue !== null) {
-        if ('id' in newValue && typeof newValue.id === 'string' && currentState && 'id' in currentState && typeof (currentState as Record<string, any>).id === 'string') {
-          if ((currentState as Record<string, any>).id !== newValue.id) {
-            setState(newValue)
-          }
-        } else {
-          setState(newValue)
-        }
-      } else {
-        setState(newValue)
-      }
+    if (newValue && currentState && currentState.id !== newValue.id) {
+      setState(newValue)
+    } else if (newValue && !currentState) {
+      setState(newValue)
+    } else if (!newValue) {
+      setState(null)
     }
   }
 

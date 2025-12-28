@@ -2,6 +2,7 @@
   <AppLayout
     :active-connection-id="activeConnectionId"
     @new-connection="handleNewConnection"
+    @edit-connection="handleEditConnection"
   >
     <QueryEditor v-if="activeConnectionId" />
   </AppLayout>
@@ -30,6 +31,12 @@ const activeConnectionId = computed(() => connectionStore.activeConnectionId)
 
 const handleNewConnection = () => {
   editingConnection.value = null
+  connectionDialogVisible.value = true
+}
+
+const handleEditConnection = (connection: ConnectionConfig) => {
+  const decryptedConnection = connectionStore.decryptConnection(connection)
+  editingConnection.value = decryptedConnection
   connectionDialogVisible.value = true
 }
 

@@ -59,7 +59,7 @@ import FunctionPanel from './components/ObjectFunctionPanel.vue'
 import type { ConnectionStatus, DatabaseStatus } from '../../enum/database'
 import type { ObjectPanelType } from '../../types/headerBar/headerBar'
 import type { TreeNodeType } from '../../types/leftTree/tree'
-import type { MainPanelRef } from '../MainPanel/MainPanel.vue'
+import type { MainPanelRef } from '../MainPanel/index.vue'
 import type { TableData, ViewData, FunctionData } from '../../types/objectPanel'
 
 interface ObjectPanelProps {

@@ -65,7 +65,6 @@ const props = withDefaults(defineProps<HeaderBarProps>(), {
 })
 
 const emit = defineEmits<{
-  (e: 'connect'): void
   (e: 'newQuery'): void
   (e: 'table'): void
   (e: 'view'): void
@@ -86,7 +85,7 @@ const navItems: NavItem[] = [
     iconType: 'custom',
     iconName: 'database',
     iconProps: { size: 24, style: { height: '24px' } },
-    onClick: () => emit('connect')
+    onClick: () => props.onConnect?.()
   },
   {
     key: 'newQuery',

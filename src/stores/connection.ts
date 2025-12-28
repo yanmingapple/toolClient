@@ -1,3 +1,8 @@
+/**
+ * 数据库连接状态管理 Store
+ * 使用 Pinia 状态管理库实现
+ * 负责管理所有数据库连接的配置、状态、数据等核心业务逻辑
+ */
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import CryptoJS from 'crypto-js'
@@ -6,13 +11,27 @@ import { ConnectionStatus, DatabaseStatus } from '../enum/database'
 import type { DatabaseObject } from '../types/leftTree/tree'
 import { getSafeIpcRenderer } from '../utils/electronUtils'
 
+/** 加密密钥，用于密码加密存储 */
 const SECRET_KEY = 'dbmanager-pro-secret-key'
+/** 本地存储键名，存储连接配置信息 */
 const STORAGE_KEY = 'connection-storage'
 
+/**
+ * 使用 AES 算法加密密码
+ * 将明文密码加密后存储到本地，提升安全性
+ * @param password 明文密码
+ * @returns 加密后的密码字符串
+ */
 const encryptPassword = (password: string): string => {
   return CryptoJS.AES.encrypt(password, SECRET_KEY).toString()
 }
 
+/**
+ * 解密密码
+ * 尝试解密存储的密码，如果解密失败则返回原密码
+ * @param encryptedPassword 加密后的密码字符串
+ * @returns 解密后的明文密码
+ */
 const decryptPassword = (encryptedPassword: string): string => {
   if (!encryptedPassword || typeof encryptedPassword !== 'string' || !encryptedPassword.startsWith('U2FsdGVkX1')) {
     return encryptedPassword
@@ -28,6 +47,11 @@ const decryptPassword = (encryptedPassword: string): string => {
   }
 }
 
+/**
+ * 从本地存储加载持久化的连接状态
+ * 尝试读取并解析本地存储的连接配置信息
+ * @returns 包含连接配置的部分状态对象，如果加载失败则返回空对象
+ */
 const loadPersistedState = (): Partial<{ connections: ConnectionConfig[] }> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -43,6 +67,11 @@ const loadPersistedState = (): Partial<{ connections: ConnectionConfig[] }> => {
   return {}
 }
 
+/**
+ * 将连接配置保存到本地存储
+ * 持久化保存连接配置信息，以便下次打开应用时恢复
+ * @param connections 连接配置数组
+ */
 const savePersistedState = (connections: ConnectionConfig[]) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ connections }))
@@ -51,19 +80,42 @@ const savePersistedState = (connections: ConnectionConfig[]) => {
   }
 }
 
+/**
+ * 创建并导出连接状态管理 Store
+ * 包含所有连接相关的状态变量和操作方法
+ */
 export const useConnectionStore = defineStore('connection', () => {
+  /** 从本地存储加载持久化的初始状态 */
   const persistedState = loadPersistedState()
+
+  /** 已保存的数据库连接配置列表 */
   const connections = ref<ConnectionConfig[]>(persistedState.connections || [])
+
+  /** 所有连接的状态映射，key 为连接 ID，value 为 ConnectionStatus */
   const connectionStates = ref<Map<string, ConnectionStatus>>(new Map())
+
+  /** 当前激活的连接 ID，用于标识当前正在操作的连接 */
   const activeConnectionId = ref<string | null>(null)
+
+  /** 所有数据库的状态映射，key 为数据库 ID，value 为 DatabaseStatus */
   const databaseStates = ref<Map<string, DatabaseStatus>>(new Map())
+
+  /** 所有数据库对象映射，key 为数据库 ID，value 为 DatabaseObject */
   const databases = ref<Map<string, DatabaseObject>>(new Map())
+
+  /** 所有表对象映射，key 为表 ID，value 为 DatabaseObject */
   const tables = ref<Map<string, DatabaseObject>>(new Map())
 
+  /** 监听连接配置变化，自动持久化保存到本地存储 */
   watch(connections, (newConnections) => {
     savePersistedState(newConnections)
   }, { deep: true })
 
+  /**
+   * 计算属性：已建立的连接列表
+   * 筛选出状态为 CONNECTED 的所有连接配置
+   * @returns 已成功连接的配置数组
+   */
   const connectedConnections = computed(() => {
     const result: ConnectionConfig[] = []
     connectionStates.value.forEach((status, id) => {
@@ -75,6 +127,11 @@ export const useConnectionStore = defineStore('connection', () => {
     return result
   })
 
+  /**
+   * 添加新的数据库连接配置
+   * 自动生成唯一 ID，并对密码进行加密存储
+   * @param config 连接配置（不包含 id）
+   */
   const addConnection = (config: Omit<ConnectionConfig, 'id'>) => {
     const newConnection: ConnectionConfig = {
       ...config,
@@ -91,6 +148,12 @@ export const useConnectionStore = defineStore('connection', () => {
     connectionStates.value = newStates
   }
 
+  /**
+   * 更新指定连接的配置信息
+   * 对更新的密码进行加密处理
+   * @param id 要更新的连接 ID
+   * @param config 新的配置信息（部分字段）
+   */
   const updateConnection = (id: string, config: Partial<ConnectionConfig>) => {
     connections.value = connections.value.map((conn) => {
       if (conn.id === id) {
@@ -106,6 +169,11 @@ export const useConnectionStore = defineStore('connection', () => {
     })
   }
 
+  /**
+   * 删除指定连接及其关联数据
+   * 同时删除该连接下的所有数据库和表数据
+   * @param id 要删除的连接 ID
+   */
   const removeConnection = (id: string) => {
     const newConnections = connections.value.filter((conn) => conn.id !== id)
     const newConnectionStates = new Map(connectionStates.value)
@@ -132,6 +200,41 @@ export const useConnectionStore = defineStore('connection', () => {
     activeConnectionId.value = activeConnectionId.value === id ? null : activeConnectionId.value
   }
 
+  const removeConnectionById = (id: string) => {
+    const newConnections = connections.value.filter((conn) => conn.id !== id)
+    const newConnectionStates = new Map(connectionStates.value)
+    newConnectionStates.delete(id)
+
+    connections.value = newConnections
+    connectionStates.value = newConnectionStates
+    if (activeConnectionId.value === id) {
+      activeConnectionId.value = null
+    }
+
+    savePersistedState(newConnections)
+  }
+
+  /**
+   * 解密连接配置中的密码字段
+   * 将加密的密码转换为明文用于表单显示
+   * @param connection 原始连接配置
+   * @returns 解密后的连接配置
+   */
+  const decryptConnection = (connection: ConnectionConfig): ConnectionConfig => {
+    return {
+      ...connection,
+      password: connection.password ? decryptPassword(connection.password) : '',
+      sshPassword: connection.sshPassword ? decryptPassword(connection.sshPassword) : undefined,
+      sshPassphrase: connection.sshPassphrase ? decryptPassword(connection.sshPassphrase) : undefined
+    }
+  }
+
+  /**
+   * 设置指定连接的状态
+   * 当状态变为 DISCONNECTED 时，清除该连接下的数据库和表数据
+   * @param id 连接 ID
+   * @param status 新的连接状态
+   */
   const setConnectionStatus = (id: string, status: ConnectionStatus) => {
     const currentStatus = connectionStates.value.get(id)
     if (currentStatus !== status) {
@@ -162,10 +265,20 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  /**
+   * 设置当前激活的连接
+   * @param id 连接 ID，设为 null 表示取消激活
+   */
   const setActiveConnection = (id: string | null) => {
     activeConnectionId.value = id
   }
 
+  /**
+   * 测试数据库连接是否可用
+   * 通过 IPC 调用主进程进行实际的连接测试
+   * @param config 连接配置信息
+   * @returns 测试结果，包含 success 标识和可选的 error 错误信息
+   */
   const testConnection = async (config: ConnectionConfig): Promise<{ success: boolean; error?: string }> => {
     const ipcRenderer = getSafeIpcRenderer()
     if (!ipcRenderer) {
@@ -205,6 +318,12 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  /**
+   * 获取指定连接的数据库列表
+   * 通过 IPC 调用主进程获取数据库列表
+   * @param connectionId 连接 ID
+   * @returns 数据库对象数组
+   */
   const getDatabaseList = async (connectionId: string): Promise<DatabaseObject[]> => {
     const connection = connections.value.find(conn => conn.id === connectionId)
     if (!connection) {
@@ -245,6 +364,14 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  /**
+   * 获取指定数据库的表列表
+   * 通过 IPC 调用主进程获取表列表
+   * @param connectionId 连接 ID
+   * @param databaseName 数据库名称
+   * @param databaseId 数据库 ID
+   * @returns 表对象数组
+   */
   const getTableList = async (connectionId: string, databaseName: string, databaseId: string): Promise<DatabaseObject[]> => {
     const connection = connections.value.find(conn => conn.id === connectionId)
     if (!connection) {
@@ -288,6 +415,11 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  /**
+   * 添加单个数据库对象
+   * 根据对象类型添加到对应的映射中
+   * @param object 数据库对象（数据库或表）
+   */
   const addDatabaseObject = (object: DatabaseObject) => {
     if (object.type === 'table') {
       const newTables = new Map(tables.value)
@@ -300,6 +432,11 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  /**
+   * 批量添加数据库对象
+   * 分离数据库对象和表对象，分别添加到对应的映射中
+   * @param objects 数据库对象数组
+   */
   const addDatabaseObjects = (objects: DatabaseObject[]) => {
     if (objects.length === 0) return
 
@@ -321,6 +458,11 @@ export const useConnectionStore = defineStore('connection', () => {
     tables.value = newTables
   }
 
+  /**
+   * 根据父节点 ID 删除所有关联的数据库对象
+   * 用于断开连接时清理数据
+   * @param parentId 父节点 ID
+   */
   const removeDatabaseObjectsByParentId = (parentId: string) => {
     let newDatabases = new Map()
     for (const [key, obj] of databases.value.entries()) {
@@ -348,12 +490,40 @@ export const useConnectionStore = defineStore('connection', () => {
     databaseStates.value = newDatabaseStates
   }
 
+  /**
+   * 设置指定数据库的状态
+   * @param databaseId 数据库 ID
+   * @param status 新的数据库状态
+   */
   const setDatabaseStatus = (databaseId: string, status: DatabaseStatus) => {
     const newStates = new Map(databaseStates.value)
     newStates.set(databaseId, status)
     databaseStates.value = newStates
   }
 
+  const closeDatabase = (databaseId: string) => {
+    let newTables = new Map()
+    for (const [key, obj] of tables.value.entries()) {
+      if (obj.parentId !== databaseId) {
+        newTables.set(key, obj)
+      }
+    }
+
+    let newDatabaseStates = new Map()
+    for (const [key, status] of databaseStates.value.entries()) {
+      if (key !== databaseId) {
+        newDatabaseStates.set(key, status)
+      }
+    }
+
+    tables.value = newTables
+    databaseStates.value = newDatabaseStates
+  }
+
+  /**
+   * 重置 Store 到初始状态
+   * 清空所有连接、状态和数据
+   */
   const $reset = () => {
     connections.value = []
     connectionStates.value = new Map()
@@ -363,6 +533,9 @@ export const useConnectionStore = defineStore('connection', () => {
     tables.value = new Map()
   }
 
+  /**
+   * Store 暴露的所有状态变量和方法
+   */
   return {
     connections,
     connectionStates,
@@ -374,6 +547,7 @@ export const useConnectionStore = defineStore('connection', () => {
     addConnection,
     updateConnection,
     removeConnection,
+    decryptConnection,
     setConnectionStatus,
     setActiveConnection,
     testConnection,
@@ -383,6 +557,7 @@ export const useConnectionStore = defineStore('connection', () => {
     addDatabaseObjects,
     removeDatabaseObjectsByParentId,
     setDatabaseStatus,
+    closeDatabase,
     $reset
   }
 })

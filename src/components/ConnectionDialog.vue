@@ -147,6 +147,7 @@ import { ref, reactive, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useConnectionStore } from '../stores/connection'
 import { ConnectionType } from '../enum/database'
+import { ConnectionConfig } from '@/types/leftTree/connection'
 
 interface ConnectionDialogProps {
   visible: boolean
@@ -166,6 +167,7 @@ const emit = defineEmits<{
 const connectionStore = useConnectionStore()
 
 const formRef = ref<FormInstance | null>(null)
+const activeTab = ref('basic')
 const loading = ref(false)
 const testLoading = ref(false)
 
@@ -214,10 +216,11 @@ const dialogVisible = computed({
 
 watch(() => props.visible, (visible) => {
   if (visible && props.connection) {
+    const decryptedConnection = connectionStore.decryptConnection(props.connection)
     Object.assign(formData, {
-      ...props.connection,
-      type: props.connection.type,
-      port: props.connection.port || defaultPorts[props.connection.type]
+      ...decryptedConnection,
+      type: decryptedConnection.type,
+      port: decryptedConnection.port || defaultPorts[decryptedConnection.type]
     })
   } else if (visible) {
     Object.assign(formData, {
@@ -256,7 +259,7 @@ const handleTestConnection = async () => {
 
     const testConfig: ConnectionConfig = {
       ...formData,
-      type: formData.type as string,
+      type: formData.type,
       id: 'test-connection',
       password: formData.password || ''
     }

@@ -27,6 +27,7 @@ const iconModules: Record<string, () => Promise<{ default: string }>> = {
   sqlserver: () => import('./svg/sqlserver.svg?raw'),
   sqlite: () => import('./svg/sqlite.svg?raw'),
   database: () => import('./svg/database.svg?raw'),
+  'database-filled': () => import('./svg/database-filled.svg?raw'),
   folder: () => import('./svg/folder.svg?raw'),
   'folder-open': () => import('./svg/folder-open.svg?raw'),
   table: () => import('./svg/table.svg?raw'),
