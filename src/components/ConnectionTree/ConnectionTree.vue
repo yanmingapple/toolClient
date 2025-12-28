@@ -708,8 +708,7 @@ defineExpose({
 <style scoped>
 .connection-tree {
   padding: 0;
-  height: calc(100vh - 70px);
-  overflow-y: auto;
+  height: calc(100vh - 100px);
   overflow-x: hidden;
   box-sizing: border-box;
 }

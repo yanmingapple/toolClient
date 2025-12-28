@@ -1,6 +1,6 @@
 <template>
   <el-container class="main-panel">
-    <el-main style="padding: 0; overflow: auto; height: 100%">
+    <el-main style="padding: 0; overflow: hidden; height: 100%">
       <el-tabs
         v-model="activePanelId"
         @onTabChange="handleSwitchPanel"
@@ -106,6 +106,7 @@ defineExpose({
 <style scoped>
 .main-panel {
   height: 100%;
+  display: flex;
 }
 
 .close-icon {
@@ -115,5 +116,25 @@ defineExpose({
 
 .close-icon:hover {
   color: #f56c6c;
+}
+
+:deep(.el-tabs) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.el-tabs__header) {
+  flex-shrink: 0;
+}
+
+:deep(.el-tabs__content) {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+:deep(.el-tab-pane) {
+  height: 100%;
 }
 </style>

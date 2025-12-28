@@ -1,6 +1,6 @@
 <template>
-  <el-container class="app-layout">
-    <el-header style="padding: 0; height: auto;">
+  <div class="app-layout">
+    <div class="app-header">
       <HeaderBar
         :on-connect="onConnect"
         :on-new-query="handleNewQueryClick"
@@ -15,10 +15,10 @@
         :on-model="handleModelClick"
         :on-b-i="handleBIClick"
       />
-    </el-header>
+    </div>
 
-    <el-container>
-      <el-aside width="280px" class="layout-sider">
+    <div class="app-body">
+      <div class="layout-sider">
         <ConnectionTree
           :on-new-connection="onNewConnection"
           :on-edit-connection="onEditConnection"
@@ -27,16 +27,20 @@
           @close-database="handleCloseDatabase"
           @node-click="handleNodeClick"
         />
-      </el-aside>
+      </div>
 
-      <el-main class="layout-content">
+      <div class="layout-content">
         <MainPanel
           ref="mainPanelRef"
           :properties-content="propertiesContent"
         />
-      </el-main>
-    </el-container>
-  </el-container>
+      </div>
+    </div>
+
+    <div class="app-footer">
+      <span>ToolClient Database Manager © 2024</span>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -567,17 +571,45 @@ watch(
 
 <style scoped>
 .app-layout {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-header {
+  flex-shrink: 0;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .layout-sider {
+  width: 280px;
   background: #fff;
   border-right: 1px solid #f0f0f0;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .layout-content {
-  margin: 16px;
-  padding: 0;
-  overflow-y: auto;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  font-size: 12px;
+  color: #909399;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
 }
 </style>

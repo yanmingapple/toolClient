@@ -38,7 +38,8 @@
       :columns="columns"
       row-key="name"
       border
-      style="width: 100%; height: calc(100vh - 180px);"
+      style="width: 100%;"
+      max-height="100%"
       @row-click="handleRowClick"
     >
       <el-table-column prop="name" label="名称" min-width="250">
@@ -177,14 +178,21 @@ const handleDeleteTable = () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-header {
+  flex-shrink: 0;
   padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.el-table {
+  flex: 1;
+  overflow: hidden;
 }
 
 .table-name {
@@ -194,5 +202,23 @@ const handleDeleteTable = () => {
 
 .table-name:hover {
   text-decoration: underline;
+}
+
+:deep(.el-table) {
+  flex: 1;
+  overflow: hidden;
+}
+
+:deep(.el-table__body-wrapper) {
+  height: 100%;
+  overflow: hidden;
+}
+
+:deep(.el-table__body) {
+  height: 100%;
+}
+
+:deep(.el-scrollbar__wrap) {
+  overflow-x: hidden;
 }
 </style>
