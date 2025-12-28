@@ -158,7 +158,7 @@ const handleDeleteFunction = () => {
 
 .function-name {
   cursor: pointer;
-  color: #409eff;
+  color: #000000;
 }
 
 .function-name:hover {

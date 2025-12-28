@@ -733,7 +733,6 @@ defineExpose({
 
 :deep(.el-tree-node__content) {
   height: 36px;
-  padding-left: 8px !important;
 }
 
 :deep(.el-tree-node.is-current > .el-tree-node__content) {

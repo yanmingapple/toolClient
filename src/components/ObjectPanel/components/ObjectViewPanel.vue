@@ -167,7 +167,7 @@ const handleDeleteView = () => {
 
 .view-name {
   cursor: pointer;
-  color: #409eff;
+  color: #000000;
 }
 
 .view-name:hover {

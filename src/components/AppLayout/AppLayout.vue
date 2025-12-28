@@ -225,6 +225,11 @@ const onEditConnection = (connection: any) => {
 
 const handleCloseDatabase = (database: any) => {
   connectionStore.closeDatabase(database.id)
+  if (mainPanelRef.value) {
+    mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent([], undefined, undefined, undefined))
+  }
+  selectedObject.value = null
+  selectedTables.value = []
 }
 
 const handleFunctionClick = () => {
@@ -405,6 +410,17 @@ const handleNodeClick = (node: TreeNode) => {
 
   if (node.type === TreeNodeType.CONNECTION) {
     connectionConfig = node.data?.metadata?.connection || null
+    if (mainPanelRef.value) {
+      mainPanelRef.value.updatePanelContent('object-0', h(ObjectPanel, {
+        dataSource: [],
+        selectedObjects: selectedTables.value,
+        onSelectObjects: setSelectedTables,
+        objectPanelType: 'table',
+        selectedNodeName: nodeName,
+        connectionStatus: currentConnectionStatus.value,
+        setSelectedNode: updateSelectedNode
+      }))
+    }
   } else if (node.type === TreeNodeType.DATABASE) {
     databaseObj = databases.value.get(node.key) || null
     if (databaseObj?.parentId) {
@@ -412,6 +428,26 @@ const handleNodeClick = (node: TreeNode) => {
       if (connection) {
         connectionConfig = connection
       }
+    }
+    const actualTables = Array.from(tables.value.values())
+      .filter(obj => obj.parentId === node.key)
+      .map(obj => ({
+        name: obj.name,
+        rows: obj.metadata?.rows || 0,
+        dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+        engine: obj.metadata?.engine || '',
+        modifyDate: obj.metadata?.updateTime || '--',
+        collation: obj.metadata?.collation || '',
+        rowFormat: obj.metadata?.rowFormat || '',
+        comment: obj.metadata?.comment || ''
+      }))
+    if (mainPanelRef.value) {
+      mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent(
+        currentConnectionStatus.value === ConnectionStatus.CONNECTED ? actualTables : [],
+        node.type,
+        nodeName,
+        databaseStates.value.get(node.key)
+      ))
     }
   } else if (node.type === TreeNodeType.TABLE) {
     const tableObject = tables.value.get(node.key)
@@ -444,6 +480,27 @@ const handleNodeClick = (node: TreeNode) => {
         }
       }
     }
+
+    if (mainPanelRef.value && databaseObj) {
+      const actualTables = Array.from(tables.value.values())
+        .filter(obj => obj.parentId == databaseObj.id)
+        .map(obj => ({
+          name: obj.name,
+          rows: obj.metadata?.rows || 0,
+          dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+          engine: obj.metadata?.engine || '',
+          modifyDate: obj.metadata?.updateTime || '--',
+          collation: obj.metadata?.collation || '',
+          rowFormat: obj.metadata?.rowFormat || '',
+          comment: obj.metadata?.comment || ''
+        }))
+      mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent(
+        currentConnectionStatus.value === ConnectionStatus.CONNECTED ? actualTables : [],
+        TreeNodeType.DATABASE,
+        databaseObj.title,
+        databaseStates.value.get(databaseObj.key)
+      ))
+    }
   }
 
   updateSelectedNode(
@@ -464,8 +521,47 @@ watch(
     } else {
       setCurrentConnectionStatus(ConnectionStatus.DISCONNECTED)
     }
+    if (currentConnectionStatus.value === ConnectionStatus.DISCONNECTED) {
+      if (mainPanelRef.value) {
+        mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent([], undefined, undefined, undefined))
+      }
+      selectedObject.value = null
+      selectedTables.value = []
+    }
   },
   { immediate: true }
+)
+
+watch(
+  () => tables.value,
+  (newTables) => {
+    if (currentConnectionStatus.value === ConnectionStatus.CONNECTED && selectedNode.value) {
+      const node = selectedNode.value
+      if (node.type === TreeNodeType.DATABASE && node.id) {
+        const actualTables = Array.from(newTables.values())
+          .filter(obj => obj.parentId === node.id)
+          .map(obj => ({
+            name: obj.name,
+            rows: obj.metadata?.rows || 0,
+            dataLength: typeof obj.metadata?.dataLength === 'number' ? formatBytes(obj.metadata.dataLength) : '0 KB',
+            engine: obj.metadata?.engine || '',
+            modifyDate: obj.metadata?.updateTime || '--',
+            collation: obj.metadata?.collation || '',
+            rowFormat: obj.metadata?.rowFormat || '',
+            comment: obj.metadata?.comment || ''
+          }))
+        if (mainPanelRef.value) {
+          mainPanelRef.value.updatePanelContent('object-0', createObjectPanelContent(
+            actualTables,
+            node.type,
+            node.name,
+            databaseStates.value.get(node.id)
+          ))
+        }
+      }
+    }
+  },
+  { deep: true }
 )
 </script>
 

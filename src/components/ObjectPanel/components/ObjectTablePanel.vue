@@ -38,20 +38,19 @@
       :columns="columns"
       row-key="name"
       border
-      style="width: 100%"
-      :max-height="tableHeight"
+      style="width: 100%; height: calc(100vh - 180px);"
       @row-click="handleRowClick"
     >
-      <el-table-column prop="name" label="名称" width="200">
+      <el-table-column prop="name" label="名称" min-width="250">
         <template #default="{ row }">
           <span class="table-name" @click="handleNameClick(row)">{{ row.name }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="rows" label="行" width="150" align="right" />
-      <el-table-column prop="dataLength" label="数据长度" width="150" align="right" />
-      <el-table-column prop="engine" label="引擎" width="150" />
+      <el-table-column prop="rows" label="行" width="100" align="right" />
+      <el-table-column prop="dataLength" label="数据长度" width="120" align="right" />
+      <el-table-column prop="engine" label="引擎" width="120" />
       <el-table-column prop="modifyDate" label="修改日期" width="150" />
-      <el-table-column prop="comment" label="注释" show-overflow-tooltip />
+      <el-table-column prop="comment" label="注释" min-width="150" show-overflow-tooltip />
 
       <template #empty>
         <el-empty description="当前没有表数据" />
@@ -64,8 +63,7 @@
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import type { TableColumn, TableData } from '../../../types'
-import { TreeNodeType } from '../../../enum/database'
-import type { TreeNodeType as TreeNodeTypeEnum } from '../../../types/leftTree/tree'
+import { TreeNodeType } from '../../../types/leftTree/tree'
 
 interface TablePanelProps {
   dataSource?: TableData[]
@@ -81,7 +79,7 @@ interface TablePanelProps {
   onExportWizard?: () => void
   onSearch?: (keyword: string) => void
   onSelectObjects?: (records: TableData[]) => void
-  setSelectedNode?: (node: { type?: TreeNodeTypeEnum; name?: string; id?: string; parentId?: string }, connection?: any, database?: any, table?: TableData) => void
+  setSelectedNode?: (node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string }, connection?: any, database?: any, table?: TableData) => void
 }
 
 const props = withDefaults(defineProps<TablePanelProps>(), {
@@ -101,10 +99,6 @@ const emit = defineEmits<{
 }>()
 
 const searchKeyword = ref('')
-const tableHeight = computed(() => {
-  const baseHeight = 280
-  return `calc(100vh - ${baseHeight}px)`
-})
 
 const filteredDataSource = computed(() => {
   if (!searchKeyword.value) {
@@ -134,11 +128,27 @@ const handleSearchInput = () => {
 const handleRowClick = (row: TableData) => {
   emit('selectObjects', [row])
   emit('openObject', row)
+  if (props.setSelectedNode) {
+    props.setSelectedNode(
+      { type: TreeNodeType.TABLE, name: row.name, id: row.name },
+      null,
+      null,
+      row
+    )
+  }
 }
 
 const handleNameClick = (record: TableData) => {
   emit('selectObjects', [record])
   emit('openObject', record)
+  if (props.setSelectedNode) {
+    props.setSelectedNode(
+      { type: TreeNodeType.TABLE, name: record.name, id: record.name },
+      null,
+      null,
+      record
+    )
+  }
 }
 
 const handleOpenTable = () => {
@@ -179,7 +189,7 @@ const handleDeleteTable = () => {
 
 .table-name {
   cursor: pointer;
-  color: #409eff;
+  color: #000000;
 }
 
 .table-name:hover {
