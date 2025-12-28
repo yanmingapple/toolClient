@@ -33,7 +33,10 @@
       style="border-left: 1px solid #f0f0f0; background: #fff; overflow-y: auto"
     >
       <slot name="properties">
-        <div style="padding: 16px">
+        <div v-if="propertiesContent" style="height: 100%; padding: 0;">
+          <component :is="propertiesContent" />
+        </div>
+        <div v-else style="padding: 16px">
           <el-text tag="h3" style="margin-bottom: 16px; font-size: 14px; font-weight: bold">属性</el-text>
           <el-text type="info">选择一个对象查看其属性</el-text>
         </div>

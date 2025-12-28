@@ -20,6 +20,7 @@
       @node-contextmenu="handleContextMenu"
       @node-expand="handleNodeExpand"
       @expand="handleTreeExpand"
+      @node-click="handleNodeClick"
       :props="treeProps"
     >
       <template #default="{ node, data }">
@@ -83,6 +84,7 @@ const props = withDefaults(defineProps<ConnectionTreeProps>(), {
 
 const emit = defineEmits<{
   (e: 'nodeSelect', node: TreeNode, info: any): void
+  (e: 'nodeClick', node: TreeNode): void
   (e: 'connect', connection: any): void
   (e: 'disconnect', connection: any): void
   (e: 'openConnection', connection: any): void
@@ -273,6 +275,10 @@ const handleContextMenu = (event: MouseEvent, data: TreeNode, node: any, tree: a
   }
   contextMenuNode.value = data
   contextMenuVisible.value = true
+}
+
+const handleNodeClick = (_event: MouseEvent, data: TreeNode) => {
+  emit('nodeClick', data)
 }
 
 const handleMenuClick = async (action: string, node: TreeNode | null) => {

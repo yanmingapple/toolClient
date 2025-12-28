@@ -25,6 +25,7 @@
           :on-node-select="handleNodeSelect"
           :update-selected-node="updateSelectedNode"
           @close-database="handleCloseDatabase"
+          @node-click="handleNodeClick"
         />
       </el-aside>
 
@@ -48,7 +49,7 @@ import ObjectPanel from '../ObjectPanel/ObjectPanel.vue'
 import FunctionPanel from '../ObjectPanel/components/ObjectFunctionPanel.vue'
 import PropertiesPanel from '../PropertiesPanel/PropertiesPanel.vue'
 import type { TreeNode } from '../../types/leftTree/tree'
-import type { TreeNodeType } from '../../types/leftTree/tree'
+import { TreeNodeType } from '../../types/leftTree/tree'
 import { useConnectionStore } from '../../stores/connection'
 import { ConnectionStatus } from '../../enum/database'
 import type { ObjectPanelType } from '../../types/headerBar/headerBar'
@@ -98,6 +99,7 @@ const databaseStates = computed(() => connectionStore.databaseStates)
 const selectedTables = ref<TableData[]>([])
 const currentConnectionStatus = ref<ConnectionStatus>(ConnectionStatus.DISCONNECTED)
 const selectedNode = ref<{ type?: TreeNodeType; name?: string; id?: string; parentId?: string }>({})
+const selectedObject = ref<PropertiesObject | null>(null)
 
 const mockFunctions: FunctionData[] = [
   { name: 'get_format', modifyDate: '2023-01-15', functionType: 'FUNCTION', deterministic: true, comment: 'Format a date or time value' },
@@ -106,7 +108,9 @@ const mockFunctions: FunctionData[] = [
 ]
 
 const propertiesContent = computed(() => {
-  return h('div', { class: 'properties-content' })
+  return h('div', { class: 'properties-content' }, [
+    h(PropertiesPanel, { selectedObject: selectedObject.value })
+  ])
 })
 
 const setSelectedTables = (records: TableData[]) => {
@@ -124,6 +128,53 @@ const updateSelectedNode = (
   _table?: TableData
 ) => {
   selectedNode.value = node
+  console.log('[updateSelectedNode] node:', node)
+  console.log('[updateSelectedNode] _connection:', _connection)
+  console.log('[updateSelectedNode] _database:', _database)
+  console.log('[updateSelectedNode] _table:', _table)
+
+  if (node.type === TreeNodeType.TABLE && _table) {
+    console.log('[updateSelectedNode] Setting table object')
+    selectedObject.value = {
+      name: _table.name,
+      type: 'table',
+      engine: _table.engine || '',
+      rows: _table.rows || 0,
+      dataLength: _table.dataLength || '0 KB',
+      createTime: _table.createTime || '',
+      updateTime: _table.modifyDate || '',
+      collation: _table.collation || '',
+      autoIncrement: _table.autoIncrement || null,
+      rowFormat: _table.rowFormat || '',
+      checkTime: _table.checkTime || null,
+      indexLength: _table.indexLength || '0 KB',
+      maxDataLength: _table.maxDataLength || '0 KB',
+      dataFree: _table.dataFree || '0 KB',
+      comment: _table.comment
+    }
+  } else if (node.type === TreeNodeType.DATABASE && _database) {
+    selectedObject.value = {
+      name: _database.name,
+      type: 'database',
+      charset: _database.metadata?.charset || '',
+      collation: _database.metadata?.collation || '',
+      createTime: _database.metadata?.createTime || '',
+      comment: _database.metadata?.comment || ''
+    }
+  } else if (node.type === TreeNodeType.CONNECTION && _connection) {
+    selectedObject.value = {
+      name: _connection.name,
+      type: 'connection',
+      host: _connection.host,
+      port: _connection.port,
+      user: _connection.username,
+      database: _connection.database || '',
+      charset: _connection.charset || '',
+      connectTimeout: _connection.timeout || 10000
+    }
+  } else {
+    selectedObject.value = null
+  }
 }
 
 const createObjectPanelContent = (
@@ -342,6 +393,65 @@ const handleNodeSelect = (node: TreeNode) => {
       mainPanelRef.value.createPanel('function', '函数', h(FunctionPanel, { dataSource: mockFunctions }))
     }
   }
+}
+
+const handleNodeClick = (node: TreeNode) => {
+  node = node.data
+  const nodeName = typeof node.title === 'string' ? node.title : undefined
+
+  let connectionConfig = null
+  let databaseObj = null
+  let tableObj: TableData | null = null
+
+  if (node.type === TreeNodeType.CONNECTION) {
+    connectionConfig = node.data?.metadata?.connection || null
+  } else if (node.type === TreeNodeType.DATABASE) {
+    databaseObj = databases.value.get(node.key) || null
+    if (databaseObj?.parentId) {
+      const connection = databases.value.get(databaseObj.parentId)?.metadata?.connection || null
+      if (connection) {
+        connectionConfig = connection
+      }
+    }
+  } else if (node.type === TreeNodeType.TABLE) {
+    const tableObject = tables.value.get(node.key)
+    if (tableObject) {
+      const metadata = tableObject.metadata || {}
+      tableObj = {
+        name: tableObject.name,
+        rows: metadata.rows || 0,
+        dataLength: typeof metadata.dataLength === 'number' ? formatBytes(metadata.dataLength) : '0 KB',
+        engine: metadata.engine || '',
+        modifyDate: metadata.updateTime || '--',
+        collation: metadata.collation || '',
+        rowFormat: metadata.rowFormat || '',
+        comment: metadata.comment || '',
+        createTime: metadata.createTime || '',
+        autoIncrement: metadata.autoIncrement || null,
+        checkTime: metadata.checkTime || null,
+        indexLength: metadata.indexLength || '0 KB',
+        maxDataLength: metadata.maxDataLength || '0 KB',
+        dataFree: metadata.dataFree || '0 KB'
+      }
+
+      if (tableObject.parentId) {
+        databaseObj = databases.value.get(tableObject.parentId) || null
+        if (databaseObj?.parentId) {
+          const connection = databases.value.get(databaseObj.parentId)?.metadata?.connection || null
+          if (connection) {
+            connectionConfig = connection
+          }
+        }
+      }
+    }
+  }
+
+  updateSelectedNode(
+    { type: node.type, name: nodeName, id: node.key, parentId: node.data?.parentId || undefined },
+    connectionConfig,
+    databaseObj || undefined,
+    tableObj || undefined
+  )
 }
 
 watch(

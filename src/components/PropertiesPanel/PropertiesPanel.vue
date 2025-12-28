@@ -5,17 +5,19 @@
     style="height: 100%; overflow: auto"
   >
     <template #header>
-      <span>
-        <el-icon style="margin-right: 4px">
+      <span style="word-break: break-word;">
+        <el-icon style="margin-right: 4px;">
           <component :is="getObjectIcon()" />
         </el-icon>
         {{ selectedObject ? selectedObject.name : '对象属性' }}
       </span>
     </template>
     <template v-if="selectedObject">
-      <el-descriptions :column="1" border size="small">
+      <el-descriptions :column="1" border size="small" class="properties-descriptions">
         <template v-if="selectedObject.type === 'table'">
-          <el-descriptions-item label="表名">{{ (selectedObject as TableObject).name }}</el-descriptions-item>
+          <el-descriptions-item label="表名">
+            <span style="word-break: break-word;">{{ (selectedObject as TableObject).name }}</span>
+          </el-descriptions-item>
           <el-descriptions-item label="引擎">{{ (selectedObject as TableObject).engine }}</el-descriptions-item>
           <el-descriptions-item label="行数">{{ (selectedObject as TableObject).rows }}</el-descriptions-item>
           <el-descriptions-item label="数据长度">{{ (selectedObject as TableObject).dataLength }}</el-descriptions-item>
@@ -154,3 +156,12 @@ const getObjectIcon = () => {
   }
 }
 </script>
+
+<style scoped>
+.properties-descriptions :deep(.el-descriptions__label) {
+  min-width: 100px;
+  max-width: 100px;
+  width: 100px;
+  word-break: keep-all;
+}
+</style>
