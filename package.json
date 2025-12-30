@@ -15,7 +15,8 @@
     "build:mac": "tsc -p tsconfig.electron.json && vite build && electron-builder --mac",
     "build:linux": "tsc -p tsconfig.electron.json && vite build && electron-builder --linux",
     "lint": "eslint src --ext .ts,.tsx,.vue",
-    "lint:fix": "eslint src --ext .ts,.tsx,.vue --fix"
+    "lint:fix": "eslint src --ext .ts,.tsx,.vue --fix",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

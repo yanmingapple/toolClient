@@ -1,7 +1,88 @@
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { Pool } from 'pg';
+import { Pool, Client } from 'pg';
 import { SQLStatements } from './sql';
+
+/**
+ * PostgreSQL管理连接池，用于获取数据库列表等系统级操作
+ */
+class PostgreSQLManagementPool {
+    private static instance: PostgreSQLManagementPool;
+    private pool: Pool | null = null;
+    private connectionConfig: any = null;
+    private lastRefreshTime: number = 0;
+    private cacheTimeout: number = 5 * 60 * 1000; // 缓存5分钟
+    private databaseCache: any[] | null = null;
+
+    private constructor() { }
+
+    static getInstance(): PostgreSQLManagementPool {
+        if (!PostgreSQLManagementPool.instance) {
+            PostgreSQLManagementPool.instance = new PostgreSQLManagementPool();
+        }
+        return PostgreSQLManagementPool.instance;
+    }
+
+    async initialize(config: any): Promise<void> {
+        this.connectionConfig = config;
+        if (!this.pool) {
+            this.pool = new Pool({
+                host: config.host,
+                port: config.port,
+                user: config.username,
+                password: config.password,
+                database: 'postgres', // PostgreSQL系统数据库
+            });
+        }
+    }
+
+    async getDatabaseList(): Promise<any[]> {
+        // 检查缓存是否有效
+        const now = Date.now();
+        if (this.databaseCache && (now - this.lastRefreshTime) < this.cacheTimeout) {
+            return this.databaseCache;
+        }
+
+        if (!this.pool || !this.connectionConfig) {
+            throw new Error('PostgreSQL management pool not initialized');
+        }
+
+        try {
+            const client = await this.pool.connect();
+            try {
+                const result = await client.query(SQLStatements.SELECT_POSTGRESQL_DATABASES);
+
+                // 更新缓存
+                this.databaseCache = result.rows.map((db, index) => ({
+                    id: `db_${this.connectionConfig!.host}_${index}`,
+                    name: db.datname,
+                    type: 'database',
+                    parentId: this.connectionConfig!.host,
+                    metadata: {}
+                }));
+
+                this.lastRefreshTime = now;
+                return this.databaseCache;
+            } finally {
+                client.release();
+            }
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    async clearCache(): void {
+        this.databaseCache = null;
+        this.lastRefreshTime = 0;
+    }
+
+    async close(): Promise<void> {
+        if (this.pool) {
+            await this.pool.end();
+            this.pool = null;
+        }
+    }
+}
 
 /**
  * PostgreSQL客户端实现
@@ -9,6 +90,7 @@ import { SQLStatements } from './sql';
 export class PostgreSQLClient implements DatabaseClient {
     private config: ConnectionConfig;
     private pool: Pool | null = null;
+    private managementPool: PostgreSQLManagementPool = PostgreSQLManagementPool.getInstance();
 
     /**
      * 构造函数
@@ -30,6 +112,14 @@ export class PostgreSQLClient implements DatabaseClient {
                 password: this.config.password,
                 database: this.config.database,
             });
+
+            // 初始化管理连接池
+            await this.managementPool.initialize({
+                host: this.config.host,
+                port: this.config.port,
+                user: this.config.username,
+                password: this.config.password,
+            });
         } catch (error) {
             throw new Error(`PostgreSQL connection failed: ${error}`);
         }
@@ -43,6 +133,9 @@ export class PostgreSQLClient implements DatabaseClient {
             await this.pool.end();
             this.pool = null;
         }
+
+        // 清理缓存，以便连接配置变化时重新获取
+        await this.managementPool.clearCache();
     }
 
     /**
@@ -124,20 +217,15 @@ export class PostgreSQLClient implements DatabaseClient {
      * 获取PostgreSQL数据库列表
      */
     async getDatabaseList(): Promise<any[]> {
-        if (!this.pool) {
-            throw new Error('Not connected to PostgreSQL database');
-        }
-
         try {
-            const client = await this.pool.connect();
-            const result = await client.query(SQLStatements.SELECT_POSTGRESQL_DATABASES);
-            client.release();
-            return result.rows.map((db, index) => ({
+            // 使用管理连接池获取数据库列表（带缓存）
+            const databaseList = await this.managementPool.getDatabaseList();
+
+            // 更新ID和父ID以匹配当前连接配置
+            return databaseList.map((db, index) => ({
+                ...db,
                 id: `db_${this.config.id}_${index}`,
-                name: db.datname,
-                type: 'database',
-                parentId: this.config.id,
-                metadata: {}
+                parentId: this.config.id
             }));
         } catch (error) {
             throw new Error(`Failed to get database list: ${error}`);
