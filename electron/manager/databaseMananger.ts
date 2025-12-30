@@ -1,9 +1,8 @@
-import { DatabaseClient } from '../dataService/database';
+import { DatabaseClient, createDatabaseClient } from '../dataService/database';
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { ConnectionStatus } from '../model/database';
 import { ConnectionInfo } from '../model/database/ConnectionInfo';
-
-
+import { DatabaseService } from '../service/databaseService';
 
 /**
  * 数据库连接缓存管理类
@@ -16,6 +15,7 @@ export class DatabaseManager {
     private maxIdleTime: number = 300000; // 5分钟最大空闲时间
     private pingInterval: number = 60000; // 1分钟ping间隔
     private healthCheckTimer: NodeJS.Timeout | null = null;
+    private databaseService: DatabaseService | null = null;
 
     /**
      * 单例模式获取实例
@@ -28,10 +28,25 @@ export class DatabaseManager {
     }
 
     /**
-     * 构造函数，初始化健康检查
+     * 构造函数，初始化健康检查和SQLite数据库
      */
     private constructor() {
+        this.initializeSQLiteDatabase().catch(error => {
+            console.error('Failed to initialize SQLite database:', error);
+        });
         this.startHealthCheck();
+    }
+
+    /**
+     * 初始化 SQLite 数据库和连接配置服务
+     */
+    private async initializeSQLiteDatabase(): Promise<void> {
+        try {
+            this.databaseService = await DatabaseService.initializeSQLiteDatabase();
+        } catch (error) {
+            console.error('Failed to initialize SQLite database:', error);
+            throw error;
+        }
     }
 
     /**
@@ -82,7 +97,6 @@ export class DatabaseManager {
      * @returns 数据库客户端实例
      */
     private async createConnection(config: ConnectionConfig): Promise<DatabaseClient> {
-        const { createDatabaseClient } = await import('../dataService/database');
         const client = createDatabaseClient(config);
 
         try {
@@ -290,6 +304,12 @@ export class DatabaseManager {
 
         await Promise.all(disconnectPromises);
         this.connections.clear();
+
+        // 关闭 SQLite 数据库连接
+        if (this.databaseService) {
+            await this.databaseService.close();
+            this.databaseService = null;
+        }
     }
 
     /**
@@ -343,6 +363,39 @@ export class DatabaseManager {
      */
     private generateConnectionKey(config: ConnectionConfig): string {
         return `${config.type}_${config.host}_${config.port}_${config.username}_${config.database || 'default'}`;
+    }
+
+    /**
+     * 获取所有连接配置（向后兼容代理方法）
+     * @returns 连接配置数组
+     */
+    public async getAllConnections(): Promise<Array<any>> {
+        if (!this.databaseService) {
+            throw new Error('DatabaseService not initialized');
+        }
+        return await this.databaseService.getAllConnections();
+    }
+
+    /**
+     * 保存连接配置列表（向后兼容代理方法）
+     * @param connections 连接配置数组
+     */
+    public async saveConnections(connections: Array<any>): Promise<void> {
+        if (!this.databaseService) {
+            throw new Error('DatabaseService not initialized');
+        }
+        await this.databaseService.saveConnections(connections);
+    }
+
+    /**
+     * 获取数据库服务实例
+     * @returns 数据库服务
+     */
+    public getDatabaseService(): DatabaseService {
+        if (!this.databaseService) {
+            throw new Error('Database service not initialized');
+        }
+        return this.databaseService;
     }
 
     /**
