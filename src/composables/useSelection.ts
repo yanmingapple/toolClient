@@ -1,6 +1,6 @@
 import { ref, watch, computed } from 'vue'
 import { TreeNodeType } from '../types/leftTree/tree'
-import { ConnectionStatus } from '../enum/database'
+import { ConnectionStatus } from '../../electron/model/database'
 import type { ConnectionConfig } from '../types/leftTree/connection'
 import type { TableData } from '../types/objectPanel'
 import type { PropertiesObject } from '../components/PropertiesPanel'

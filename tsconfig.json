@@ -32,7 +32,8 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "electron/enum/database.ts"
   ],
   "references": [
     {

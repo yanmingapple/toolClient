@@ -146,7 +146,7 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useConnectionStore } from '../stores/connection'
-import { ConnectionType } from '../enum/database'
+import { ConnectionType } from '../../electron/model/database'
 import { ConnectionConfig } from '@/types/leftTree/connection'
 
 interface ConnectionDialogProps {

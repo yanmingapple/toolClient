@@ -8,5 +8,7 @@
     "moduleResolution": "node",
     "allowImportingTsExtensions": false
   },
-  "include": ["electron-main.ts"]
+  "include": [
+    "electron/**/*"
+  ]
 }

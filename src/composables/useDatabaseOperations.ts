@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useConnectionStore } from '../stores/connection'
-import { ConnectionStatus } from '../enum/database'
+import { ConnectionStatus } from '../../electron/model/database'
 import { getSafeIpcRenderer } from '../utils/electronUtils'
 
 export interface FetchDatabasesResult {

@@ -1,9 +1,46 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, MenuItemConstructorOptions, ipcMain } from 'electron'
+// 使用 require 语法避免与本地 electron 目录冲突
+const electron = require('electron')
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain } = electron
 import * as path from 'path'
 import * as url from 'url'
+import * as sqlite3 from 'sqlite3'
 
-let mainWindow: BrowserWindow | null
-let tray: Tray | null
+let mainWindow: typeof BrowserWindow | null
+let tray: typeof Tray | null
+
+// SQLite 数据库配置
+const dbPath = path.join(app.getPath('userData'), 'dbmanager.db')
+let db: sqlite3.Database
+
+// 初始化 SQLite 数据库
+function initializeDatabase() {
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('Failed to open SQLite database:', err)
+    } else {
+      console.log('Connected to SQLite database at:', dbPath)
+      // 创建连接配置表
+      db.run(`
+        CREATE TABLE IF NOT EXISTS connections (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          host TEXT,
+          port INTEGER,
+          username TEXT,
+          password TEXT,
+          database TEXT,
+          sshHost TEXT,
+          sshPort INTEGER,
+          sshUsername TEXT,
+          sshPassword TEXT,
+          sshPassphrase TEXT,
+          sshKeyPath TEXT
+        )
+      `)
+    }
+  })
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -37,7 +74,7 @@ function createWindow() {
     mainWindow = null
   })
 
-  const template: MenuItemConstructorOptions[] = [
+  const template: any[] = [
     {
       label: '文件(F)',
       submenu: [
@@ -179,7 +216,7 @@ function createTray() {
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show App', click: () => mainWindow?.show() },
     { label: 'Quit', click: () => app.quit() },
-  ] as MenuItemConstructorOptions[])
+  ] as any[])
   tray.setToolTip('DBManager Pro')
   tray.setContextMenu(contextMenu)
   tray.on('click', () => mainWindow?.show())
@@ -364,74 +401,6 @@ async function handleGetDatabaseList(_event: any, config: any) {
             }
           }]
         };
-      case 'sqlite':
-        const sqlite3 = await import('sqlite3')
-
-        return new Promise((resolve, reject) => {
-          // SQLite使用database属性作为数据库路径
-          const dbPath = config.database || ':memory:'
-          const db = new sqlite3.Database(dbPath)
-
-          // 查询所有表
-          db.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", [], async (err, tables) => {
-            if (err) {
-              db.close()
-              reject({ success: false, message: err.message })
-              return
-            }
-
-            const tableData = []
-
-            // 为每个表获取元数据
-            for (const table of tables as Array<{ name: string }>) {
-              try {
-                // 获取表的行数
-                const rowCountResult = await new Promise<any[]>((resolveCount, rejectCount) => {
-                  db.all(`SELECT COUNT(*) as count FROM ${table.name}`, [], (countErr, countRows) => {
-                    if (countErr) rejectCount(countErr)
-                    else resolveCount(countRows)
-                  })
-                })
-
-                const rowCount = rowCountResult[0]?.count || 0
-
-                tableData.push({
-                  id: `table_${config.databaseId}_${tableData.length}`,
-                  name: table.name,
-                  type: 'table',
-                  parentId: config.databaseId,
-                  metadata: {
-                    rows: rowCount,
-                    dataLength: 0, // SQLite没有直接获取表大小的方法，需要其他方式计算
-                    engine: 'sqlite',
-                    updateTime: null,
-                    comment: ''
-                  }
-                })
-              } catch (tableErr) {
-                console.error(`Error getting metadata for table ${table.name}:`, tableErr)
-
-                // 如果获取元数据失败，仍然添加表，但使用默认值
-                tableData.push({
-                  id: `table_${config.databaseId}_${tableData.length}`,
-                  name: table.name,
-                  type: 'table',
-                  parentId: config.databaseId,
-                  metadata: {
-                    rows: 0,
-                    dataLength: 0,
-                    engine: 'sqlite',
-                    updateTime: null,
-                    comment: ''
-                  }
-                })
-              }
-            }
-
-            db.close()
-            resolve({ success: true, data: tableData })
-          })
-        })
       default:
         return {
           success: true,
@@ -561,6 +530,74 @@ async function handleGetTableList(_event: any, config: any) {
           success: true,
           data: tableData
         }
+      case 'sqlite':
+        const sqlite3 = await import('sqlite3')
+
+        return new Promise((resolve, reject) => {
+          // SQLite使用database属性作为数据库路径
+          const dbPath = config.databaseName || ':memory:'
+          const db = new sqlite3.Database(dbPath)
+
+          // 查询所有表
+          db.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", [], async (err, tables) => {
+            if (err) {
+              db.close()
+              reject({ success: false, message: err.message })
+              return
+            }
+
+            const tableData = []
+
+            // 为每个表获取元数据
+            for (const table of tables as Array<{ name: string }>) {
+              try {
+                // 获取表的行数
+                const rowCountResult = await new Promise<any[]>((resolveCount, rejectCount) => {
+                  db.all(`SELECT COUNT(*) as count FROM ${table.name}`, [], (countErr, countRows) => {
+                    if (countErr) rejectCount(countErr)
+                    else resolveCount(countRows)
+                  })
+                })
+
+                const rowCount = rowCountResult[0]?.count || 0
+
+                tableData.push({
+                  id: `table_${config.databaseId}_${tableData.length}`,
+                  name: table.name,
+                  type: 'table',
+                  parentId: config.databaseId,
+                  metadata: {
+                    rows: rowCount,
+                    dataLength: 0, // SQLite没有直接获取表大小的方法，需要其他方式计算
+                    engine: 'sqlite',
+                    updateTime: null,
+                    comment: ''
+                  }
+                })
+              } catch (tableErr) {
+                console.error(`Error getting metadata for table ${table.name}:`, tableErr)
+
+                // 如果获取元数据失败，仍然添加表，但使用默认值
+                tableData.push({
+                  id: `table_${config.databaseId}_${tableData.length}`,
+                  name: table.name,
+                  type: 'table',
+                  parentId: config.databaseId,
+                  metadata: {
+                    rows: 0,
+                    dataLength: 0,
+                    engine: 'sqlite',
+                    updateTime: null,
+                    comment: ''
+                  }
+                })
+              }
+            }
+
+            db.close()
+            resolve({ success: true, data: tableData })
+          })
+        })
       default:
         return {
           success: true,
@@ -573,12 +610,85 @@ async function handleGetTableList(_event: any, config: any) {
   }
 }
 
+// 处理获取连接列表请求
+ipcMain.handle('get-connection-list', async () => {
+  return new Promise((resolve) => {
+    db.all('SELECT * FROM connections', (err, rows) => {
+      if (err) {
+        console.error('Failed to get connections:', err)
+        resolve({ success: false, message: err.message })
+      } else {
+        resolve({ success: true, data: rows })
+      }
+    })
+  })
+})
+
+// 处理保存连接列表请求
+ipcMain.handle('save-connection-list', async (_: any, connections: any[]) => {
+  return new Promise((resolve) => {
+    // 开始事务
+    db.serialize(() => {
+      // 清空现有连接表
+      db.run('DELETE FROM connections', (err: Error | null) => {
+        if (err) {
+          console.error('Failed to clear connections table:', err)
+          resolve({ success: false, message: err.message })
+          return
+        }
+
+        // 插入所有连接
+        const stmt = db.prepare('INSERT OR REPLACE INTO connections (id, name, type, host, port, username, password, database, sshHost, sshPort, sshUsername, sshPassword, sshPassphrase, sshKeyPath) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+
+        let error: Error | null = null
+        connections.forEach((conn: any) => {
+          if (error) return
+
+          stmt.run(
+            conn.id,
+            conn.name,
+            conn.type,
+            conn.host,
+            conn.port,
+            conn.username,
+            conn.password,
+            conn.database,
+            conn.sshHost,
+            conn.sshPort,
+            conn.sshUsername,
+            conn.sshPassword,
+            conn.sshPassphrase,
+            conn.sshKeyPath,
+            (err: Error | null) => {
+              if (err && !error) {
+                error = err
+              }
+            }
+          )
+        })
+
+        stmt.finalize((err: Error | null) => {
+          if (err) {
+            console.error('Failed to finalize connection insert:', err)
+            resolve({ success: false, message: err.message })
+          } else if (error) {
+            resolve({ success: false, message: error.message })
+          } else {
+            resolve({ success: true })
+          }
+        })
+      })
+    })
+  })
+})
+
 // 设置IPC处理程序
 ipcMain.handle('test-database-connection', handleDatabaseConnection)
 ipcMain.handle('get-database-list', handleGetDatabaseList)
 ipcMain.handle('get-table-list', handleGetTableList)
 
 app.on('ready', () => {
+  initializeDatabase()
   createWindow()
   createTray()
 })

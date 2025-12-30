@@ -4,7 +4,7 @@
   "description": "A powerful database management tool like Navicat",
   "author": "Your Name",
   "license": "MIT",
-  "main": "dist/electron-main.js",
+  "main": "dist/electron/index.js",
   "scripts": {
     "dev": "vite",
     "start": "concurrently \"vite --port 3000\" \"wait-on http://localhost:3000 && npm run build:electron-main && cross-env NODE_ENV=development electron .\"",

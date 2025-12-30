@@ -45,6 +45,11 @@ const handleCancelDialog = () => {
   editingConnection.value = null
 }
 
+// 应用启动时从SQLite数据库加载连接数据
+onMounted(async () => {
+  await connectionStore.initializeConnections()
+})
+
 useIpcCommunication(handleNewConnection)
 </script>
 

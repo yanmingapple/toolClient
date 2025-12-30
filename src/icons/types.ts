@@ -1,4 +1,4 @@
-import { ConnectionType } from '../enum/database'
+import { ConnectionType } from '../../electron/model/database'
 
 export type IconName =
   | 'mysql'

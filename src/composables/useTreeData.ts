@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { TreeNode, TreeNodeType, DatabaseObject } from '../types/leftTree/tree'
 import { useConnectionStore } from '../stores/connection'
-import { DatabaseStatus, ConnectionStatus, ConnectionType } from '../enum/database'
+import { DatabaseStatus, ConnectionStatus, ConnectionType } from '../../electron/model/database'
 import type { ConnectionConfig } from '../types/leftTree/connection'
 
 /** 图标名称类型定义 */

@@ -65,7 +65,7 @@ import { useConnection } from '../../composables/useConnection'
 import { useConnectionStore } from '../../stores/connection'
 import { TreeNodeType } from '../../types/leftTree/tree'
 import type { TreeNode } from '../../types/leftTree/tree'
-import { ConnectionStatus } from '../../enum/database'
+import { ConnectionStatus } from '../../../electron/model/database'
 import ContextMenu from './ContextMenu.vue'
 
 interface ConnectionTreeProps {

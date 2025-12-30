@@ -3,7 +3,7 @@
  */
 import { TreeNode, TreeNodeType } from '../types/leftTree/tree'
 import { ConnectionConfig } from '../types/leftTree/connection'
-import { ConnectionStatus, DatabaseStatus } from '../enum/database'
+import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'
@@ -60,6 +60,7 @@ export const generateTreeData = (
         id: connection.id,
         name: connection.name,
         type: TreeNodeType.CONNECTION,
+        connectionType: connection.type,
         parentId: null,
         metadata: { connection }
       },

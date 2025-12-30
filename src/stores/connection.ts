@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import CryptoJS from 'crypto-js'
 import type { ConnectionConfig } from '../types/leftTree/connection'
-import { ConnectionStatus, DatabaseStatus } from '../enum/database'
+import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
 import type { DatabaseObject } from '../types/leftTree/tree'
 import { getSafeIpcRenderer } from '../utils/electronUtils'
 
@@ -48,35 +48,57 @@ const decryptPassword = (encryptedPassword: string): string => {
 }
 
 /**
- * 从本地存储加载持久化的连接状态
- * 尝试读取并解析本地存储的连接配置信息
+ * 从SQLite数据库加载持久化的连接状态
+ * 尝试读取并解析SQLite数据库中的连接配置信息
  * @returns 包含连接配置的部分状态对象，如果加载失败则返回空对象
  */
-const loadPersistedState = (): Partial<{ connections: ConnectionConfig[] }> => {
+const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionConfig[] }>> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      if (parsed.connections && Array.isArray(parsed.connections)) {
-        return { connections: parsed.connections }
+    const ipcRenderer = getSafeIpcRenderer()
+    if (ipcRenderer) {
+      const result = await ipcRenderer.invoke('get-connection-list')
+      if (result.success && Array.isArray(result.data)) {
+        return { connections: result.data }
       }
     }
   } catch (error) {
-    console.error('Failed to load persisted state:', error)
+    console.error('Failed to load persisted state from SQLite:', error)
+    // 如果SQLite加载失败，回退到localStorage
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.connections && Array.isArray(parsed.connections)) {
+          return { connections: parsed.connections }
+        }
+      }
+    } catch (localError) {
+      console.error('Failed to load persisted state from localStorage:', localError)
+    }
   }
   return {}
 }
 
 /**
- * 将连接配置保存到本地存储
+ * 将连接配置保存到SQLite数据库
  * 持久化保存连接配置信息，以便下次打开应用时恢复
  * @param connections 连接配置数组
  */
-const savePersistedState = (connections: ConnectionConfig[]) => {
+const savePersistedState = async (connections: ConnectionConfig[]) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ connections }))
+    const ipcRenderer = getSafeIpcRenderer()
+    if (ipcRenderer) {
+      await ipcRenderer.invoke('save-connection-list', connections)
+      return
+    }
   } catch (error) {
-    console.error('Failed to save persisted state:', error)
+    console.error('Failed to save persisted state to SQLite:', error)
+    // 如果SQLite保存失败，回退到localStorage
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ connections }))
+    } catch (localError) {
+      console.error('Failed to save persisted state to localStorage:', localError)
+    }
   }
 }
 
@@ -85,11 +107,8 @@ const savePersistedState = (connections: ConnectionConfig[]) => {
  * 包含所有连接相关的状态变量和操作方法
  */
 export const useConnectionStore = defineStore('connection', () => {
-  /** 从本地存储加载持久化的初始状态 */
-  const persistedState = loadPersistedState()
-
   /** 已保存的数据库连接配置列表 */
-  const connections = ref<ConnectionConfig[]>(persistedState.connections || [])
+  const connections = ref<ConnectionConfig[]>([])
 
   /** 所有连接的状态映射，key 为连接 ID，value 为 ConnectionStatus */
   const connectionStates = ref<Map<string, ConnectionStatus>>(new Map())
@@ -106,7 +125,23 @@ export const useConnectionStore = defineStore('connection', () => {
   /** 所有表对象映射，key 为表 ID，value 为 DatabaseObject */
   const tables = ref<Map<string, DatabaseObject>>(new Map())
 
-  /** 监听连接配置变化，自动持久化保存到本地存储 */
+  /** 初始化连接数据，从SQLite数据库加载 */
+  const initializeConnections = async () => {
+    const persistedState = await loadPersistedState()
+    if (persistedState.connections && Array.isArray(persistedState.connections)) {
+      connections.value = persistedState.connections
+      // 初始化连接状态
+      const newStates = new Map(connectionStates.value)
+      persistedState.connections.forEach(conn => {
+        if (!newStates.has(conn.id)) {
+          newStates.set(conn.id, ConnectionStatus.DISCONNECTED)
+        }
+      })
+      connectionStates.value = newStates
+    }
+  }
+
+  /** 监听连接配置变化，自动持久化保存到SQLite数据库 */
   watch(connections, (newConnections) => {
     savePersistedState(newConnections)
   }, { deep: true })
@@ -558,6 +593,7 @@ export const useConnectionStore = defineStore('connection', () => {
     removeDatabaseObjectsByParentId,
     setDatabaseStatus,
     closeDatabase,
+    initializeConnections,
     $reset
   }
 })

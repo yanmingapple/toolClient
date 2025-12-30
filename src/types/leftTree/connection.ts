@@ -1,4 +1,4 @@
-import { ConnectionType } from '../../enum/database'
+import { ConnectionType, ConnectionStatus } from '../../../electron/model/database'
 /**
  * 数据库连接配置接口
  * 定义建立数据库连接所需的所有参数
