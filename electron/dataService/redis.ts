@@ -127,4 +127,110 @@ export class RedisClient implements DatabaseClient {
             return false;
         }
     }
+
+    /**
+     * 获取Redis数据库列表
+     * Redis中的数据库通过 db 编号区分
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.redis) {
+            throw new Error('Not connected to Redis database');
+        }
+
+        try {
+            // Redis 默认有 16 个数据库（0-15）
+            const databases = [];
+            const maxDatabases = 16;
+            const currentDb = await this.redis.get('db') || '0';
+
+            for (let i = 0; i < maxDatabases; i++) {
+                try {
+                    await this.redis.select(i);
+                    const keyCount = await this.redis.dbsize();
+                    databases.push({
+                        id: `db_${this.config.id}_${i}`,
+                        name: `Database ${i}`,
+                        type: 'database',
+                        parentId: this.config.id,
+                        metadata: {
+                            dbNumber: i,
+                            keyCount: keyCount,
+                            isCurrent: i.toString() === currentDb
+                        }
+                    });
+                } catch (err) {
+                    // 如果某个数据库不可访问，跳过
+                    continue;
+                }
+            }
+
+            // 恢复到原来的数据库
+            await this.redis.select(parseInt(currentDb));
+
+            return databases;
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取Redis键列表（相当于表）
+     * @param databaseName 数据库名称（Redis需要指定数据库编号）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.redis) {
+            throw new Error('Not connected to Redis database');
+        }
+
+        try {
+            // 如果指定了数据库编号，先切换到该数据库
+            let currentDb = await this.redis.get('db') || '0';
+            if (databaseName) {
+                const dbMatch = databaseName.match(/Database (\d+)/);
+                if (dbMatch) {
+                    await this.redis.select(parseInt(dbMatch[1]));
+                }
+            }
+
+            try {
+                // 获取所有键
+                const keys = await this.redis.keys('*');
+
+                // 按键类型分组
+                const groupedKeys = new Map<string, { count: number; keys: string[] }>();
+
+                for (const key of keys.slice(0, 100)) { // 限制数量以避免性能问题
+                    const keyType = await this.redis.type(key);
+                    const typeName = keyType || 'string';
+
+                    if (!groupedKeys.has(typeName)) {
+                        groupedKeys.set(typeName, { count: 0, keys: [] });
+                    }
+
+                    const group = groupedKeys.get(typeName)!;
+                    group.count++;
+                    if (group.keys.length < 5) { // 只保存前5个键作为示例
+                        group.keys.push(key);
+                    }
+                }
+
+                return Array.from(groupedKeys.entries()).map(([type, data], index) => ({
+                    id: `table_${this.config.id}_${index}`,
+                    name: `${type.toUpperCase()} Keys`,
+                    type: 'key-group',
+                    parentId: this.config.id,
+                    metadata: {
+                        keyType: type,
+                        keyCount: data.count,
+                        sampleKeys: data.keys
+                    }
+                }));
+            } finally {
+                // 恢复原来的数据库
+                await this.redis.select(parseInt(currentDb));
+            }
+        } catch (error) {
+            throw new Error(`Failed to get key list: ${error}`);
+        }
+    }
 }

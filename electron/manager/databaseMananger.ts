@@ -246,6 +246,36 @@ export class DatabaseManager {
     }
 
     /**
+     * 测试数据库连接
+     * @param config 连接配置
+     * @returns 连接测试结果
+     */
+    public static async testConnection(config: ConnectionConfig): Promise<{ success: boolean; message: string }> {
+        try {
+            // 使用工厂方法创建数据库客户端
+            const client = createDatabaseClient(config);
+
+            // 连接到数据库
+            await client.connect();
+
+            // 测试连接是否有效
+            const isHealthy = await client.ping();
+
+            // 断开连接
+            await client.disconnect();
+
+            if (isHealthy) {
+                return { success: true, message: 'Connection successful' };
+            } else {
+                return { success: false, message: 'Connection test failed' };
+            }
+        } catch (error) {
+            console.error('Connection test error:', error);
+            return { success: false, message: (error as Error).message };
+        }
+    }
+
+    /**
      * 测试连接健康状态
      * @param config 连接配置
      * @returns 连接是否健康

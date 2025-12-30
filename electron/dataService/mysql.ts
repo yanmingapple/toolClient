@@ -110,4 +110,55 @@ export class MySQLClient implements DatabaseClient {
             return false;
         }
     }
+
+    /**
+     * 获取MySQL数据库列表
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.connection) {
+            throw new Error('Not connected to MySQL database');
+        }
+
+        try {
+            const [rows] = await this.connection.query('SHOW DATABASES') as [Array<{ Database: string }>, any];
+            return rows.map((db, index) => ({
+                id: `db_${this.config.id}_${index}`,
+                name: db.Database,
+                type: 'database',
+                parentId: this.config.id,
+                metadata: {}
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取MySQL表列表
+     * @param databaseName 数据库名称（对于MySQL通常不需要，因为连接时已指定）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.connection) {
+            throw new Error('Not connected to MySQL database');
+        }
+
+        try {
+            const [tables] = await this.connection.query('SHOW TABLE STATUS') as [any[], any];
+            return tables.map((table: any, index: number) => ({
+                id: `table_${this.config.id}_${index}`,
+                name: table.Name,
+                type: 'table',
+                parentId: this.config.id,
+                metadata: {
+                    rows: table.Rows,
+                    dataLength: table.Data_length,
+                    engine: table.Engine,
+                    updateTime: table.Update_time,
+                    comment: table.Comment
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get table list: ${error}`);
+        }
+    }
 }

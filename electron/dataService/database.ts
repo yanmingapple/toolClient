@@ -44,6 +44,17 @@ export interface DatabaseClient {
      * 测试连接是否有效
      */
     ping(): Promise<boolean>;
+
+    /**
+     * 获取数据库列表
+     */
+    getDatabaseList(): Promise<any[]>;
+
+    /**
+     * 获取表列表
+     * @param databaseName 数据库名称（对于MongoDB等是必需的）
+     */
+    getTableList(databaseName?: string): Promise<any[]>;
 }
 
 /**

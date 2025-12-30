@@ -1,6 +1,7 @@
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
 import { Pool } from 'pg';
+import { SQLStatements } from './sql';
 
 /**
  * PostgreSQL客户端实现
@@ -116,6 +117,65 @@ export class PostgreSQLClient implements DatabaseClient {
             return true;
         } catch (error) {
             return false;
+        }
+    }
+
+    /**
+     * 获取PostgreSQL数据库列表
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.pool) {
+            throw new Error('Not connected to PostgreSQL database');
+        }
+
+        try {
+            const client = await this.pool.connect();
+            const result = await client.query(SQLStatements.SELECT_POSTGRESQL_DATABASES);
+            client.release();
+            return result.rows.map((db, index) => ({
+                id: `db_${this.config.id}_${index}`,
+                name: db.datname,
+                type: 'database',
+                parentId: this.config.id,
+                metadata: {}
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取PostgreSQL表列表
+     * @param databaseName 数据库名称（对于PostgreSQL通常不需要，因为连接时已指定）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.pool) {
+            throw new Error('Not connected to PostgreSQL database');
+        }
+
+        try {
+            const client = await this.pool.connect();
+            const result = await client.query(`
+                SELECT schemaname, tablename, tableowner, hasindexes, hasrules, hastriggers
+                FROM pg_tables 
+                WHERE schemaname NOT IN ('information_schema', 'pg_catalog')
+            `);
+            client.release();
+            return result.rows.map((table, index) => ({
+                id: `table_${this.config.id}_${index}`,
+                name: table.tablename,
+                type: 'table',
+                parentId: this.config.id,
+                metadata: {
+                    schema: table.schemaname,
+                    owner: table.tableowner,
+                    hasIndexes: table.hasindexes,
+                    hasRules: table.hasrules,
+                    hasTriggers: table.hastriggers
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get table list: ${error}`);
         }
     }
 }

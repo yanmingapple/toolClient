@@ -151,4 +151,82 @@ export class SQLServerClient implements DatabaseClient {
             return false;
         }
     }
+
+    /**
+     * 获取SQL Server数据库列表
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.connection || !this.isConnected) {
+            throw new Error('Not connected to SQL Server database');
+        }
+
+        try {
+            const results = await this.execute(`
+                SELECT name, database_id, create_date, state_desc
+                FROM sys.databases
+                WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')
+                ORDER BY name
+            `);
+
+            return results.map((db, index) => ({
+                id: `db_${this.config.id}_${index}`,
+                name: db.name,
+                type: 'database',
+                parentId: this.config.id,
+                metadata: {
+                    databaseId: db.database_id,
+                    createDate: db.create_date,
+                    state: db.state_desc
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取SQL Server表列表
+     * @param databaseName 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.connection || !this.isConnected) {
+            throw new Error('Not connected to SQL Server database');
+        }
+
+        try {
+            const dbName = databaseName || this.config.database;
+            const results = await this.execute(`
+                SELECT 
+                    s.name AS schemaName,
+                    t.name AS tableName,
+                    t.create_date,
+                    t.modify_date,
+                    t.is_heap,
+                    t.is_tracked_by_cdc,
+                    p.rows
+                FROM sys.tables t
+                INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                LEFT JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0, 1)
+                WHERE t.type = 'U'
+                ORDER BY s.name, t.name
+            `);
+
+            return results.map((table, index) => ({
+                id: `table_${this.config.id}_${index}`,
+                name: table.tableName,
+                type: 'table',
+                parentId: this.config.id,
+                metadata: {
+                    schema: table.schemaName,
+                    createDate: table.create_date,
+                    modifyDate: table.modify_date,
+                    isHeap: table.is_heap,
+                    trackedByCdc: table.is_tracked_by_cdc,
+                    rowCount: table.rows
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get table list: ${error}`);
+        }
+    }
 }

@@ -115,4 +115,59 @@ export class MongoDBClient implements DatabaseClient {
             return false;
         }
     }
+
+    /**
+     * 获取MongoDB数据库列表
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.client) {
+            throw new Error('Not connected to MongoDB database');
+        }
+
+        try {
+            const dbs = await this.client.db().admin().listDatabases();
+            return dbs.databases.map((db, index) => ({
+                id: `db_${this.config.id}_${index}`,
+                name: db.name,
+                type: 'database',
+                parentId: this.config.id,
+                metadata: {
+                    sizeOnDisk: db.sizeOnDisk,
+                    empty: db.empty
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取MongoDB集合列表（相当于表）
+     * @param databaseName 数据库名称（MongoDB需要指定数据库）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.client) {
+            throw new Error('Not connected to MongoDB database');
+        }
+
+        try {
+            // 使用指定的数据库名称或默认数据库
+            const dbName = databaseName || this.config.database;
+            const targetDb = this.client.db(dbName);
+
+            const collections = await targetDb.listCollections().toArray();
+            return collections.map((collection, index) => ({
+                id: `table_${this.config.id}_${index}`,
+                name: collection.name,
+                type: 'collection',
+                parentId: this.config.id,
+                metadata: {
+                    type: collection.type,
+                    info: collection.info
+                }
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get collection list: ${error}`);
+        }
+    }
 }

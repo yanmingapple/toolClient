@@ -2,6 +2,7 @@ import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
 import * as sqlite3 from 'sqlite3';
 import type { Database } from 'sqlite3';
+import { SQLStatements } from './sql';
 
 /**
  * SQLite客户端实现
@@ -117,6 +118,55 @@ export class SQLiteClient implements DatabaseClient {
             return true;
         } catch {
             return false;
+        }
+    }
+
+    /**
+     * 获取SQLite数据库列表
+     * SQLite通常只有一个数据库文件，返回当前数据库信息
+     */
+    async getDatabaseList(): Promise<any[]> {
+        if (!this.db) {
+            throw new Error('Not connected to SQLite database');
+        }
+
+        try {
+            const dbPath = this.config.database || ':memory:';
+            return [{
+                id: `db_${this.config.id}_0`,
+                name: dbPath === ':memory:' ? 'memory' : dbPath.split(/[\\/]/).pop() || 'database',
+                type: 'database',
+                parentId: this.config.id,
+                metadata: {
+                    path: dbPath,
+                    isMemory: dbPath === ':memory:'
+                }
+            }];
+        } catch (error) {
+            throw new Error(`Failed to get database list: ${error}`);
+        }
+    }
+
+    /**
+     * 获取SQLite表列表
+     * @param databaseName 数据库名称（对于SQLite通常不需要，因为连接时已指定）
+     */
+    async getTableList(databaseName?: string): Promise<any[]> {
+        if (!this.db) {
+            throw new Error('Not connected to SQLite database');
+        }
+
+        try {
+            const tables = await this.execute(SQLStatements.SELECT_SQLITE_TABLES) as Array<{ name: string }>;
+            return tables.map((table, index) => ({
+                id: `table_${this.config.id}_${index}`,
+                name: table.name,
+                type: 'table',
+                parentId: this.config.id,
+                metadata: {}
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get table list: ${error}`);
         }
     }
 }
