@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { useConnectionStore } from '../stores/connection'
 import { ConnectionStatus } from '../../electron/model/database'
-import { getSafeIpcRenderer } from '../utils/electronUtils'
+import { executeQuery } from '../utils/electronUtils'
 
 export interface FetchDatabasesResult {
   success: boolean
@@ -97,17 +97,7 @@ export const useDatabaseOperations = () => {
         throw new Error('Connection is not connected')
       }
 
-      const ipcRenderer = getSafeIpcRenderer()
-      if (!ipcRenderer) {
-        throw new Error('ipcRenderer is not available')
-      }
-
-      const result = await ipcRenderer.invoke('execute-sql', {
-        connectionId,
-        databaseName,
-        sql
-      })
-
+      const result = await executeQuery(connection, sql, [])
       return result
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to execute SQL'

@@ -52,9 +52,13 @@ export interface DatabaseClient {
 
     /**
      * 获取表列表
-     * @param databaseName 数据库名称（对于MongoDB等是必需的）
+     * @param database 数据库名称（对于MongoDB等是必需的）
      */
+<<<<<<< HEAD
     getTableList(databaseName?: string): Promise<TreeNode[]>;
+=======
+    getTableList(): Promise<any[]>;
+>>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
 }
 
 /**

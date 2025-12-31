@@ -350,15 +350,19 @@ export class SQLServerClient implements DatabaseClient {
 
     /**
      * 获取SQL Server表列表
-     * @param _databaseName 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
+     * @param database 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
      */
+<<<<<<< HEAD
     async getTableList(_databaseName?: string): Promise<TreeNode[]> {
+=======
+    async getTableList(): Promise<any[]> {
+>>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
         if (!this.connection || !this.isConnected) {
             throw new Error('Not connected to SQL Server database');
         }
 
         try {
-            // const dbName = databaseName || this.config.database;
+            // const dbName = database || this.config.database;
             const results = await this.execute(`
                 SELECT 
                     s.name AS schemaName,

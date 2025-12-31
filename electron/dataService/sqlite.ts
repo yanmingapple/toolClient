@@ -152,9 +152,13 @@ export class SQLiteClient implements DatabaseClient {
 
     /**
      * 获取SQLite表列表
-     * @param databaseName 数据库名称（对于SQLite通常不需要，因为连接时已指定）
+     * @param database 数据库名称（对于SQLite通常不需要，因为连接时已指定）
      */
+<<<<<<< HEAD
     async getTableList(databaseName?: string): Promise<TreeNode[]> {
+=======
+    async getTableList(): Promise<any[]> {
+>>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
         if (!this.db) {
             throw new Error('Not connected to SQLite database');
         }
