@@ -1,6 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { TreeNodeFactory, TreeNode, TreeNodeType } from '../model/database';
+import { TreeNodeFactory, TreeNode, TreeNodeType, ConnectionConfig } from '../model/database';
 import Redis from 'ioredis';
 
 /**
@@ -180,11 +179,7 @@ export class RedisClient implements DatabaseClient {
      * 获取Redis键列表（相当于表）
      * @param database 数据库名称（Redis需要指定数据库编号）
      */
-<<<<<<< HEAD
-    async getTableList(databaseName?: string): Promise<TreeNode[]> {
-=======
-    async getTableList(): Promise<any[]> {
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.redis) {
             throw new Error('Not connected to Redis database');
         }

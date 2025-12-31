@@ -1,6 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { TreeNodeFactory, TreeNode } from '../model/database';
+import { TreeNodeFactory, TreeNode, ConnectionConfig } from '../model/database';
 import * as sqlite3 from 'sqlite3';
 import type { Database } from 'sqlite3';
 import { SQLStatements } from './sql';
@@ -154,11 +153,7 @@ export class SQLiteClient implements DatabaseClient {
      * 获取SQLite表列表
      * @param database 数据库名称（对于SQLite通常不需要，因为连接时已指定）
      */
-<<<<<<< HEAD
-    async getTableList(databaseName?: string): Promise<TreeNode[]> {
-=======
-    async getTableList(): Promise<any[]> {
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.db) {
             throw new Error('Not connected to SQLite database');
         }

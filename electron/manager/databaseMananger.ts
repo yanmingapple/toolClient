@@ -1,7 +1,6 @@
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
-import { ConnectionStatus } from '../model/database';
-import { ConnectionInfo } from '../model/database/ConnectionInfo';
+import { ConnectionStatus, ConnectionInfo } from '../model/database';
 import { DatabaseService } from '../service/databaseService';
 
 /**
@@ -92,7 +91,7 @@ export class DatabaseManager {
      */
     public async getConnection(config: ConnectionConfig): Promise<DatabaseClient> {
         this.ensureInitialized(); // 确保已初始化
-        
+
         const connectionKey = this.generateConnectionKey(config);
         let connectionInfo = this.connections.get(connectionKey);
 

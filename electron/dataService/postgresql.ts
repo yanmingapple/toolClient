@@ -1,9 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-<<<<<<< HEAD
-import { TreeNodeFactory, TreeNode } from '../model/database';
-=======
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+import { TreeNodeFactory, TreeNode, ConnectionConfig } from '../model/database';
 import { Pool } from 'pg';
 import { SQLStatements } from './sql';
 
@@ -245,11 +241,7 @@ export class PostgreSQLClient implements DatabaseClient {
      * 获取PostgreSQL表列表
      * @param _database 数据库名称（对于PostgreSQL通常不需要，因为连接时已指定）
      */
-<<<<<<< HEAD
-    async getTableList(databaseName?: string): Promise<TreeNode[]> {
-=======
-    async getTableList(): Promise<any[]> {
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.pool) {
             throw new Error('Not connected to PostgreSQL database');
         }

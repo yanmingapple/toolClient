@@ -1,3 +1,4 @@
+import { DatabaseClient } from '../../dataService/database';
 /**
  * 统一的树节点模型
  * 用于表示数据库管理工具中的所有树形结构节点
@@ -20,8 +21,63 @@ export interface TreeNode {
     status?: TreeNodeStatus;
     /** 节点元数据 */
     metadata: TreeNodeMetadata;
+
     /** 子节点列表 (懒加载时为空) */
     children?: TreeNode[];
+}
+
+/**
+ * 数据库连接配置接口
+ * 定义了建立数据库连接所需的所有参数，包括基本连接信息、SSL配置、SSH隧道配置等
+ */
+export interface ConnectionConfig {
+    // ===== 基本标识信息 =====
+    /** 连接唯一标识符 */
+    id: string;
+    /** 连接名称，用于显示和识别 */
+    name: string;
+    /** 数据库类型，对应 ConnectionType 枚举 */
+    type: ConnectionType;
+
+    // ===== 连接基本信息 =====
+    /** 数据库服务器地址 */
+    host: string;
+    /** 数据库服务器端口 */
+    port: number;
+    /** 数据库用户名 */
+    username: string;
+    /** 数据库密码 */
+    password: string;
+    /** 默认数据库名称（可选） */
+    database?: string;
+
+    // ===== SSL 安全连接配置 =====
+    /** 是否使用 SSL 连接（可选） */
+    ssl?: boolean;
+
+    // ===== SSH 隧道配置 =====
+    /** 是否使用 SSH 隧道（可选） */
+    ssh?: boolean;
+    /** SSH 服务器地址（可选） */
+    sshHost?: string;
+    /** SSH 服务器端口（可选） */
+    sshPort?: number;
+    /** SSH 用户名（可选） */
+    sshUsername?: string;
+    /** SSH 密码（可选） */
+    sshPassword?: string;
+    /** SSH 私钥内容（可选） */
+    sshPrivateKey?: string;
+    /** SSH 私钥密码短语（可选） */
+    sshPassphrase?: string;
+
+    // ===== 其他配置选项 =====
+    /** 连接超时时间（毫秒，可选） */
+    timeout?: number;
+    /** 字符集（可选） */
+    charset?: string;
+    /** 最大连接数（可选） */
+    maxConnections?: number;
 }
 
 /**
@@ -61,6 +117,40 @@ export enum TreeNodeStatus {
     EMPTY = 'empty',                // 空 (无数据)
 }
 
+/**
+ * 数据库类型枚举
+ * 支持多种数据库类型的识别和连接配置
+ */
+export enum ConnectionType {
+    MySQL = 'mysql',
+    PostgreSQL = 'postgresql',
+    MongoDB = 'mongodb',
+    Redis = 'redis',
+    SQLServer = 'sqlserver',
+    SQLite = 'sqlite',
+}
+/**
+ * 连接状态枚举
+ * 描述数据库连接的当前状态
+ */
+export enum ConnectionStatus {
+    DISCONNECTED = 'disconnected',
+    CONNECTING = 'connecting',
+    CONNECTED = 'connected',
+    ERROR = 'error',
+    TIMEOUT = 'timeout',
+}
+/**
+ * 数据库状态枚举
+ * 描述数据库的加载和访问状态
+ */
+export enum DatabaseStatus {
+    DISCONNECTED = 'disconnected',
+    LOADING = 'loading',
+    LOADED = 'loaded',
+    ERROR = 'error',
+    EMPTY = 'empty',
+}
 /**
  * 树节点元数据
  */
@@ -128,6 +218,22 @@ export interface TreeNodeMetadata {
     databaseId?: number;            // SQL Server 数据库ID
     createDate?: Date;              // SQL Server 创建日期
     state?: string;                 // SQL Server 数据库状态
+}
+
+/**
+ * 连接信息接口
+ * 描述数据库连接的完整信息，包括配置、状态、统计和时间戳等
+ */
+export interface ConnectionInfo {
+    config: ConnectionConfig;           // 数据库连接配置信息，包含主机、端口、用户名等
+    client: DatabaseClient;             // 数据库客户端实例，用于执行具体操作
+    status: ConnectionStatus;           // 当前连接状态（活跃、空闲、断开等）
+    createdAt: Date;                    // 连接创建时间
+    lastUsedAt: Date;                   // 最后使用时间，用于判断连接空闲状态
+    lastPingAt: Date;                   // 最后一次心跳检测时间
+    pingInterval: number;               // 心跳检测间隔（毫秒），用于保持连接活跃
+    maxIdleTime: number;                // 最大空闲时间（毫秒），超过此时间连接将被释放
+    useCount: number;                   // 连接使用次数，统计连接的使用频率
 }
 
 /**

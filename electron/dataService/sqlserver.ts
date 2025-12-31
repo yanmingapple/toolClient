@@ -1,6 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { TreeNodeFactory, TreeNode } from '../model/database';
+import { TreeNodeFactory, TreeNode, ConnectionConfig } from '../model/database';
 import { Connection, Request } from 'tedious';
 
 /**
@@ -352,11 +351,7 @@ export class SQLServerClient implements DatabaseClient {
      * 获取SQL Server表列表
      * @param database 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
      */
-<<<<<<< HEAD
-    async getTableList(_databaseName?: string): Promise<TreeNode[]> {
-=======
-    async getTableList(): Promise<any[]> {
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.connection || !this.isConnected) {
             throw new Error('Not connected to SQL Server database');
         }

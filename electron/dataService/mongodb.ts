@@ -1,4 +1,4 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
+import { ConnectionConfig } from '../model/database';
 import { DatabaseClient } from './database';
 import { MongoClient } from 'mongodb';
 import { TreeNodeFactory, TreeNode } from '../model/database';
@@ -163,7 +163,6 @@ export class MongoDBClient implements DatabaseClient {
             const targetDb = this.client.db(dbName);
 
             const collections = await targetDb.listCollections().toArray();
-<<<<<<< HEAD
             return collections.map((collection, index) =>
                 TreeNodeFactory.createCollection(
                     `table_${this.config.id}_${index}`,
@@ -175,18 +174,6 @@ export class MongoDBClient implements DatabaseClient {
                     }
                 )
             );
-=======
-            return collections.map((collection, index) => ({
-                id: `table_${this.config.id}_${index}`,
-                name: collection.name,
-                type: 'collection',
-                parentId: this.config.id,
-                metadata: {
-                    type: collection.type,
-                    info: (collection as any).info
-                }
-            }));
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
         } catch (error) {
             throw new Error(`Failed to get collection list: ${error}`);
         }

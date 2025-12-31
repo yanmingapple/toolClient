@@ -1,6 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
+import { ConnectionConfig, TreeNodeFactory, TreeNode } from '../model/database';
 import { DatabaseClient } from './database';
-import { TreeNodeFactory, TreeNode } from '../model/database';
 import * as mysql from 'mysql2/promise';
 
 /**
@@ -263,11 +262,7 @@ export class MySQLClient implements DatabaseClient {
      * 获取MySQL表列表
      * @param database 数据库名称（当连接时未指定数据库时必须提供）
      */
-<<<<<<< HEAD
-    async getTableList(databaseName?: string): Promise<TreeNode[]> {
-=======
-    async getTableList(): Promise<any[]> {
->>>>>>> 791f739b6f8bc2f0cc0347c51f03791688868a31
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.connection) {
             throw new Error('Not connected to MySQL database');
         }
