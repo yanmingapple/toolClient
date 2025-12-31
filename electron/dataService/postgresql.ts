@@ -1,6 +1,7 @@
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { Pool, Client } from 'pg';
+import { TreeNodeFactory, TreeNode } from '../model/database';
+import { Pool } from 'pg';
 import { SQLStatements } from './sql';
 
 /**
@@ -36,7 +37,7 @@ class PostgreSQLManagementPool {
         }
     }
 
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         // 检查缓存是否有效
         const now = Date.now();
         if (this.databaseCache && (now - this.lastRefreshTime) < this.cacheTimeout) {
@@ -53,13 +54,16 @@ class PostgreSQLManagementPool {
                 const result = await client.query(SQLStatements.SELECT_POSTGRESQL_DATABASES);
 
                 // 更新缓存
-                this.databaseCache = result.rows.map((db, index) => ({
-                    id: `db_${this.connectionConfig!.host}_${index}`,
-                    name: db.datname,
-                    type: 'database',
-                    parentId: this.connectionConfig!.host,
-                    metadata: {}
-                }));
+                this.databaseCache = result.rows.map((db, index) =>
+                    TreeNodeFactory.createDatabase(
+                        `db_${this.connectionConfig!.host}_${index}`,
+                        db.datname,
+                        this.connectionConfig!.host,
+                        {
+                            databaseType: 'postgresql'
+                        }
+                    )
+                );
 
                 this.lastRefreshTime = now;
                 return this.databaseCache;
@@ -71,7 +75,7 @@ class PostgreSQLManagementPool {
         }
     }
 
-    async clearCache(): void {
+    async clearCache(): Promise<void> {
         this.databaseCache = null;
         this.lastRefreshTime = 0;
     }
@@ -216,7 +220,7 @@ export class PostgreSQLClient implements DatabaseClient {
     /**
      * 获取PostgreSQL数据库列表
      */
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         try {
             // 使用管理连接池获取数据库列表（带缓存）
             const databaseList = await this.managementPool.getDatabaseList();
@@ -225,7 +229,9 @@ export class PostgreSQLClient implements DatabaseClient {
             return databaseList.map((db, index) => ({
                 ...db,
                 id: `db_${this.config.id}_${index}`,
-                parentId: this.config.id
+                parentId: this.config.id,
+                // 确保 metadata 保持不变
+                metadata: db.metadata
             }));
         } catch (error) {
             throw new Error(`Failed to get database list: ${error}`);
@@ -236,7 +242,7 @@ export class PostgreSQLClient implements DatabaseClient {
      * 获取PostgreSQL表列表
      * @param databaseName 数据库名称（对于PostgreSQL通常不需要，因为连接时已指定）
      */
-    async getTableList(databaseName?: string): Promise<any[]> {
+    async getTableList(databaseName?: string): Promise<TreeNode[]> {
         if (!this.pool) {
             throw new Error('Not connected to PostgreSQL database');
         }
@@ -249,19 +255,22 @@ export class PostgreSQLClient implements DatabaseClient {
                 WHERE schemaname NOT IN ('information_schema', 'pg_catalog')
             `);
             client.release();
-            return result.rows.map((table, index) => ({
-                id: `table_${this.config.id}_${index}`,
-                name: table.tablename,
-                type: 'table',
-                parentId: this.config.id,
-                metadata: {
-                    schema: table.schemaname,
-                    owner: table.tableowner,
-                    hasIndexes: table.hasindexes,
-                    hasRules: table.hasrules,
-                    hasTriggers: table.hastriggers
-                }
-            }));
+            return result.rows.map((table, index) =>
+                TreeNodeFactory.createTable(
+                    `table_${this.config.id}_${index}`,
+                    table.tablename,
+                    this.config.id,
+                    {
+                        info: {
+                            schema: table.schemaname,
+                            owner: table.tableowner,
+                            hasIndexes: table.hasindexes,
+                            hasRules: table.hasrules,
+                            hasTriggers: table.hastriggers
+                        }
+                    }
+                )
+            );
         } catch (error) {
             throw new Error(`Failed to get table list: ${error}`);
         }

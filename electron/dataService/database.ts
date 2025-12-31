@@ -1,5 +1,5 @@
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
-import { ConnectionType } from '../model/database';
+import { ConnectionType, TreeNode } from '../model/database';
 import { SQLiteClient } from './sqlite';
 import { MySQLClient } from './mysql';
 import { PostgreSQLClient } from './postgresql';
@@ -48,13 +48,13 @@ export interface DatabaseClient {
     /**
      * 获取数据库列表
      */
-    getDatabaseList(): Promise<any[]>;
+    getDatabaseList(): Promise<TreeNode[]>;
 
     /**
      * 获取表列表
      * @param databaseName 数据库名称（对于MongoDB等是必需的）
      */
-    getTableList(databaseName?: string): Promise<any[]>;
+    getTableList(databaseName?: string): Promise<TreeNode[]>;
 }
 
 /**
