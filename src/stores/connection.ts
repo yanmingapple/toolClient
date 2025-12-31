@@ -88,15 +88,20 @@ const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionCo
  * @param connections 连接配置数组
  */
 const savePersistedState = async (connections: ConnectionConfig[]) => {
+  console.log('[ConnectionStore] Starting to save persisted state with', connections.length, 'connections');
+  
   try {
+    console.log('[ConnectionStore] Calling saveDatabaseConnections with:', connections);
     await saveDatabaseConnections(connections)
+    console.log('[ConnectionStore] Successfully saved connections to SQLite');
   } catch (error) {
-    console.error('Failed to save persisted state to SQLite:', error)
+    console.error('[ConnectionStore] Failed to save persisted state to SQLite:', error)
     // 如果SQLite保存失败，回退到localStorage
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ connections }))
+      console.log('[ConnectionStore] Successfully saved connections to localStorage as fallback');
     } catch (localError) {
-      console.error('Failed to save persisted state to localStorage:', localError)
+      console.error('[ConnectionStore] Failed to save persisted state to localStorage:', localError)
     }
   }
 }
@@ -126,9 +131,13 @@ export const useConnectionStore = defineStore('connection', () => {
 
   /** 初始化连接数据，从SQLite数据库加载 */
   const initializeConnections = async () => {
+    console.log('[ConnectionStore] Starting to initialize connections');
     const persistedState = await loadPersistedState()
+    console.log('[ConnectionStore] Loaded persisted state:', persistedState);
+    
     if (persistedState.connections && Array.isArray(persistedState.connections)) {
-      connections.value = persistedState.connections.data
+      console.log('[ConnectionStore] Loading connections from persisted state:', persistedState.connections.length);
+      connections.value = persistedState.connections
       // 初始化连接状态
       const newStates = new Map(connectionStates.value)
       persistedState.connections.forEach(conn => {
@@ -137,6 +146,9 @@ export const useConnectionStore = defineStore('connection', () => {
         }
       })
       connectionStates.value = newStates
+      console.log('[ConnectionStore] Connections initialized successfully');
+    } else {
+      console.log('[ConnectionStore] No connections found in persisted state');
     }
   }
 
