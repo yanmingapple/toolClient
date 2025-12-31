@@ -248,19 +248,19 @@ export class MySQLClient implements DatabaseClient {
 
     /**
      * 获取MySQL表列表
-     * @param databaseName 数据库名称（当连接时未指定数据库时必须提供）
+     * @param database 数据库名称（当连接时未指定数据库时必须提供）
      */
-    async getTableList(databaseName?: string): Promise<any[]> {
+    async getTableList(): Promise<any[]> {
         if (!this.connection) {
             throw new Error('Not connected to MySQL database');
         }
 
-        // 如果连接时没有指定数据库，需要提供databaseName参数
-        if (!this.config.database && !databaseName) {
+        // 如果连接时没有指定数据库，需要提供database参数
+        if (!this.config.database) {
             throw new Error('Database name is required when not specified in connection config');
         }
 
-        const targetDatabase = this.config.database || databaseName;
+        const targetDatabase = this.config.database;
 
         try {
             const [tables] = await this.connection.query(`SHOW TABLE STATUS FROM \`${targetDatabase}\``) as [any[], any];

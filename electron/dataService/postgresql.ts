@@ -1,6 +1,6 @@
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
-import { Pool, Client } from 'pg';
+import { Pool } from 'pg';
 import { SQLStatements } from './sql';
 
 /**
@@ -71,7 +71,7 @@ class PostgreSQLManagementPool {
         }
     }
 
-    async clearCache(): void {
+    async clearCache(): Promise<void> {
         this.databaseCache = null;
         this.lastRefreshTime = 0;
     }
@@ -234,9 +234,9 @@ export class PostgreSQLClient implements DatabaseClient {
 
     /**
      * 获取PostgreSQL表列表
-     * @param databaseName 数据库名称（对于PostgreSQL通常不需要，因为连接时已指定）
+     * @param _database 数据库名称（对于PostgreSQL通常不需要，因为连接时已指定）
      */
-    async getTableList(databaseName?: string): Promise<any[]> {
+    async getTableList(): Promise<any[]> {
         if (!this.pool) {
             throw new Error('Not connected to PostgreSQL database');
         }

@@ -52,9 +52,9 @@ export interface DatabaseClient {
 
     /**
      * 获取表列表
-     * @param databaseName 数据库名称（对于MongoDB等是必需的）
+     * @param database 数据库名称（对于MongoDB等是必需的）
      */
-    getTableList(databaseName?: string): Promise<any[]>;
+    getTableList(): Promise<any[]>;
 }
 
 /**

@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron');
-import * as path from 'path';
+// import * as path from 'path';
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
 import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { ConnectionType } from '../model/database';
@@ -19,40 +19,69 @@ export class DatabaseService {
 
     /**
      * 创建并初始化 SQLite 数据库连接
+     * 如果数据库目录不存在则创建目录，如果数据库文件不存在则创建空文件
      * @returns Promise<DatabaseService> 数据库服务实例
      */
     public static async initializeSQLiteDatabase(): Promise<DatabaseService> {
-        const { app } = require('electron');
-        const dbPath = path.join(app.getPath('userData'), 'dbmanager.db');
-
-        // 创建SQLite连接配置
-        const sqliteConfig: ConnectionConfig = {
-            id: 'internal-sqlite',
-            name: 'Internal SQLite Database',
-            type: ConnectionType.SQLite,
-            host: 'localhost',
-            port: 0,
-            username: '',
-            password: '',
-            database: dbPath
-        };
-
-        // 创建数据库连接
-        const client = createDatabaseClient(sqliteConfig);
-        await client.connect();
+        const { join } = require('path');
+        const fs = require('fs').promises;
+        const dbPath = join(process.cwd(), 'database', 'dbmanager.db');
+        const dbDir = join(process.cwd(), 'database');
 
         try {
-            console.log('Connected to SQLite database at:', dbPath);
+            // 1. 确保数据库目录存在
+            try {
+                await fs.access(dbDir);
+                console.log('Database directory exists:', dbDir);
+            } catch (error) {
+                // 目录不存在，创建目录
+                await fs.mkdir(dbDir, { recursive: true });
+                console.log('Created database directory:', dbDir);
+            }
 
-            // 创建连接配置表
-            await client.executeBatch(SQLStatements.CREATE_CONNECTIONS_TABLE);
-            console.log('Connections table initialized successfully');
+            // 2. 确保数据库文件存在
+            try {
+                await fs.access(dbPath);
+                console.log('Database file exists:', dbPath);
+            } catch (error) {
+                // 数据库文件不存在，创建一个空的SQLite文件
+                await fs.writeFile(dbPath, '');
+                console.log('Created empty database file:', dbPath);
+            }
 
-            // 创建数据库服务实例
-            const service = new DatabaseService(client);
-            return service;
+            // 3. 创建SQLite连接配置
+            const sqliteConfig: ConnectionConfig = {
+                id: 'internal-sqlite',
+                name: 'Internal SQLite Database',
+                type: ConnectionType.SQLite,
+                host: 'localhost',
+                port: 0,
+                username: '',
+                password: '',
+                database: dbPath
+            };
+
+            // 4. 创建数据库连接
+            const client = createDatabaseClient(sqliteConfig);
+            await client.connect();
+
+            try {
+                console.log('Connected to SQLite database at:', dbPath);
+
+                // 5. 创建连接配置表
+                await client.executeBatch(SQLStatements.CREATE_CONNECTIONS_TABLE);
+                console.log('Connections table initialized successfully');
+
+                // 6. 创建数据库服务实例
+                const service = new DatabaseService(client);
+                return service;
+            } catch (error) {
+                console.error('Failed to create connections table:', error);
+                await client.disconnect();
+                throw error;
+            }
         } catch (error) {
-            console.error('Failed to create connections table:', error);
+            console.error('Failed to initialize SQLite database:', error);
             throw error;
         }
     }
@@ -191,7 +220,7 @@ export class DatabaseService {
 
             try {
                 // 使用 DatabaseClient 接口的方法
-                const tables = await connection.getTableList(config.databaseName);
+                const tables = await connection.getTableList(config.database);
 
                 return {
                     success: true,
@@ -272,7 +301,7 @@ export class DatabaseService {
      * 保存连接列表
      * @param connections 连接列表
      */
-    public static async saveConnectionList(connections: any[]) {
+    public static async saveConnectionList(connections: ConnectionConfig[]) {
         try {
             await DatabaseManager.getInstance().saveConnections(connections);
             return { success: true };
@@ -287,17 +316,63 @@ export class DatabaseService {
      */
     public static registerIpcHandlers() {
         // 数据库操作相关
-        ipcMain.handle('test-database-connection', this.handleDatabaseConnection);
-        ipcMain.handle('get-database-list', this.handleGetDatabaseList);
-        ipcMain.handle('get-table-list', this.handleGetTableList);
+        ipcMain.handle('database:test-connection', async (_: any, config: ConnectionConfig) => {
+            return await this.handleDatabaseConnection(_, config);
+        });
 
-        // 连接列表相关
-        ipcMain.handle('get-connection-list', async () => {
+        ipcMain.handle('database:get-databases', async (_: any, config: ConnectionConfig) => {
+            return await this.handleGetDatabaseList(_, config);
+        });
+
+        ipcMain.handle('database:get-tables', async (_: any, config: ConnectionConfig) => {
+            return await this.handleGetTableList(_, config);
+        });
+
+        // 连接配置相关
+        ipcMain.handle('database:save-connections', async (_: any, connections: Array<ConnectionConfig>) => {
+            return await this.saveConnectionList(connections);
+        });
+
+        ipcMain.handle('database:get-all-connections', async () => {
             return await this.getConnectionList();
         });
 
-        ipcMain.handle('save-connection-list', async (_: any, connections: any[]) => {
-            return await this.saveConnectionList(connections);
+        ipcMain.handle('database:delete-connection', async (_: any, connectionId: string) => {
+            // 实现删除连接逻辑
+            console.log('Delete connection:', connectionId);
+            return { success: true };
+        });
+
+        // 查询执行相关
+        ipcMain.handle('database:execute-query', async (_: any, config: ConnectionConfig, sql: string, params?: any[]) => {
+            try {
+                const client = createDatabaseClient(config);
+                await client.connect();
+                const result = await client.execute(sql, params);
+                await client.disconnect();
+                return { success: true, data: result };
+            } catch (error) {
+                return { success: false, error: (error as Error).message };
+            }
+        });
+
+        // 连接状态相关
+        ipcMain.handle('database:get-connection-status', async (_: any, connectionId: string) => {
+            // 实现获取连接状态逻辑
+            console.log('Get connection status:', connectionId);
+            return { status: 'connected', id: connectionId };
+        });
+
+        ipcMain.handle('database:refresh-connection', async (_: any, connectionId: string) => {
+            // 实现刷新连接逻辑
+            console.log('Refresh connection:', connectionId);
+            return true;
+        });
+
+        ipcMain.handle('database:disconnect', async (_: any, connectionId: string) => {
+            // 实现断开连接逻辑
+            console.log('Disconnect:', connectionId);
+            return;
         });
     }
 

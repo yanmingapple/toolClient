@@ -1,0 +1,249 @@
+const { contextBridge, ipcRenderer } = require('electron');
+import { ConnectionConfig } from './model/database/Connection';
+
+/**
+ * Preload 脚本
+ * 使用 contextBridge 安全地向渲染进程暴露主进程 API
+ */
+
+// 暴露数据库管理 API
+contextBridge.exposeInMainWorld('electronAPI', {
+  // 数据库连接相关
+  database: {
+    /**
+     * 测试数据库连接
+     * @param config 连接配置
+     * @returns Promise<boolean> 连接是否成功
+     */
+    testConnection: (config: ConnectionConfig): Promise<boolean> => {
+      return ipcRenderer.invoke('database:test-connection', config);
+    },
+
+    /**
+     * 保存连接配置
+     * @param connections 连接配置数组
+     * @returns Promise<void>
+     */
+    saveConnections: (connections: Array<ConnectionConfig>): Promise<void> => {
+      return ipcRenderer.invoke('database:save-connections', connections);
+    },
+
+    /**
+     * 获取所有连接配置
+     * @returns Promise<Array<ConnectionConfig>>
+     */
+    getAllConnections: (): Promise<Array<ConnectionConfig>> => {
+      return ipcRenderer.invoke('database:get-all-connections');
+    },
+
+    /**
+     * 删除连接配置
+     * @param connectionId 连接ID
+     * @returns Promise<void>
+     */
+    deleteConnection: (connectionId: string): Promise<void> => {
+      return ipcRenderer.invoke('database:delete-connection', connectionId);
+    },
+
+    /**
+     * 获取数据库列表
+     * @param config 连接配置
+     * @returns Promise<Array<string>> 数据库名列表
+     */
+    getDatabases: (config: ConnectionConfig): Promise<Array<string>> => {
+      return ipcRenderer.invoke('database:get-databases', config);
+    },
+
+    /**
+     * 获取表列表
+     * @param config 连接配置
+     * @param database 数据库名
+     * @returns Promise<Array<string>> 表名列表
+     */
+    getTables: (config: ConnectionConfig, database: string): Promise<Array<string>> => {
+      return ipcRenderer.invoke('database:get-tables', config, database);
+    },
+
+    /**
+     * 执行 SQL 查询
+     * @param config 连接配置
+     * @param sql SQL 语句
+     * @param params 参数
+     * @returns Promise<any> 查询结果
+     */
+    executeQuery: (config: ConnectionConfig, sql: string, params?: any[]): Promise<any> => {
+      return ipcRenderer.invoke('database:execute-query', config, sql, params);
+    },
+
+    /**
+     * 获取连接状态
+     * @param connectionId 连接ID
+     * @returns Promise<any> 连接状态信息
+     */
+    getConnectionStatus: (connectionId: string): Promise<any> => {
+      return ipcRenderer.invoke('database:get-connection-status', connectionId);
+    },
+
+    /**
+     * 刷新连接
+     * @param connectionId 连接ID
+     * @returns Promise<boolean> 是否成功
+     */
+    refreshConnection: (connectionId: string): Promise<boolean> => {
+      return ipcRenderer.invoke('database:refresh-connection', connectionId);
+    },
+
+    /**
+     * 断开连接
+     * @param connectionId 连接ID
+     * @returns Promise<void>
+     */
+    disconnect: (connectionId: string): Promise<void> => {
+      return ipcRenderer.invoke('database:disconnect', connectionId);
+    }
+  },
+
+  // 应用程序相关
+  app: {
+    /**
+     * 显示新连接对话框
+     */
+    showNewConnectionDialog: (): void => {
+      ipcRenderer.send('open-new-connection-dialog');
+    },
+
+    /**
+     * 最小化窗口
+     */
+    minimizeWindow: (): void => {
+      ipcRenderer.send('window:minimize');
+    },
+
+    /**
+     * 最大化/还原窗口
+     */
+    maximizeWindow: (): void => {
+      ipcRenderer.send('window:maximize');
+    },
+
+    /**
+     * 关闭窗口
+     */
+    closeWindow: (): void => {
+      ipcRenderer.send('window:close');
+    },
+
+    /**
+     * 重启应用
+     */
+    restartApp: (): void => {
+      ipcRenderer.send('app:restart');
+    }
+  },
+
+  // 文件操作相关
+  file: {
+    /**
+     * 选择文件
+     * @param filters 文件过滤器
+     * @returns Promise<string> 选择的文件路径
+     */
+    selectFile: (filters?: Array<{ name: string; extensions: string[] }>): Promise<string> => {
+      return ipcRenderer.invoke('file:select-file', filters);
+    },
+
+    /**
+     * 选择文件夹
+     * @returns Promise<string> 选择的文件夹路径
+     */
+    selectFolder: (): Promise<string> => {
+      return ipcRenderer.invoke('file:select-folder');
+    },
+
+    /**
+     * 保存文件
+     * @param defaultPath 默认路径
+     * @param content 文件内容
+     * @returns Promise<boolean> 是否成功
+     */
+    saveFile: (defaultPath: string, content: string): Promise<boolean> => {
+      return ipcRenderer.invoke('file:save-file', defaultPath, content);
+    },
+
+    /**
+     * 读取文件
+     * @param filePath 文件路径
+     * @returns Promise<string> 文件内容
+     */
+    readFile: (filePath: string): Promise<string> => {
+      return ipcRenderer.invoke('file:read-file', filePath);
+    }
+  },
+
+  // 消息通知
+  notification: {
+    /**
+     * 显示通知
+     * @param title 标题
+     * @param body 内容
+     */
+    show: (title: string, body: string): void => {
+      ipcRenderer.send('notification:show', title, body);
+    }
+  },
+
+  // 事件监听
+  on: {
+    /**
+     * 监听连接状态变化
+     * @param callback 回调函数
+     */
+    connectionStatusChanged: (callback: (data: any) => void): void => {
+      ipcRenderer.on('connection:status-changed', (_: any, data: any) => callback(data));
+    },
+
+    /**
+     * 监听数据库列表更新
+     * @param callback 回调函数
+     */
+    databasesUpdated: (callback: (data: any) => void): void => {
+      ipcRenderer.on('database:databases-updated', (_: any, data: any) => callback(data));
+    },
+
+    /**
+     * 监听表列表更新
+     * @param callback 回调函数
+     */
+    tablesUpdated: (callback: (data: any) => void): void => {
+      ipcRenderer.on('database:tables-updated', (_: any, data: any) => callback(data));
+    }
+  },
+
+  // 移除监听器
+  off: {
+    /**
+     * 移除连接状态变化监听
+     */
+    connectionStatusChanged: (): void => {
+      ipcRenderer.removeAllListeners('connection:status-changed');
+    },
+
+    /**
+     * 移除数据库列表更新监听
+     */
+    databasesUpdated: (): void => {
+      ipcRenderer.removeAllListeners('database:databases-updated');
+    },
+
+    /**
+     * 移除表列表更新监听
+     */
+    tablesUpdated: (): void => {
+      ipcRenderer.removeAllListeners('database:tables-updated');
+    }
+  }
+});
+
+// 控制台输出预加载脚本加载成功的消息
+console.log('✅ Preload script loaded successfully');
+console.log('🌐 Electron API exposed to renderer process');

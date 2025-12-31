@@ -16,6 +16,8 @@ export class DatabaseManager {
     private pingInterval: number = 60000; // 1分钟ping间隔
     private healthCheckTimer: NodeJS.Timeout | null = null;
     private databaseService: DatabaseService | null = null;
+    private isInitialized: boolean = false;
+    private initializationPromise: Promise<void> | null = null;
 
     /**
      * 单例模式获取实例
@@ -28,24 +30,58 @@ export class DatabaseManager {
     }
 
     /**
-     * 构造函数，初始化健康检查和SQLite数据库
+     * 构造函数，只初始化基本属性，不进行异步操作
      */
     private constructor() {
-        this.initializeSQLiteDatabase().catch(error => {
-            console.error('Failed to initialize SQLite database:', error);
-        });
+        // 不在构造函数中进行异步操作
         this.startHealthCheck();
     }
 
     /**
-     * 初始化 SQLite 数据库和连接配置服务
+     * 显式初始化数据库管理器
+     * @returns Promise<void>
      */
-    private async initializeSQLiteDatabase(): Promise<void> {
+    public async initialize(): Promise<void> {
+        // 如果已经初始化，直接返回
+        if (this.isInitialized && this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        // 如果正在初始化，返回现有的Promise
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        // 开始新的初始化过程
+        this.initializationPromise = this.performInitialization();
+        await this.initializationPromise;
+    }
+
+    /**
+     * 执行实际的初始化操作
+     * @returns Promise<void>
+     */
+    private async performInitialization(): Promise<void> {
         try {
+            console.log('Initializing DatabaseManager...');
             this.databaseService = await DatabaseService.initializeSQLiteDatabase();
+            this.isInitialized = true;
+            console.log('DatabaseManager initialized successfully');
         } catch (error) {
-            console.error('Failed to initialize SQLite database:', error);
+            console.error('Failed to initialize DatabaseManager:', error);
+            this.isInitialized = false;
+            this.initializationPromise = null;
             throw error;
+        }
+    }
+
+    /**
+     * 确保数据库管理器已初始化
+     * @throws 如果未初始化则抛出错误
+     */
+    private ensureInitialized(): void {
+        if (!this.isInitialized || !this.databaseService) {
+            throw new Error('DatabaseManager is not initialized. Call initialize() first.');
         }
     }
 
@@ -55,6 +91,8 @@ export class DatabaseManager {
      * @returns 数据库客户端实例
      */
     public async getConnection(config: ConnectionConfig): Promise<DatabaseClient> {
+        this.ensureInitialized(); // 确保已初始化
+        
         const connectionKey = this.generateConnectionKey(config);
         let connectionInfo = this.connections.get(connectionKey);
 
@@ -323,23 +361,16 @@ export class DatabaseManager {
             this.healthCheckTimer = null;
         }
 
-        // 关闭所有连接
-        const disconnectPromises = Array.from(this.connections.values()).map(async (info) => {
-            try {
-                await info.client.disconnect();
-            } catch (error) {
-                console.warn(`Error during shutdown disconnect: ${error}`);
-            }
-        });
-
-        await Promise.all(disconnectPromises);
-        this.connections.clear();
-
-        // 关闭 SQLite 数据库连接
+        // 关闭所有数据库连接
         if (this.databaseService) {
             await this.databaseService.close();
             this.databaseService = null;
         }
+
+        // 清空连接缓存
+        this.connections.clear();
+        this.isInitialized = false;
+        this.initializationPromise = null;
     }
 
     /**
@@ -400,6 +431,7 @@ export class DatabaseManager {
      * @returns 连接配置数组
      */
     public async getAllConnections(): Promise<Array<any>> {
+        this.ensureInitialized();
         if (!this.databaseService) {
             throw new Error('DatabaseService not initialized');
         }
@@ -411,6 +443,7 @@ export class DatabaseManager {
      * @param connections 连接配置数组
      */
     public async saveConnections(connections: Array<any>): Promise<void> {
+        this.ensureInitialized();
         if (!this.databaseService) {
             throw new Error('DatabaseService not initialized');
         }
@@ -422,8 +455,9 @@ export class DatabaseManager {
      * @returns 数据库服务
      */
     public getDatabaseService(): DatabaseService {
+        this.ensureInitialized();
         if (!this.databaseService) {
-            throw new Error('Database service not initialized');
+            throw new Error('DatabaseService not initialized');
         }
         return this.databaseService;
     }

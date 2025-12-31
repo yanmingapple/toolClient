@@ -29,7 +29,7 @@ export const SQLStatements = {
 
   // PostgreSQL 相关查询
   SELECT_POSTGRESQL_DATABASES: 'SELECT datname FROM pg_database WHERE datistemplate = false',
-
+  
   // SQLite 相关查询
   SELECT_SQLITE_TABLES: "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
   SELECT_SQLITE_TABLE_COUNT: (tableName: string) => `SELECT COUNT(*) as count FROM ${tableName}`

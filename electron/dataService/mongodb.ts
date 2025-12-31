@@ -143,16 +143,16 @@ export class MongoDBClient implements DatabaseClient {
 
     /**
      * 获取MongoDB集合列表（相当于表）
-     * @param databaseName 数据库名称（MongoDB需要指定数据库）
+     * @param database 数据库名称（MongoDB需要指定数据库）
      */
-    async getTableList(databaseName?: string): Promise<any[]> {
+    async getTableList(): Promise<any[]> {
         if (!this.client) {
             throw new Error('Not connected to MongoDB database');
         }
 
         try {
             // 使用指定的数据库名称或默认数据库
-            const dbName = databaseName || this.config.database;
+            const dbName = this.config.database;
             const targetDb = this.client.db(dbName);
 
             const collections = await targetDb.listCollections().toArray();
@@ -163,7 +163,7 @@ export class MongoDBClient implements DatabaseClient {
                 parentId: this.config.id,
                 metadata: {
                     type: collection.type,
-                    info: collection.info
+                    info: (collection as any).info
                 }
             }));
         } catch (error) {

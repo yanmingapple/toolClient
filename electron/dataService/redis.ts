@@ -175,9 +175,9 @@ export class RedisClient implements DatabaseClient {
 
     /**
      * 获取Redis键列表（相当于表）
-     * @param databaseName 数据库名称（Redis需要指定数据库编号）
+     * @param database 数据库名称（Redis需要指定数据库编号）
      */
-    async getTableList(databaseName?: string): Promise<any[]> {
+    async getTableList(): Promise<any[]> {
         if (!this.redis) {
             throw new Error('Not connected to Redis database');
         }
@@ -185,8 +185,8 @@ export class RedisClient implements DatabaseClient {
         try {
             // 如果指定了数据库编号，先切换到该数据库
             let currentDb = await this.redis.get('db') || '0';
-            if (databaseName) {
-                const dbMatch = databaseName.match(/Database (\d+)/);
+            if (this.config.database) {
+                const dbMatch = this.config.database.match(/Database (\d+)/);
                 if (dbMatch) {
                     await this.redis.select(parseInt(dbMatch[1]));
                 }

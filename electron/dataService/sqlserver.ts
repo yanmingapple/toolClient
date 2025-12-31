@@ -345,15 +345,15 @@ export class SQLServerClient implements DatabaseClient {
 
     /**
      * 获取SQL Server表列表
-     * @param _databaseName 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
+     * @param database 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
      */
-    async getTableList(_databaseName?: string): Promise<any[]> {
+    async getTableList(): Promise<any[]> {
         if (!this.connection || !this.isConnected) {
             throw new Error('Not connected to SQL Server database');
         }
 
         try {
-            // const dbName = databaseName || this.config.database;
+            // const dbName = database || this.config.database;
             const results = await this.execute(`
                 SELECT 
                     s.name AS schemaName,
