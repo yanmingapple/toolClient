@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require('electron');
-import { ConnectionConfig } from './model/database/Connection';
 
 /**
  * Preload 脚本
