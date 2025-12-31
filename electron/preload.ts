@@ -1,5 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
-
+import {ConnectionConfig} from './model/database'
 /**
  * Preload 脚本
  * 使用 contextBridge 安全地向渲染进程暴露主进程 API
@@ -11,93 +11,93 @@ contextBridge.exposeInMainWorld('electronAPI', {
   database: {
     /**
      * 测试数据库连接
-     * @param config 连接配置
-     * @returns Promise<boolean> 连接是否成功
+     * @param {Object} config 连接配置
+     * @returns {Promise<boolean>} 连接是否成功
      */
-    testConnection: (config: ConnectionConfig): Promise<boolean> => {
+    testConnection: (config:ConnectionConfig) => {
       return ipcRenderer.invoke('database:test-connection', config);
     },
 
     /**
      * 保存连接配置
-     * @param connections 连接配置数组
-     * @returns Promise<void>
+     * @param {Array} connections 连接配置数组
+     * @returns {Promise<void>}
      */
-    saveConnections: (connections: Array<ConnectionConfig>): Promise<void> => {
+    saveConnections: (connections:ConnectionConfig[]) => {
       return ipcRenderer.invoke('database:save-connections', connections);
     },
 
     /**
      * 获取所有连接配置
-     * @returns Promise<Array<ConnectionConfig>>
+     * @returns {Promise<Array>}
      */
-    getAllConnections: (): Promise<Array<ConnectionConfig>> => {
+    getAllConnections: () => {
       return ipcRenderer.invoke('database:get-all-connections');
     },
 
     /**
      * 删除连接配置
-     * @param connectionId 连接ID
-     * @returns Promise<void>
+     * @param {string} connectionId 连接ID
+     * @returns {Promise<void>}
      */
-    deleteConnection: (connectionId: string): Promise<void> => {
+    deleteConnection: (connectionId:string) => {
       return ipcRenderer.invoke('database:delete-connection', connectionId);
     },
 
     /**
      * 获取数据库列表
-     * @param config 连接配置
-     * @returns Promise<Array<string>> 数据库名列表
+     * @param {Object} config 连接配置
+     * @returns {Promise<Array<string>>} 数据库名列表
      */
-    getDatabases: (config: ConnectionConfig): Promise<Array<string>> => {
+    getDatabases: (config:ConnectionConfig) => {
       return ipcRenderer.invoke('database:get-databases', config);
     },
 
     /**
      * 获取表列表
-     * @param config 连接配置
-     * @param database 数据库名
-     * @returns Promise<Array<string>> 表名列表
+     * @param {Object} config 连接配置
+     * @param {string} database 数据库名
+     * @returns {Promise<Array<string>>} 表名列表
      */
-    getTables: (config: ConnectionConfig, database: string): Promise<Array<string>> => {
-      return ipcRenderer.invoke('database:get-tables', config, database);
+    getTables: (config:ConnectionConfig) => {
+      return ipcRenderer.invoke('database:get-tables', config);
     },
 
     /**
      * 执行 SQL 查询
-     * @param config 连接配置
-     * @param sql SQL 语句
-     * @param params 参数
-     * @returns Promise<any> 查询结果
+     * @param {Object} config 连接配置
+     * @param {string} sql SQL 语句
+     * @param {Array} params 参数
+     * @returns {Promise<any>} 查询结果
      */
-    executeQuery: (config: ConnectionConfig, sql: string, params?: any[]): Promise<any> => {
+    executeQuery: (config:ConnectionConfig, sql:string, params:any[]) => {
       return ipcRenderer.invoke('database:execute-query', config, sql, params);
     },
 
     /**
      * 获取连接状态
-     * @param connectionId 连接ID
-     * @returns Promise<any> 连接状态信息
+     * @param {string} connectionId 连接ID
+     * @returns {Promise<any>} 连接状态信息
      */
-    getConnectionStatus: (connectionId: string): Promise<any> => {
+    getConnectionStatus: (connectionId:string) => {
       return ipcRenderer.invoke('database:get-connection-status', connectionId);
     },
 
     /**
      * 刷新连接
-     * @param connectionId 连接ID
-     * @returns Promise<boolean> 是否成功
+     * @param {string} connectionId 连接ID
+     * @returns {Promise<boolean>} 是否成功
      */
-    refreshConnection: (connectionId: string): Promise<boolean> => {
+    refreshConnection: (connectionId:string) => {
       return ipcRenderer.invoke('database:refresh-connection', connectionId);
     },
 
     /**
      * 断开连接
-     * @param connectionId 连接ID
-     * @returns Promise<void>
+     * @param {string} connectionId 连接ID
+     * @returns {Promise<void>}
      */
-    disconnect: (connectionId: string): Promise<void> => {
+    disconnect: (connectionId:string) => {
       return ipcRenderer.invoke('database:disconnect', connectionId);
     }
   },
@@ -144,37 +144,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
   file: {
     /**
      * 选择文件
-     * @param filters 文件过滤器
-     * @returns Promise<string> 选择的文件路径
+     * @param {Array} filters 文件过滤器
+     * @returns {Promise<string>} 选择的文件路径
      */
-    selectFile: (filters?: Array<{ name: string; extensions: string[] }>): Promise<string> => {
+    selectFile: (filters:string[]) => {
       return ipcRenderer.invoke('file:select-file', filters);
     },
 
     /**
      * 选择文件夹
-     * @returns Promise<string> 选择的文件夹路径
+     * @returns {Promise<string>} 选择的文件夹路径
      */
-    selectFolder: (): Promise<string> => {
+    selectFolder: () => {
       return ipcRenderer.invoke('file:select-folder');
     },
 
     /**
      * 保存文件
-     * @param defaultPath 默认路径
-     * @param content 文件内容
-     * @returns Promise<boolean> 是否成功
+     * @param {string} defaultPath 默认路径
+     * @param {string} content 文件内容
+     * @returns {Promise<boolean>} 是否成功
      */
-    saveFile: (defaultPath: string, content: string): Promise<boolean> => {
+    saveFile: (defaultPath:string, content:string) => {
       return ipcRenderer.invoke('file:save-file', defaultPath, content);
     },
 
     /**
      * 读取文件
-     * @param filePath 文件路径
-     * @returns Promise<string> 文件内容
+     * @param {string} filePath 文件路径
+     * @returns {Promise<string>} 文件内容
      */
-    readFile: (filePath: string): Promise<string> => {
+    readFile: (filePath:string) => {
       return ipcRenderer.invoke('file:read-file', filePath);
     }
   },

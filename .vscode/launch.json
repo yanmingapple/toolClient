@@ -1,0 +1,43 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Main Process",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd"
+      },
+      "args": [".", "--remote-debugging-port=9222"],
+      "protocol": "inspector",
+      "port": 9229,
+       "env": {
+            "NODE_ENV": "development"
+            // 您可以在这里添加其他所需的环境变量，例如：
+            // "MY_CUSTOM_VAR": "debug_value"
+        }
+      
+    },
+    {
+      "name": "Debug Renderer Process",
+      "type": "pwa-chrome",
+      "request": "attach",
+      "name": "附加到渲染进程",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}",
+      "timeout": 30000,
+       "env": {
+            "NODE_ENV": "development"
+            // 您可以在这里添加其他所需的环境变量，例如：
+            // "MY_CUSTOM_VAR": "debug_value"
+        }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Both: All",
+      "configurations": ["Debug Main Process", "Debug Renderer Process"]
+    }
+  ]
+}

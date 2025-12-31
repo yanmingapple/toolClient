@@ -220,7 +220,7 @@ export class DatabaseService {
 
             try {
                 // 使用 DatabaseClient 接口的方法
-                const tables = await connection.getTableList(config.database);
+                const tables = await connection.getTableList();
 
                 return {
                     success: true,
