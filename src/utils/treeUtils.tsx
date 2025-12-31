@@ -1,9 +1,7 @@
 /**
  * 树形数据处理相关工具函数
  */
-import { TreeNode, TreeNodeType } from '../types/leftTree/tree'
-import { ConnectionConfig } from '../types/leftTree/connection'
-import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
+import { TreeNode, TreeNodeType, ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'

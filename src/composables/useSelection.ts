@@ -1,11 +1,10 @@
 import { ref, watch, computed } from 'vue'
-import { TreeNodeType } from '../types/leftTree/tree'
+import { TreeNode, ConnectionConfig, TreeNodeType } from '../../electron/model/database'
 import { ConnectionStatus } from '../../electron/model/database'
-import type { ConnectionConfig } from '../types/leftTree/connection'
+
 import type { TableData } from '../types/objectPanel'
 import type { PropertiesObject } from '../components/PropertiesPanel'
 import type { MainPanelRef } from '../components/MainPanel/index.vue'
-import type { DatabaseObject } from '../types/leftTree/tree'
 import type { ObjectPanelType } from '../types/headerBar/headerBar'
 
 export const useSelection = () => {
@@ -16,7 +15,7 @@ export const useSelection = () => {
   const selectedObject = ref<PropertiesObject | null>(null)
   const objectPanelType = ref<ObjectPanelType | null>(null)
   const selectedConnection = ref<ConnectionConfig | null>(null)
-  const selectedDatabase = ref<DatabaseObject | null>(null)
+  const selectedDatabase = ref<TreeNode | null>(null)
   const selectedTable = ref<TableData | null>(null)
 
   const clearSelection = () => {
@@ -43,7 +42,7 @@ export const useSelection = () => {
     }
   }
 
-  const updateSelectedNode = (node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string }, connection?: ConnectionConfig, database?: DatabaseObject, table?: TableData) => {
+  const updateSelectedNode = (node: { type?: TreeNodeType; name?: string; id?: string; parentId?: string }, connection?: ConnectionConfig, database?: TreeNode, table?: TableData) => {
     selectedNode.value = node
     let panelType: ObjectPanelType | null = null
     if (node.type) {
@@ -112,7 +111,7 @@ export const useSelection = () => {
       selectedObject.value = tableObject
       objectPanelType.value = 'table'
     } else if (selectedDatabase.value) {
-      const databaseObject: PropertiesObject = {
+      const TreeNode: PropertiesObject = {
         name: selectedDatabase.value.name,
         type: 'database',
         collation: selectedDatabase.value.metadata?.collation || '',
@@ -120,7 +119,7 @@ export const useSelection = () => {
         createTime: selectedDatabase.value.metadata?.createTime || '',
         comment: selectedDatabase.value.metadata?.comment || ''
       }
-      selectedObject.value = databaseObject
+      selectedObject.value = TreeNode
       objectPanelType.value = 'table'
     } else if (selectedConnection.value) {
       const connectionObject: PropertiesObject = {
@@ -162,7 +161,7 @@ export const useSelection = () => {
     setSelectedObject: (val: PropertiesObject | null) => { selectedObject.value = val },
     setObjectPanelType: (type: ObjectPanelType | null) => { objectPanelType.value = type },
     setSelectedConnection: (val: ConnectionConfig | null) => { selectedConnection.value = val },
-    setSelectedDatabase: (val: DatabaseObject | null) => { selectedDatabase.value = val },
+    setSelectedDatabase: (val: TreeNode | null) => { selectedDatabase.value = val },
     setSelectedTable: (val: TableData | null) => { selectedTable.value = val },
     clearSelection
   }

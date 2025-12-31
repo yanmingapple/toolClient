@@ -48,9 +48,7 @@ import {
   Upload,
   Download
 } from '@element-plus/icons-vue'
-import type { TreeNode } from '../../types/leftTree/tree'
-import { TreeNodeType } from '../../types/leftTree/tree'
-import { ConnectionStatus } from '../../../electron/model/database'
+import { TreeNode,TreeNodeType,ConnectionStatus } from '../../../electron/model/database'
 
 interface ContextMenuProps {
   visible: boolean

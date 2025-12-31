@@ -5,8 +5,7 @@
  */
 import { computed, watch, onMounted } from 'vue'
 import { useConnectionStore } from '../stores/connection'
-import type { ConnectionConfig } from '../types/leftTree/connection'
-import { ConnectionStatus } from '../../electron/model/database'
+import { ConnectionConfig, ConnectionStatus } from '../../electron/model/database'
 import { ensureConnectionStatesMap } from '../utils/connectionUtils'
 import { ElMessage } from 'element-plus'
 

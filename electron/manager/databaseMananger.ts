@@ -1,7 +1,8 @@
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
-import { ConnectionStatus, ConnectionInfo } from '../model/database';
+import { ConnectionStatus, ConnectionInfo, ConnectionConfig } from '../model/database';
 import { DatabaseService } from '../service/databaseService';
+import { TreeNode } from '../model/database/TreeNode';
+import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
 
 /**
  * 数据库连接缓存管理类
@@ -287,7 +288,7 @@ export class DatabaseManager {
      * @param config 连接配置
      * @returns 连接测试结果
      */
-    public static async testConnection(config: ConnectionConfig): Promise<{ success: boolean; message: string }> {
+    public static async testConnection(config: ConnectionConfig): Promise<ServiceResult<boolean>> {
         try {
             // 使用工厂方法创建数据库客户端
             const client = createDatabaseClient(config);
@@ -302,13 +303,13 @@ export class DatabaseManager {
             await client.disconnect();
 
             if (isHealthy) {
-                return { success: true, message: 'Connection successful' };
+                return ServiceResultFactory.success(true, 'Connection successful');
             } else {
-                return { success: false, message: 'Connection test failed' };
+                return ServiceResultFactory.success(false, 'Connection test failed');
             }
         } catch (error) {
             console.error('Connection test error:', error);
-            return { success: false, message: (error as Error).message };
+            return ServiceResultFactory.error((error as Error).message, false);
         }
     }
 
@@ -427,9 +428,9 @@ export class DatabaseManager {
 
     /**
      * 获取所有连接配置（向后兼容代理方法）
-     * @returns 连接配置数组
+     * @returns TreeNode 数组
      */
-    public async getAllConnections(): Promise<Array<any>> {
+    public async getAllConnections(): Promise<TreeNode[]> {
         this.ensureInitialized();
         if (!this.databaseService) {
             throw new Error('DatabaseService not initialized');

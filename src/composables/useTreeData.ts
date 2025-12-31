@@ -1,8 +1,7 @@
 import { ref, computed, watch } from 'vue'
-import { TreeNode, TreeNodeType, DatabaseObject } from '../types/leftTree/tree'
+import { TreeNode, TreeNodeType } from '../../electron/model/database'
 import { useConnectionStore } from '../stores/connection'
-import { DatabaseStatus, ConnectionStatus, ConnectionType } from '../../electron/model/database'
-import type { ConnectionConfig } from '../types/leftTree/connection'
+import { ConnectionConfig, DatabaseStatus, ConnectionStatus, ConnectionType } from '../../electron/model/database'
 
 /** 图标名称类型定义 */
 type IconName = string
@@ -73,8 +72,8 @@ const getFunctionIconName = (): IconName => 'settings'
 const generateTreeData = (
   connections: ConnectionConfig[],
   connectionStates: Map<string, any>,
-  databases: Map<string, DatabaseObject>,
-  tables: Map<string, DatabaseObject>,
+  databases: Map<string, TreeNode>,
+  tables: Map<string, TreeNode>,
   databaseStates: Map<string, DatabaseStatus>
 ): TreeNode[] => {
   const treeData: TreeNode[] = []
@@ -230,8 +229,8 @@ export const useTreeData = (options: UseTreeDataOptions = {}) => {
       const nodeName = typeof node.title === 'string' ? node.title : undefined
 
       let connectionConfig: any = null
-      let databaseObj: DatabaseObject | null = null
-      let tableObj: DatabaseObject | null = null
+      let databaseObj: TreeNode | null = null
+      let tableObj: TreeNode | null = null
 
       if (node.type === TreeNodeType.CONNECTION) {
         connectionConfig = node.data?.metadata?.connection || null

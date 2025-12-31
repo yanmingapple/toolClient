@@ -23,20 +23,52 @@ class MySQLManagementPool {
     }
 
     async initialize(config: ConnectionConfig): Promise<void> {
-        this.connectionConfig = config;
-        const poolConfig: mysql.ConnectionOptions = {
-            host: config.host,
-            port: config.port,
-            user: config.username,
-            password: config.password,
-            database: config.database,
-            ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
-            charset: config.charset,
-            connectionLimit: config.maxConnections || 10
-        };
-        if (!this.pool) {
+        // 检查配置是否变化
+        const configChanged = !this._isConfigEqual(this.connectionConfig, config);
+
+        // 如果配置变化或连接池不存在，则重建连接池
+        if (configChanged || !this.pool) {
+            // 先关闭旧的连接池
+            if (this.pool) {
+                await this.close();
+            }
+
+            // 更新配置
+            this.connectionConfig = config;
+
+            // 创建新的连接池
+            const poolConfig: mysql.ConnectionOptions = {
+                host: config.host,
+                port: config.port,
+                user: config.username,
+                password: config.password,
+                database: config.database,
+                ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+                charset: config.charset,
+                connectionLimit: config.maxConnections || 10
+            };
+
             this.pool = mysql.createPool(poolConfig);
+
+            // 清理缓存，因为配置可能已变化
+            await this.clearCache();
         }
+    }
+
+    /**
+     * 比较两个配置是否相等
+     */
+    private _isConfigEqual(config1: ConnectionConfig | null, config2: ConnectionConfig | null): boolean {
+        if (!config1 || !config2) return false;
+
+        return config1.host === config2.host &&
+            config1.port === config2.port &&
+            config1.username === config2.username &&
+            config1.password === config2.password &&
+            config1.database === config2.database &&
+            config1.ssl === config2.ssl &&
+            config1.charset === config2.charset &&
+            config1.maxConnections === config2.maxConnections;
     }
 
     async getDatabaseList(): Promise<TreeNode[]> {
@@ -111,10 +143,16 @@ export class MySQLClient implements DatabaseClient {
      */
     async connect(): Promise<void> {
         try {
+            // 先关闭旧的主连接（如果存在）
+            if (this.connection) {
+                await this.connection.end();
+                this.connection = null;
+            }
+
             // 初始化管理连接池（连接到mysql系统数据库）
             await this.managementPool.initialize({
                 ...this.config,
-                database: 'mysql',
+                database: '',
             });
 
             // 只有当database不为空时才创建主连接

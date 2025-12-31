@@ -21,6 +21,8 @@ export interface TreeNode {
     status?: TreeNodeStatus;
     /** 节点元数据 */
     metadata: TreeNodeMetadata;
+    /** 数据库连接配置（仅连接节点） */
+    connectionConfig?: ConnectionConfig;
 
     /** 子节点列表 (懒加载时为空) */
     children?: TreeNode[];
@@ -246,6 +248,10 @@ export interface ParameterInfo {
     defaultValue?: any;
 }
 
+
+
+
+
 /**
  * 创建树节点的工厂函数
  */
@@ -254,26 +260,28 @@ export class TreeNodeFactory {
      * 创建连接节点
      */
     static createConnection(
-        id: string,
-        name: string,
-        metadata: Partial<TreeNodeMetadata> = {}
+        connectionConfig: ConnectionConfig
     ): TreeNode {
         return {
-            id,
-            name,
+            id: connectionConfig.id,
+            name: connectionConfig.name,
             type: TreeNodeType.CONNECTION,
             parentId: '',
             expandable: true,
             loaded: false,
             status: TreeNodeStatus.DISCONNECTED,
             metadata: {
-                databaseType: metadata.databaseType,
-                host: metadata.host,
-                port: metadata.port,
-                username: metadata.username,
-                ssl: metadata.ssl,
-                ...metadata
-            }
+                // 连接级别元数据
+                databaseType: connectionConfig.type,
+                host: connectionConfig.host,
+                port: connectionConfig.port,
+                username: connectionConfig.username,
+                ssl: connectionConfig.ssl,
+                // 其他有用的元数据
+                info: connectionConfig.database,
+                charset: connectionConfig.charset
+            },
+            connectionConfig
         };
     }
 

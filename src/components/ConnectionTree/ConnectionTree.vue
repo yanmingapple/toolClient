@@ -63,9 +63,7 @@ import Icon from '../../icons/Icon.vue'
 import { useTreeData } from '../../composables/useTreeData'
 import { useConnection } from '../../composables/useConnection'
 import { useConnectionStore } from '../../stores/connection'
-import { TreeNodeType } from '../../types/leftTree/tree'
-import type { TreeNode } from '../../types/leftTree/tree'
-import { ConnectionStatus } from '../../../electron/model/database'
+import { TreeNode,TreeNodeType,ConnectionStatus } from '../../../electron/model/database'
 import ContextMenu from './ContextMenu.vue'
 
 interface ConnectionTreeProps {

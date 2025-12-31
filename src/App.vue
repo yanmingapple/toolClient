@@ -20,11 +20,11 @@ import AppLayout from './components/AppLayout/AppLayout.vue'
 import QueryEditor from './components/QueryEditor.vue'
 import ConnectionDialog from './components/ConnectionDialog.vue'
 import { useConnectionStore } from './stores/connection'
-import type { ConnectionConfig } from './types/leftTree/connection'
+import type { ConnectionConfig, TreeNode } from '../electron/model/database'
 import { useIpcCommunication } from './composables/useIpcCommunication'
 
 const connectionDialogVisible = ref(false)
-const editingConnection = ref<ConnectionConfig | null>(null)
+const editingConnection = ref<TreeNode | null>(null)
 
 const connectionStore = useConnectionStore()
 const activeConnectionId = computed(() => connectionStore.activeConnectionId)
@@ -34,9 +34,8 @@ const handleNewConnection = () => {
   connectionDialogVisible.value = true
 }
 
-const handleEditConnection = (connection: ConnectionConfig) => {
-  const decryptedConnection = connectionStore.decryptConnection(connection)
-  editingConnection.value = decryptedConnection
+const handleEditConnection = (connection: TreeNode) => {
+  editingConnection.value = connection??null;
   connectionDialogVisible.value = true
 }
 

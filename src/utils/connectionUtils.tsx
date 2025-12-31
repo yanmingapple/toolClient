@@ -1,7 +1,7 @@
 /**
  * 连接管理相关工具函数
  */
-import { ConnectionType, ConnectionStatus } from '../../electron/model/database'
+import { ConnectionType as DatabaseType, ConnectionStatus } from '../../electron/model/database'
 import { Icon, IconName } from '../icons'
 
 /**

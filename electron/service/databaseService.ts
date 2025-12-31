@@ -1,10 +1,11 @@
 const { ipcMain } = require('electron');
 // import * as path from 'path';
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
-import { ConnectionType } from '../model/database';
+import { ConnectionType, ConnectionConfig } from '../model/database';
 import { SQLStatements } from '../dataService/sql';
 import { DatabaseManager } from '../manager/databaseMananger';
+import { TreeNode, TreeNodeFactory } from '../model/database/TreeNode';
+import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
 
 /**
  * 统一数据库服务
@@ -88,10 +89,17 @@ export class DatabaseService {
 
     /**
      * 获取所有连接配置
-     * @returns 连接配置数组
+     * @returns TreeNode 数组
      */
-    public async getAllConnections(): Promise<Array<any>> {
-        return await this.database.execute(SQLStatements.SELECT_ALL_CONNECTIONS);
+    public async getAllConnections(): Promise<TreeNode[]> {
+        const connections = await this.database.execute(SQLStatements.SELECT_ALL_CONNECTIONS);
+
+        // 将连接配置转换为 TreeNode 格式
+        const treeNodes: TreeNode[] = connections.map((connection: ConnectionConfig) => {
+            return TreeNodeFactory.createConnection(connection);
+        });
+
+        return treeNodes;
     }
 
     /**
@@ -125,28 +133,28 @@ export class DatabaseService {
      */
     public async saveConnections(connections: Array<any>): Promise<void> {
         console.log('[DatabaseService] Starting to save connections:', connections.length);
-        
+
         // 批量插入或替换连接配置
         for (let i = 0; i < connections.length; i++) {
             const conn = connections[i];
             console.log(`[DatabaseService] Saving connection ${i + 1}/${connections.length}:`, conn.id, conn.name);
-            
+
             try {
                 const params = this.extractConnectionParams(conn);
                 console.log(`[DatabaseService] Extracted params for connection ${conn.id}:`, params);
-                
+
                 const result = await this.database.execute(
                     SQLStatements.INSERT_OR_REPLACE_CONNECTION,
                     params
                 );
-                
+
                 console.log(`[DatabaseService] Successfully saved connection ${conn.id}, result:`, result);
             } catch (error) {
                 console.error(`[DatabaseService] Failed to save connection ${conn.id}:`, error);
                 throw error;
             }
         }
-        
+
         console.log('[DatabaseService] All connections saved successfully');
     }
 
@@ -173,7 +181,7 @@ export class DatabaseService {
      * @param config 数据库配置
      * @returns 连接测试结果
      */
-    public static async testConnection(config: any): Promise<{ success: boolean; message: string }> {
+    public static async testConnection(config: any): Promise<ServiceResult<boolean>> {
         return await DatabaseManager.testConnection(config);
     }
 
@@ -182,7 +190,7 @@ export class DatabaseService {
      * @param config 数据库配置
      * @returns 数据库列表结果
      */
-    public static async getDatabaseList(config: any): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    public static async getDatabaseList(config: any): Promise<ServiceResult<any[]>> {
         try {
             // 使用 DatabaseManager 获取连接
             const connection = await DatabaseManager.getInstance().getConnection(config);
@@ -191,17 +199,14 @@ export class DatabaseService {
                 // 使用 DatabaseClient 接口的方法
                 const databases = await connection.getDatabaseList();
 
-                return {
-                    success: true,
-                    data: databases
-                };
+                return ServiceResultFactory.success(databases);
             } finally {
                 // 释放连接回到连接池
                 DatabaseManager.getInstance().releaseConnection(config);
             }
         } catch (error) {
             console.error('Get databases error:', error);
-            return { success: false, message: (error as Error).message };
+            return ServiceResultFactory.error((error as Error).message);
         }
     }
 
@@ -210,7 +215,7 @@ export class DatabaseService {
      * @param config 数据库配置
      * @returns 表列表结果
      */
-    public static async getTableList(config: any): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    public static async getTableList(config: any): Promise<ServiceResult<any[]>> {
         try {
             // 使用 DatabaseManager 获取连接
             const connection = await DatabaseManager.getInstance().getConnection(config);
@@ -219,17 +224,14 @@ export class DatabaseService {
                 // 使用 DatabaseClient 接口的方法
                 const tables = await connection.getTableList();
 
-                return {
-                    success: true,
-                    data: tables
-                };
+                return ServiceResultFactory.success(tables);
             } finally {
                 // 释放连接回到连接池
                 DatabaseManager.getInstance().releaseConnection(config);
             }
         } catch (error) {
             console.error('Get tables error:', error);
-            return { success: false, message: (error as Error).message };
+            return ServiceResultFactory.error((error as Error).message);
         }
     }
 
@@ -284,13 +286,13 @@ export class DatabaseService {
     /**
      * 获取连接列表
      */
-    public static async getConnectionList() {
+    public static async getConnectionList(): Promise<ServiceResult<TreeNode[]>> {
         try {
             const connections = await DatabaseManager.getInstance().getAllConnections();
-            return { success: true, data: connections };
+            return ServiceResultFactory.success(connections);
         } catch (error) {
             console.error('Failed to get connections:', error);
-            return { success: false, message: (error as Error).message };
+            return ServiceResultFactory.error((error as Error).message);
         }
     }
 
@@ -298,13 +300,13 @@ export class DatabaseService {
      * 保存连接列表
      * @param connections 连接列表
      */
-    public static async saveConnectionList(connections: ConnectionConfig[]) {
+    public static async saveConnectionList(connections: ConnectionConfig[]): Promise<ServiceResult<void>> {
         try {
             await DatabaseManager.getInstance().saveConnections(connections);
-            return { success: true };
+            return ServiceResultFactory.success<void>();
         } catch (error) {
             console.error('Failed to save connections:', error);
-            return { success: false, message: (error as Error).message };
+            return ServiceResultFactory.error((error as Error).message);
         }
     }
 
@@ -334,42 +336,55 @@ export class DatabaseService {
             return await this.getConnectionList();
         });
 
-        ipcMain.handle('database:delete-connection', async (_: any, connectionId: string) => {
+        ipcMain.handle('database:delete-connection', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
             // 实现删除连接逻辑
             console.log('Delete connection:', connectionId);
-            return { success: true };
+            return ServiceResultFactory.success<void>();
         });
 
         // 查询执行相关
-        ipcMain.handle('database:execute-query', async (_: any, config: ConnectionConfig, sql: string, params?: any[]) => {
+        ipcMain.handle('database:execute-query', async (_: any, config: ConnectionConfig, sql: string, params?: any[]): Promise<ServiceResult<any>> => {
             try {
                 const client = createDatabaseClient(config);
                 await client.connect();
                 const result = await client.execute(sql, params);
                 await client.disconnect();
-                return { success: true, data: result };
+                return ServiceResultFactory.success(result);
             } catch (error) {
-                return { success: false, error: (error as Error).message };
+                return ServiceResultFactory.error((error as Error).message);
             }
         });
 
         // 连接状态相关
-        ipcMain.handle('database:get-connection-status', async (_: any, connectionId: string) => {
+        ipcMain.handle('database:get-connection-status', async (_: any, connectionId: string): Promise<ServiceResult<any>> => {
             // 实现获取连接状态逻辑
-            console.log('Get connection status:', connectionId);
-            return { status: 'connected', id: connectionId };
+            try {
+                console.log('Get connection status:', connectionId);
+                return ServiceResultFactory.success({ status: 'connected', id: connectionId });
+            } catch (error) {
+                return ServiceResultFactory.error((error as Error).message);
+            }
         });
 
-        ipcMain.handle('database:refresh-connection', async (_: any, connectionId: string) => {
+        ipcMain.handle('database:refresh-connection', async (_: any, connectionId: string): Promise<ServiceResult<boolean>> => {
             // 实现刷新连接逻辑
-            console.log('Refresh connection:', connectionId);
-            return true;
+            try {
+                console.log('Refresh connection:', connectionId);
+                return ServiceResultFactory.success(true);
+            } catch (error) {
+                return ServiceResultFactory.error((error as Error).message);
+            }
         });
 
-        ipcMain.handle('database:disconnect', async (_: any, connectionId: string) => {
+        ipcMain.handle('database:disconnect', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
             // 实现断开连接逻辑
-            console.log('Disconnect:', connectionId);
-            return;
+            try {
+                console.log('Disconnect:', connectionId);
+                return ServiceResultFactory.success<void>();
+            } catch (error) {
+                console.error('Failed to disconnect:', error);
+                return ServiceResultFactory.error((error as Error).message);
+            }
         });
     }
 

@@ -64,7 +64,7 @@
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import type { TableColumn, TableData } from '../../../types'
-import { TreeNodeType } from '../../../types/leftTree/tree'
+import { TreeNodeType } from '../../../../electron/model/database'
 
 interface TablePanelProps {
   dataSource?: TableData[]

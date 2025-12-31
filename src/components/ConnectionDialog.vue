@@ -146,12 +146,11 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useConnectionStore } from '../stores/connection'
-import { ConnectionType } from '../../electron/model/database'
-import { ConnectionConfig } from '@/types/leftTree/connection'
+import { ConnectionType,ConnectionConfig, TreeNode } from '../../electron/model/database'
 
 interface ConnectionDialogProps {
   visible: boolean
-  connection?: ConnectionConfig | null
+  connection?: TreeNode | null
 }
 
 const props = withDefaults(defineProps<ConnectionDialogProps>(), {
@@ -257,14 +256,17 @@ const handleTestConnection = async () => {
     await formRef.value.validate()
     testLoading.value = true
 
-    const testConfig: ConnectionConfig = {
-      ...formData,
-      type: formData.type,
-      id: 'test-connection',
-      password: formData.password || ''
+    const conectionNode:TreeNode ={
+      ...props.connection,
+      connectionConfig: {
+        ...formData,
+        type: formData.type,
+        id: 'test-connection',
+        password: formData.password || ''
+      }
     }
 
-    const result = await connectionStore.testConnection(testConfig)
+    const result = await connectionStore.testConnection(conectionNode)
     if (result.success) {
       ElMessage.success('连接测试成功！')
     } else {

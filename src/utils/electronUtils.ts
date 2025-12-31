@@ -3,22 +3,23 @@
  * 使用 preload 脚本暴露的安全API与主进程通信
  */
 
-// 导入 ConnectionConfig 类型
-import type { ConnectionConfig } from '../../electron/model/database'
+// 导入类型
+import type { TreeNode, ConnectionConfig } from '../../electron/model/database'
+import type { ServiceResult } from '../../electron/model/result/ServiceResult'
 
 // 定义 electronAPI 的类型
 interface ElectronAPI {
   database: {
-    testConnection: (config: ConnectionConfig) => Promise<boolean>
-    saveConnections: (connections: ConnectionConfig[]) => Promise<void>
-    getAllConnections: () => Promise<ConnectionConfig[]>
-    deleteConnection: (connectionId: string) => Promise<void>
-    getDatabases: (config: ConnectionConfig) => Promise<string[]>
-    getTables: (config: ConnectionConfig) => Promise<string[]>
-    executeQuery: (config: ConnectionConfig, sql: string, params: any[]) => Promise<any>
-    getConnectionStatus: (connectionId: string) => Promise<any>
-    refreshConnection: (connectionId: string) => Promise<boolean>
-    disconnect: (connectionId: string) => Promise<void>
+    testConnection: (config: ConnectionConfig) => Promise<ServiceResult<boolean>>
+    saveConnections: (connections: ConnectionConfig[]) => Promise<ServiceResult<void>>
+    getAllConnections: () => Promise<ServiceResult<TreeNode[]>>
+    deleteConnection: (connectionId: string) => Promise<ServiceResult<void>>
+    getDatabases: (config: ConnectionConfig) => Promise<ServiceResult<string[]>>
+    getTables: (config: ConnectionConfig) => Promise<ServiceResult<string[]>>
+    executeQuery: (config: ConnectionConfig, sql: string, params: any[]) => Promise<ServiceResult<any>>
+    getConnectionStatus: (connectionId: string) => Promise<ServiceResult<any>>
+    refreshConnection: (connectionId: string) => Promise<ServiceResult<boolean>>
+    disconnect: (connectionId: string) => Promise<ServiceResult<void>>
   }
   app: {
     showNewConnectionDialog: () => void
@@ -75,7 +76,7 @@ export const getSafeIpcRenderer = () => {
 export const listenToIpcMessage = (channel: string, listener: (...args: any[]) => void) => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
-    return () => {}
+    return () => { }
   }
 
   // 根据通道类型选择合适的监听器
@@ -83,18 +84,18 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
     case 'connection:status-changed':
       electronAPI.on.connectionStatusChanged(listener)
       return () => electronAPI.off.connectionStatusChanged()
-    
+
     case 'database:databases-updated':
       electronAPI.on.databasesUpdated(listener)
       return () => electronAPI.off.databasesUpdated()
-    
+
     case 'database:tables-updated':
       electronAPI.on.tablesUpdated(listener)
       return () => electronAPI.off.tablesUpdated()
-    
+
     default:
       console.warn(`Unknown IPC channel: ${channel}`)
-      return () => {}
+      return () => { }
   }
 }
 
@@ -114,51 +115,51 @@ export const sendIpcMessage = (channel: string, ...args: any[]) => {
     case 'open-new-connection-dialog':
       electronAPI.app.showNewConnectionDialog()
       break
-    
+
     case 'window:minimize':
       electronAPI.app.minimizeWindow()
       break
-    
+
     case 'window:maximize':
       electronAPI.app.maximizeWindow()
       break
-    
+
     case 'window:close':
       electronAPI.app.closeWindow()
       break
-    
+
     case 'app:restart':
       electronAPI.app.restartApp()
       break
-    
+
     case 'file:select-file':
       if (args.length > 0) {
         electronAPI.file.selectFile(args[0])
       }
       break
-    
+
     case 'file:select-folder':
       electronAPI.file.selectFolder()
       break
-    
+
     case 'file:save-file':
       if (args.length >= 2) {
         electronAPI.file.saveFile(args[0], args[1])
       }
       break
-    
+
     case 'file:read-file':
       if (args.length > 0) {
         electronAPI.file.readFile(args[0])
       }
       break
-    
+
     case 'notification:show':
       if (args.length >= 2) {
         electronAPI.notification.show(args[0], args[1])
       }
       break
-    
+
     default:
       console.warn(`Unknown IPC channel: ${channel}`)
       break
@@ -170,7 +171,7 @@ export const sendIpcMessage = (channel: string, ...args: any[]) => {
  */
 
 // 测试数据库连接
-export const testDatabaseConnection = async (config: ConnectionConfig): Promise<boolean> => {
+export const testDatabaseConnection = async (config: ConnectionConfig): Promise<ServiceResult<boolean>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -179,17 +180,17 @@ export const testDatabaseConnection = async (config: ConnectionConfig): Promise<
 }
 
 // 保存连接配置
-export const saveDatabaseConnections = async (connections: ConnectionConfig[]): Promise<void> => {
+export const saveDatabaseConnections = async (connections: ConnectionConfig[]): Promise<ServiceResult<void>> => {
   console.log('[ElectronUtils] Starting to save connections:', connections.length);
-  
+
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
   }
-  
+
   console.log('[ElectronUtils] Electron API available, calling saveConnections');
   console.log('[ElectronUtils] Connections to save:', connections);
-  
+
   try {
     const result = await electronAPI.database.saveConnections(connections);
     console.log('[ElectronUtils] Save result:', result);
@@ -201,7 +202,7 @@ export const saveDatabaseConnections = async (connections: ConnectionConfig[]): 
 }
 
 // 获取所有连接配置
-export const getAllDatabaseConnections = async (): Promise<ConnectionConfig[]> => {
+export const getAllDatabaseConnections = async (): Promise<ServiceResult<TreeNode[]>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -210,7 +211,7 @@ export const getAllDatabaseConnections = async (): Promise<ConnectionConfig[]> =
 }
 
 // 删除连接配置
-export const deleteDatabaseConnection = async (connectionId: string): Promise<void> => {
+export const deleteDatabaseConnection = async (connectionId: string): Promise<ServiceResult<void>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -219,7 +220,7 @@ export const deleteDatabaseConnection = async (connectionId: string): Promise<vo
 }
 
 // 获取数据库列表
-export const getDatabases = async (config: ConnectionConfig): Promise<string[]> => {
+export const getDatabases = async (config: ConnectionConfig): Promise<ServiceResult<string[]>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -228,7 +229,7 @@ export const getDatabases = async (config: ConnectionConfig): Promise<string[]> 
 }
 
 // 获取表列表
-export const getTables = async (config: ConnectionConfig): Promise<string[]> => {
+export const getTables = async (config: ConnectionConfig): Promise<ServiceResult<string[]>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -237,7 +238,7 @@ export const getTables = async (config: ConnectionConfig): Promise<string[]> => 
 }
 
 // 执行SQL查询
-export const executeQuery = async (config: ConnectionConfig, sql: string, params: any[] = []): Promise<any> => {
+export const executeQuery = async (config: ConnectionConfig, sql: string, params: any[] = []): Promise<ServiceResult<any>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -246,7 +247,7 @@ export const executeQuery = async (config: ConnectionConfig, sql: string, params
 }
 
 // 获取连接状态
-export const getConnectionStatus = async (connectionId: string): Promise<any> => {
+export const getConnectionStatus = async (connectionId: string): Promise<ServiceResult<any>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -255,7 +256,7 @@ export const getConnectionStatus = async (connectionId: string): Promise<any> =>
 }
 
 // 刷新连接
-export const refreshConnection = async (connectionId: string): Promise<boolean> => {
+export const refreshConnection = async (connectionId: string): Promise<ServiceResult<boolean>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')
@@ -264,7 +265,7 @@ export const refreshConnection = async (connectionId: string): Promise<boolean> 
 }
 
 // 断开连接
-export const disconnectDatabase = async (connectionId: string): Promise<void> => {
+export const disconnectDatabase = async (connectionId: string): Promise<ServiceResult<void>> => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     throw new Error('Electron API not available')

@@ -4,14 +4,11 @@
  * 负责管理所有数据库连接的配置、状态、数据等核心业务逻辑
  */
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import CryptoJS from 'crypto-js'
-import type { ConnectionConfig } from '../types/leftTree/connection'
-import { TreeNodeType } from '../types/leftTree/tree'
-
-import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
-import type { DatabaseObject } from '../types/leftTree/tree'
-import { 
+import { ConnectionConfig, TreeNodeType, ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
+import { TreeNode, TreeNodeFactory } from '../../electron/model/database'
+import {
   testDatabaseConnection,
   saveDatabaseConnections,
   getAllDatabaseConnections,
@@ -60,10 +57,10 @@ const decryptPassword = (encryptedPassword: string): string => {
  * 尝试读取并解析SQLite数据库中的连接配置信息
  * @returns 包含连接配置的部分状态对象，如果加载失败则返回空对象
  */
-const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionConfig[] }>> => {
+const loadPersistedState = async (): Promise<Partial<{ connections: TreeNode[] }>> => {
   try {
     const connections = await getAllDatabaseConnections()
-    return { connections }
+    return { connections: connections.data }
   } catch (error) {
     console.error('Failed to load persisted state from SQLite:', error)
     // 如果SQLite加载失败，回退到localStorage
@@ -85,11 +82,15 @@ const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionCo
 /**
  * 将连接配置保存到SQLite数据库
  * 持久化保存连接配置信息，以便下次打开应用时恢复
- * @param connections 连接配置数组
+ * @param connections 连接配置数组（TreeNode类型）
  */
-const savePersistedState = async (connections: ConnectionConfig[]) => {
+const savePersistedState = async (connections: TreeNode[]) => {
   try {
-    await saveDatabaseConnections(connections)
+    // 从TreeNode中提取ConnectionConfig数据
+    const connectionConfigs: ConnectionConfig[] = connections
+      .map(node => node.connectionConfig)
+      .filter(config => config !== undefined) as ConnectionConfig[]
+    await saveDatabaseConnections(connectionConfigs)
   } catch (error) {
     console.error('Failed to save persisted state to SQLite:', error)
     // 如果SQLite保存失败，回退到localStorage
@@ -107,7 +108,7 @@ const savePersistedState = async (connections: ConnectionConfig[]) => {
  */
 export const useConnectionStore = defineStore('connection', () => {
   /** 已保存的数据库连接配置列表 */
-  const connections = ref<ConnectionConfig[]>([])
+  const connections = ref<TreeNode[]>([])
 
   /** 所有连接的状态映射，key 为连接 ID，value 为 ConnectionStatus */
   const connectionStates = ref<Map<string, ConnectionStatus>>(new Map())
@@ -118,17 +119,17 @@ export const useConnectionStore = defineStore('connection', () => {
   /** 所有数据库的状态映射，key 为数据库 ID，value 为 DatabaseStatus */
   const databaseStates = ref<Map<string, DatabaseStatus>>(new Map())
 
-  /** 所有数据库对象映射，key 为数据库 ID，value 为 DatabaseObject */
-  const databases = ref<Map<string, DatabaseObject>>(new Map())
+  /** 所有数据库对象映射，key 为数据库 ID，value 为 TreeNode */
+  const databases = ref<Map<string, TreeNode>>(new Map())
 
-  /** 所有表对象映射，key 为表 ID，value 为 DatabaseObject */
-  const tables = ref<Map<string, DatabaseObject>>(new Map())
+  /** 所有表对象映射，key 为表 ID，value 为 TreeNode */
+  const tables = ref<Map<string, TreeNode>>(new Map())
 
   /** 初始化连接数据，从SQLite数据库加载 */
   const initializeConnections = async () => {
     const persistedState = await loadPersistedState()
     if (persistedState.connections && Array.isArray(persistedState.connections)) {
-      connections.value = persistedState.connections.data
+      connections.value = persistedState.connections
       // 初始化连接状态
       const newStates = new Map(connectionStates.value)
       persistedState.connections.forEach(conn => {
@@ -151,7 +152,7 @@ export const useConnectionStore = defineStore('connection', () => {
    * @returns 已成功连接的配置数组
    */
   const connectedConnections = computed(() => {
-    const result: ConnectionConfig[] = []
+    const result: TreeNode[] = []
     connectionStates.value.forEach((status, id) => {
       if (status === ConnectionStatus.CONNECTED) {
         const conn = connections.value.find(c => c.id === id)
@@ -167,7 +168,7 @@ export const useConnectionStore = defineStore('connection', () => {
    * @param config 连接配置（不包含 id）
    */
   const addConnection = (config: Omit<ConnectionConfig, 'id'>) => {
-    const newConnection: ConnectionConfig = {
+    const connectionConfig: ConnectionConfig = {
       ...config,
       id: `connection_${Date.now()}`,
       password: config.password ? encryptPassword(config.password) : '',
@@ -175,12 +176,16 @@ export const useConnectionStore = defineStore('connection', () => {
       sshPassphrase: config.sshPassphrase ? encryptPassword(config.sshPassphrase) : undefined,
     }
 
+    // 使用 TreeNodeFactory.createConnection 创建 TreeNode
+    const newConnection = TreeNodeFactory.createConnection(connectionConfig)
+    console.log('Added new connection:', newConnection.id)
+
     const newStates = new Map(connectionStates.value)
     newStates.set(newConnection.id, ConnectionStatus.DISCONNECTED)
 
     connections.value = [...connections.value, newConnection]
     connectionStates.value = newStates
-    
+
     // 保存到持久化存储
     savePersistedState(connections.value)
   }
@@ -194,17 +199,25 @@ export const useConnectionStore = defineStore('connection', () => {
   const updateConnection = (id: string, config: Partial<ConnectionConfig>) => {
     connections.value = connections.value.map((conn) => {
       if (conn.id === id) {
-        return {
-          ...conn,
-          ...config,
-          password: config.password ? encryptPassword(config.password) : conn.password,
-          sshPassword: config.sshPassword ? encryptPassword(config.sshPassword) : conn.sshPassword,
-          sshPassphrase: config.sshPassphrase ? encryptPassword(config.sshPassphrase) : conn.sshPassphrase,
+        if (!conn.connectionConfig) {
+          console.warn(`Connection config not found for connection ${id}`)
+          return conn
         }
+
+        const updatedConfig = {
+          ...conn.connectionConfig,
+          ...config,
+          id: conn.id, // 确保 ID 不被覆盖
+          password: config.password ? encryptPassword(config.password) : conn.connectionConfig.password,
+          sshPassword: config.sshPassword ? encryptPassword(config.sshPassword) : conn.connectionConfig.sshPassword,
+          sshPassphrase: config.sshPassphrase ? encryptPassword(config.sshPassphrase) : conn.connectionConfig.sshPassphrase,
+        }
+        // 使用 TreeNodeFactory.createConnection 重新创建 TreeNode
+        return TreeNodeFactory.createConnection(updatedConfig)
       }
       return conn
     })
-    
+
     // 保存到持久化存储
     savePersistedState(connections.value)
   }
@@ -244,15 +257,20 @@ export const useConnectionStore = defineStore('connection', () => {
   /**
    * 解密连接配置中的密码字段
    * 将加密的密码转换为明文用于表单显示
-   * @param connection 原始连接配置
+   * @param connection 原始连接节点
    * @returns 解密后的连接配置
    */
-  const decryptConnection = (connection: ConnectionConfig): ConnectionConfig => {
+  const decryptConnection = (connection: TreeNode): ConnectionConfig => {
+    const config = connection.connectionConfig
+    if (!config) {
+      throw new Error('Connection configuration not found')
+    }
+
     return {
-      ...connection,
-      password: connection.password ? decryptPassword(connection.password) : '',
-      sshPassword: connection.sshPassword ? decryptPassword(connection.sshPassword) : undefined,
-      sshPassphrase: connection.sshPassphrase ? decryptPassword(connection.sshPassphrase) : undefined
+      ...config,
+      password: config.password ? decryptPassword(config.password) : '',
+      sshPassword: config.sshPassword ? decryptPassword(config.sshPassword) : undefined,
+      sshPassphrase: config.sshPassphrase ? decryptPassword(config.sshPassphrase) : undefined
     }
   }
 
@@ -303,10 +321,15 @@ export const useConnectionStore = defineStore('connection', () => {
   /**
    * 测试数据库连接是否可用
    * 通过 IPC 调用主进程进行实际的连接测试
-   * @param config 连接配置信息
+   * @param connection 连接节点信息
    * @returns 测试结果，包含 success 标识和可选的 error 错误信息
    */
-  const testConnection = async (config: ConnectionConfig): Promise<{ success: boolean; error?: string }> => {
+  const testConnection = async (connection: TreeNode): Promise<{ success: boolean; error?: string }> => {
+    const config = connection.connectionConfig
+    if (!config) {
+      return { success: false, error: 'Connection configuration not found' }
+    }
+
     const isPasswordEncrypted = config.password && config.password.startsWith('U2FsdGVkX1')
     const isSshPasswordEncrypted = config.sshPassword && config.sshPassword.startsWith('U2FsdGVkX1')
     const isSshPassphraseEncrypted = config.sshPassphrase && config.sshPassphrase.startsWith('U2FsdGVkX1')
@@ -318,21 +341,21 @@ export const useConnectionStore = defineStore('connection', () => {
       sshPassphrase: config.sshPassphrase && isSshPassphraseEncrypted ? decryptPassword(config.sshPassphrase) : config.sshPassphrase || undefined,
     }
 
-    setConnectionStatus(config.id, ConnectionStatus.CONNECTING)
+    setConnectionStatus(connection.id, ConnectionStatus.CONNECTING)
 
     try {
-      const success = await testDatabaseConnection(decryptedConfig)
+      const result = await testDatabaseConnection(decryptedConfig)
 
-      if (success) {
-        setConnectionStatus(config.id, ConnectionStatus.CONNECTED)
+      if (result.success) {
+        setConnectionStatus(connection.id, ConnectionStatus.CONNECTED)
         return { success: true }
       } else {
-        setConnectionStatus(config.id, ConnectionStatus.ERROR)
-        return { success: false, error: 'Connection test failed' }
+        setConnectionStatus(connection.id, ConnectionStatus.ERROR)
+        return { success: false, error: result.message || 'Connection test failed' }
       }
     } catch (error) {
       console.error('Connection test failed:', error)
-      setConnectionStatus(config.id, ConnectionStatus.ERROR)
+      setConnectionStatus(connection.id, ConnectionStatus.ERROR)
       return { success: false, error: (error as Error).message }
     }
   }
@@ -350,10 +373,15 @@ export const useConnectionStore = defineStore('connection', () => {
     }
 
     try {
-      const isPasswordEncrypted = connection.password && connection.password.startsWith('U2FsdGVkX1')
+      const config = connection.connectionConfig
+      if (!config) {
+        throw new Error('Connection configuration not found')
+      }
+
+      const isPasswordEncrypted = config.password && config.password.startsWith('U2FsdGVkX1')
       const decryptedConfig = {
-        ...connection,
-        password: isPasswordEncrypted ? decryptPassword(connection.password) : connection.password || '',
+        ...config,
+        password: isPasswordEncrypted ? decryptPassword(config.password) : config.password || '',
         id: connectionId
       }
 
@@ -363,10 +391,10 @@ export const useConnectionStore = defineStore('connection', () => {
         id: `db_${connectionId}_${dbName}`,
         name: dbName,
         type: TreeNodeType.DATABASE,
-        connectionType: connection.type,
-        parentId: connectionId,
+        connectionType: config.type,
+        parentId: connectionId as string | null,
         metadata: { databaseName: dbName }
-      }))
+      })) || []
 
       addDatabaseObjects(dbObjects)
 
@@ -397,10 +425,15 @@ export const useConnectionStore = defineStore('connection', () => {
     try {
       setDatabaseStatus(databaseId, DatabaseStatus.LOADING)
 
-      const isPasswordEncrypted = connection.password && connection.password.startsWith('U2FsdGVkX1')
+      const config = connection.connectionConfig
+      if (!config) {
+        throw new Error('Connection configuration not found')
+      }
+
+      const isPasswordEncrypted = config.password && config.password.startsWith('U2FsdGVkX1')
       const decryptedConfig = {
-        ...connection,
-        password: isPasswordEncrypted ? decryptPassword(connection.password) : connection.password || '',
+        ...config,
+        password: isPasswordEncrypted ? decryptPassword(config.password) : config.password || '',
         databaseName,
         databaseId
       }
@@ -411,11 +444,14 @@ export const useConnectionStore = defineStore('connection', () => {
         id: `table_${connectionId}_${databaseName}_${tableName}`,
         name: tableName,
         type: TreeNodeType.TABLE,
-        connectionType: connection.type,  
-        parentId: databaseId,
-        expanded: false,
-        children: []
-      }))
+        connectionType: config.type,
+        parentId: databaseId as string | null,
+        metadata: {
+          tableName,
+          databaseName,
+          connectionId
+        }
+      })) || []
 
       removeDatabaseObjectsByParentId(databaseId)
       addDatabaseObjects(tableObjects)

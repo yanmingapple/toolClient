@@ -61,7 +61,7 @@
 import { ref, computed } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import type { ViewData } from '../../../types'
-import type { TreeNodeType } from '../../../types/leftTree/tree'
+import type { TreeNodeType } from '../../../../electron/model/database'
 
 interface ViewPanelProps {
   dataSource?: ViewData[]
