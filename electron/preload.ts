@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Object} config 连接配置
      * @returns {Promise<boolean>} 连接是否成功
      */
-    testConnection: (config:ConnectionConfig) => {
+    testConnection: (config:ConnectionConfig): Promise<boolean> => {
       return ipcRenderer.invoke('database:test-connection', config);
     },
 
@@ -23,7 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Array} connections 连接配置数组
      * @returns {Promise<void>}
      */
-    saveConnections: (connections:ConnectionConfig[]) => {
+    saveConnections: (connections:ConnectionConfig[]): Promise<void> => {
       return ipcRenderer.invoke('database:save-connections', connections);
     },
 
@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * 获取所有连接配置
      * @returns {Promise<Array>}
      */
-    getAllConnections: () => {
+    getAllConnections: (): Promise<Array<any>> => {
       return ipcRenderer.invoke('database:get-all-connections');
     },
 
@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} connectionId 连接ID
      * @returns {Promise<void>}
      */
-    deleteConnection: (connectionId:string) => {
+    deleteConnection: (connectionId:string): Promise<void> => {
       return ipcRenderer.invoke('database:delete-connection', connectionId);
     },
 
@@ -56,10 +56,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /**
      * 获取表列表
      * @param {Object} config 连接配置
-     * @param {string} database 数据库名
      * @returns {Promise<Array<string>>} 表名列表
      */
-    getTables: (config:ConnectionConfig) => {
+    getTables: (config:ConnectionConfig): Promise<Array<string>> => {
       return ipcRenderer.invoke('database:get-tables', config);
     },
 
@@ -70,7 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Array} params 参数
      * @returns {Promise<any>} 查询结果
      */
-    executeQuery: (config:ConnectionConfig, sql:string, params:any[]) => {
+    executeQuery: (config:ConnectionConfig, sql:string, params:any[]): Promise<any> => {
       return ipcRenderer.invoke('database:execute-query', config, sql, params);
     },
 
@@ -79,7 +78,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} connectionId 连接ID
      * @returns {Promise<any>} 连接状态信息
      */
-    getConnectionStatus: (connectionId:string) => {
+    getConnectionStatus: (connectionId:string): Promise<any> => {
       return ipcRenderer.invoke('database:get-connection-status', connectionId);
     },
 
@@ -88,7 +87,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} connectionId 连接ID
      * @returns {Promise<boolean>} 是否成功
      */
-    refreshConnection: (connectionId:string) => {
+    refreshConnection: (connectionId:string): Promise<boolean> => {
       return ipcRenderer.invoke('database:refresh-connection', connectionId);
     },
 
@@ -97,7 +96,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} connectionId 连接ID
      * @returns {Promise<void>}
      */
-    disconnect: (connectionId:string) => {
+    disconnect: (connectionId:string): Promise<void> => {
       return ipcRenderer.invoke('database:disconnect', connectionId);
     }
   },
@@ -147,7 +146,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Array} filters 文件过滤器
      * @returns {Promise<string>} 选择的文件路径
      */
-    selectFile: (filters:string[]) => {
+    selectFile: (filters:string[]): Promise<string> => {
       return ipcRenderer.invoke('file:select-file', filters);
     },
 
@@ -155,7 +154,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * 选择文件夹
      * @returns {Promise<string>} 选择的文件夹路径
      */
-    selectFolder: () => {
+    selectFolder: (): Promise<string> => {
       return ipcRenderer.invoke('file:select-folder');
     },
 
@@ -165,7 +164,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} content 文件内容
      * @returns {Promise<boolean>} 是否成功
      */
-    saveFile: (defaultPath:string, content:string) => {
+    saveFile: (defaultPath:string, content:string): Promise<boolean> => {
       return ipcRenderer.invoke('file:save-file', defaultPath, content);
     },
 
@@ -174,7 +173,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} filePath 文件路径
      * @returns {Promise<string>} 文件内容
      */
-    readFile: (filePath:string) => {
+    readFile: (filePath:string): Promise<string> => {
       return ipcRenderer.invoke('file:read-file', filePath);
     }
   },

@@ -8,7 +8,7 @@
   "main": "dist/electron/index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
-    "dev:main": "cross-env NODE_ENV=development tsc -p tsconfig.electron.json --watch --quiet",
+    "dev:main": "cross-env NODE_ENV=development tsc -p tsconfig.electron.json --watch",
     "dev:renderer": "cross-env NODE_ENV=development vite --config vite.config.ts",
     "build": "npm run build:main",
     "build:main": "tsc -p tsconfig.electron.json",

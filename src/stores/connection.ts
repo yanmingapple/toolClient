@@ -7,9 +7,17 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import CryptoJS from 'crypto-js'
 import type { ConnectionConfig } from '../types/leftTree/connection'
+import { TreeNodeType } from '../types/leftTree/tree'
+
 import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
 import type { DatabaseObject } from '../types/leftTree/tree'
-import { getSafeIpcRenderer } from '../utils/electronUtils'
+import { 
+  testDatabaseConnection,
+  saveDatabaseConnections,
+  getAllDatabaseConnections,
+  getDatabases,
+  getTables
+} from '../utils/electronUtils'
 
 /** 加密密钥，用于密码加密存储 */
 const SECRET_KEY = 'dbmanager-pro-secret-key'
@@ -54,13 +62,8 @@ const decryptPassword = (encryptedPassword: string): string => {
  */
 const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionConfig[] }>> => {
   try {
-    const ipcRenderer = getSafeIpcRenderer()
-    if (ipcRenderer) {
-      const result = await ipcRenderer.invoke('get-connection-list')
-      if (result.success && Array.isArray(result.data)) {
-        return { connections: result.data }
-      }
-    }
+    const connections = await getAllDatabaseConnections()
+    return { connections }
   } catch (error) {
     console.error('Failed to load persisted state from SQLite:', error)
     // 如果SQLite加载失败，回退到localStorage
@@ -86,11 +89,7 @@ const loadPersistedState = async (): Promise<Partial<{ connections: ConnectionCo
  */
 const savePersistedState = async (connections: ConnectionConfig[]) => {
   try {
-    const ipcRenderer = getSafeIpcRenderer()
-    if (ipcRenderer) {
-      await ipcRenderer.invoke('save-connection-list', connections)
-      return
-    }
+    await saveDatabaseConnections(connections)
   } catch (error) {
     console.error('Failed to save persisted state to SQLite:', error)
     // 如果SQLite保存失败，回退到localStorage
@@ -129,7 +128,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const initializeConnections = async () => {
     const persistedState = await loadPersistedState()
     if (persistedState.connections && Array.isArray(persistedState.connections)) {
-      connections.value = persistedState.connections
+      connections.value = persistedState.connections.data
       // 初始化连接状态
       const newStates = new Map(connectionStates.value)
       persistedState.connections.forEach(conn => {
@@ -141,10 +140,10 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  /** 监听连接配置变化，自动持久化保存到SQLite数据库 */
-  watch(connections, (newConnections) => {
-    savePersistedState(newConnections)
-  }, { deep: true })
+  // /** 监听连接配置变化，自动持久化保存到SQLite数据库 */
+  // watch(connections, (newConnections) => {
+  //   savePersistedState(newConnections)
+  // }, { deep: true })
 
   /**
    * 计算属性：已建立的连接列表
@@ -181,6 +180,9 @@ export const useConnectionStore = defineStore('connection', () => {
 
     connections.value = [...connections.value, newConnection]
     connectionStates.value = newStates
+    
+    // 保存到持久化存储
+    savePersistedState(connections.value)
   }
 
   /**
@@ -202,6 +204,9 @@ export const useConnectionStore = defineStore('connection', () => {
       }
       return conn
     })
+    
+    // 保存到持久化存储
+    savePersistedState(connections.value)
   }
 
   /**
@@ -235,19 +240,6 @@ export const useConnectionStore = defineStore('connection', () => {
     activeConnectionId.value = activeConnectionId.value === id ? null : activeConnectionId.value
   }
 
-  const removeConnectionById = (id: string) => {
-    const newConnections = connections.value.filter((conn) => conn.id !== id)
-    const newConnectionStates = new Map(connectionStates.value)
-    newConnectionStates.delete(id)
-
-    connections.value = newConnections
-    connectionStates.value = newConnectionStates
-    if (activeConnectionId.value === id) {
-      activeConnectionId.value = null
-    }
-
-    savePersistedState(newConnections)
-  }
 
   /**
    * 解密连接配置中的密码字段
@@ -315,13 +307,6 @@ export const useConnectionStore = defineStore('connection', () => {
    * @returns 测试结果，包含 success 标识和可选的 error 错误信息
    */
   const testConnection = async (config: ConnectionConfig): Promise<{ success: boolean; error?: string }> => {
-    const ipcRenderer = getSafeIpcRenderer()
-    if (!ipcRenderer) {
-      console.error('ipcRenderer is not available')
-      setConnectionStatus(config.id, ConnectionStatus.ERROR)
-      return { success: false, error: 'IPC renderer not available' }
-    }
-
     const isPasswordEncrypted = config.password && config.password.startsWith('U2FsdGVkX1')
     const isSshPasswordEncrypted = config.sshPassword && config.sshPassword.startsWith('U2FsdGVkX1')
     const isSshPassphraseEncrypted = config.sshPassphrase && config.sshPassphrase.startsWith('U2FsdGVkX1')
@@ -336,15 +321,14 @@ export const useConnectionStore = defineStore('connection', () => {
     setConnectionStatus(config.id, ConnectionStatus.CONNECTING)
 
     try {
-      const result = await ipcRenderer.invoke('test-database-connection', decryptedConfig)
+      const success = await testDatabaseConnection(decryptedConfig)
 
-      if (result.success) {
+      if (success) {
         setConnectionStatus(config.id, ConnectionStatus.CONNECTED)
         return { success: true }
       } else {
-        console.error('Connection test failed:', result.message)
         setConnectionStatus(config.id, ConnectionStatus.ERROR)
-        return { success: false, error: result.message }
+        return { success: false, error: 'Connection test failed' }
       }
     } catch (error) {
       console.error('Connection test failed:', error)
@@ -365,12 +349,6 @@ export const useConnectionStore = defineStore('connection', () => {
       throw new Error('Connection not found')
     }
 
-    const ipcRenderer = getSafeIpcRenderer()
-    if (!ipcRenderer) {
-      console.error('ipcRenderer is not available')
-      return []
-    }
-
     try {
       const isPasswordEncrypted = connection.password && connection.password.startsWith('U2FsdGVkX1')
       const decryptedConfig = {
@@ -379,20 +357,23 @@ export const useConnectionStore = defineStore('connection', () => {
         id: connectionId
       }
 
-      const result = await ipcRenderer.invoke('get-database-list', decryptedConfig)
+      const dbNames = await getDatabases(decryptedConfig)
 
-      if (result.success) {
-        const dbObjects = result.data as DatabaseObject[]
-        addDatabaseObjects(dbObjects)
+      const dbObjects: DatabaseObject[] = dbNames?.data?.map((dbName: string) => ({
+        id: `db_${connectionId}_${dbName}`,
+        name: dbName,
+        type: TreeNodeType.DATABASE,
+        connectionType: connection.type,
+        parentId: connectionId,
+        metadata: { databaseName: dbName }
+      }))
 
-        dbObjects.forEach(database => {
-          setDatabaseStatus(database.id, DatabaseStatus.DISCONNECTED)
-        })
-        return dbObjects
-      } else {
-        console.error('Failed to get database list:', result.message)
-        return []
-      }
+      addDatabaseObjects(dbObjects)
+
+      dbObjects.forEach(database => {
+        setDatabaseStatus(database.id, DatabaseStatus.DISCONNECTED)
+      })
+      return dbObjects
     } catch (error) {
       console.error('Failed to get database list:', error)
       return []
@@ -413,12 +394,6 @@ export const useConnectionStore = defineStore('connection', () => {
       throw new Error('Connection not found')
     }
 
-    const ipcRenderer = getSafeIpcRenderer()
-    if (!ipcRenderer) {
-      console.error('ipcRenderer is not available')
-      return []
-    }
-
     try {
       setDatabaseStatus(databaseId, DatabaseStatus.LOADING)
 
@@ -430,19 +405,22 @@ export const useConnectionStore = defineStore('connection', () => {
         databaseId
       }
 
-      const result = await ipcRenderer.invoke('get-table-list', decryptedConfig)
+      const tableNames = await getTables(decryptedConfig)
 
-      if (result.success) {
-        const tableObjects = result.data as DatabaseObject[]
-        removeDatabaseObjectsByParentId(databaseId)
-        addDatabaseObjects(tableObjects)
-        setDatabaseStatus(databaseId, DatabaseStatus.LOADED)
-        return tableObjects
-      } else {
-        console.error('Failed to get table list:', result.message)
-        setDatabaseStatus(databaseId, DatabaseStatus.ERROR)
-        return []
-      }
+      const tableObjects: DatabaseObject[] = tableNames?.data?.map((tableName: string) => ({
+        id: `table_${connectionId}_${databaseName}_${tableName}`,
+        name: tableName,
+        type: TreeNodeType.TABLE,
+        connectionType: connection.type,  
+        parentId: databaseId,
+        expanded: false,
+        children: []
+      }))
+
+      removeDatabaseObjectsByParentId(databaseId)
+      addDatabaseObjects(tableObjects)
+      setDatabaseStatus(databaseId, DatabaseStatus.LOADED)
+      return tableObjects
     } catch (error) {
       console.error('Failed to get table list:', error)
       setDatabaseStatus(databaseId, DatabaseStatus.ERROR)

@@ -95,62 +95,59 @@ export class DatabaseService {
     }
 
     /**
+     * 提取连接配置参数数组
+     * @param connection 连接配置
+     * @returns 参数数组
+     */
+    private extractConnectionParams(connection: any): any[] {
+        return [
+            connection.id,
+            connection.name,
+            connection.type,
+            connection.host,
+            connection.port,
+            connection.username,
+            connection.password,
+            connection.database,
+            connection.sshHost,
+            connection.sshPort,
+            connection.sshUsername,
+            connection.sshPassword,
+            connection.sshPassphrase,
+            connection.sshKeyPath
+        ];
+    }
+
+    /**
      * 保存连接配置列表
      * @param connections 连接配置数组
      * @returns 操作结果
      */
     public async saveConnections(connections: Array<any>): Promise<void> {
-        // 清空现有连接表
-        await this.database.execute(SQLStatements.DELETE_ALL_CONNECTIONS);
-
-        // 插入所有连接
-        for (const conn of connections) {
-            await this.database.execute(
-                SQLStatements.INSERT_OR_REPLACE_CONNECTION,
-                [
-                    conn.id,
-                    conn.name,
-                    conn.type,
-                    conn.host,
-                    conn.port,
-                    conn.username,
-                    conn.password,
-                    conn.database,
-                    conn.sshHost,
-                    conn.sshPort,
-                    conn.sshUsername,
-                    conn.sshPassword,
-                    conn.sshPassphrase,
-                    conn.sshKeyPath
-                ]
-            );
+        console.log('[DatabaseService] Starting to save connections:', connections.length);
+        
+        // 批量插入或替换连接配置
+        for (let i = 0; i < connections.length; i++) {
+            const conn = connections[i];
+            console.log(`[DatabaseService] Saving connection ${i + 1}/${connections.length}:`, conn.id, conn.name);
+            
+            try {
+                const params = this.extractConnectionParams(conn);
+                console.log(`[DatabaseService] Extracted params for connection ${conn.id}:`, params);
+                
+                const result = await this.database.execute(
+                    SQLStatements.INSERT_OR_REPLACE_CONNECTION,
+                    params
+                );
+                
+                console.log(`[DatabaseService] Successfully saved connection ${conn.id}, result:`, result);
+            } catch (error) {
+                console.error(`[DatabaseService] Failed to save connection ${conn.id}:`, error);
+                throw error;
+            }
         }
-    }
-
-    /**
-     * 添加单个连接配置
-     * @param connection 连接配置
-     */
-    public async addConnection(connection: any): Promise<void> {
-        await this.database.execute(
-            SQLStatements.INSERT_OR_REPLACE_CONNECTION,
-            [
-                connection.id,
-                connection.name,
-                connection.type,
-                connection.host,
-                connection.port,
-                connection.username,
-                connection.password,
-                connection.database,
-                connection.sshHost,
-                connection.sshPort,
-                connection.sshUsername,
-                connection.sshPassword,
-                connection.sshPassphrase,
-                connection.sshKeyPath
-            ]
-        );
+        
+        console.log('[DatabaseService] All connections saved successfully');
     }
 
     /**
