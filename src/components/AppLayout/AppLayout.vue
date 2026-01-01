@@ -40,10 +40,6 @@
     <div class="app-footer">
       <span>ToolClient Database Manager © 2024</span>
     </div>
-
-    <div class="slot-content" v-if="$slots.default">
-      <slot></slot>
-    </div>
   </div>
 </template>
 
@@ -618,16 +614,5 @@ watch(
   justify-content: center;
   color: #606266;
   font-size: 12px;
-}
-
-.slot-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  background-color: rgba(255, 255, 255, 0.95);
-  overflow: auto;
 }
 </style>

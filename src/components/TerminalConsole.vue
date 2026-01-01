@@ -2,11 +2,14 @@
   <div class="terminal-console">
     <div class="terminal-header">
       <h3>终端控制台</h3>
-      <div class="shell-selector">
-        <el-select v-model="selectedShell" placeholder="选择Shell">
-          <el-option label="PowerShell" value="powershell" />
-          <el-option label="CMD" value="cmd" />
-        </el-select>
+      <div class="terminal-controls">
+        <div class="shell-selector">
+          <el-select v-model="selectedShell" placeholder="选择Shell">
+            <el-option label="PowerShell" value="powershell" />
+            <el-option label="CMD" value="cmd" />
+          </el-select>
+        </div>
+        <el-button @click="handleClose" type="danger" size="small">关闭</el-button>
       </div>
     </div>
 

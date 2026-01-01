@@ -7,9 +7,6 @@
     <template v-if="activeConnectionId">
       <QueryEditor />
     </template>
-    <template v-if="showTerminalConsole">
-      <TerminalConsole />
-    </template>
   </AppLayout>
 
   <ConnectionDialog
@@ -23,6 +20,17 @@
     :title="commandResultTitle"
     :result="commandResult"
   />
+
+  <el-dialog
+    v-model="showTerminalConsole"
+    title="终端控制台"
+    width="80%"
+    :before-close="handleTerminalClose"
+    :close-on-click-modal="false"
+    :close-on-press-escape="true"
+  >
+    <TerminalConsole @close="handleTerminalClose" />
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -59,6 +67,10 @@ const handleEditConnection = (connection: TreeNode) => {
 const handleCancelDialog = () => {
   connectionDialogVisible.value = false
   editingConnection.value = null
+}
+
+const handleTerminalClose = () => {
+  showTerminalConsole.value = false
 }
 
 // 应用启动时从SQLite数据库加载连接数据
