@@ -20,6 +20,11 @@ export default defineConfig({
       dts: 'src/components.d.ts'
     })
   ],
+  base: './',  // 使用相对路径，这样资源文件会相对于 HTML 文件位置
+  build: {
+    outDir: 'dist/renderer',
+    emptyOutDir: true
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')

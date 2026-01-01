@@ -15,24 +15,6 @@ export const getDatabaseIcon = (type: DatabaseType, isConnected: boolean) => {
 }
 
 /**
- * 获取连接状态的中文显示和颜色
- * @param status 连接状态
- * @returns 包含文本和颜色的对象
- */
-export const getConnectionStatusInfo = (status: ConnectionStatus) => {
-  switch (status) {
-    case ConnectionStatus.CONNECTED:
-      return { text: '已连接', color: 'success' }
-    case ConnectionStatus.CONNECTING:
-      return { text: '连接中', color: 'processing' }
-    case ConnectionStatus.ERROR:
-      return { text: '错误', color: 'error' }
-    default:
-      return { text: '未连接', color: 'default' }
-  }
-}
-
-/**
  * 确保连接状态是Map对象
  * @param connectionStates 连接状态对象
  * @returns 安全的Map对象
