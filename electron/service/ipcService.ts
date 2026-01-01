@@ -8,6 +8,7 @@ import { FileService } from './fileService';           // 文件操作服务
 import { WebContentsService } from './webContentsService'; // Web内容服务
 import { NotificationService } from './notificationService'; // 通知服务
 import { DatabaseService } from './databaseService';   // 数据库服务
+import { TerminalService } from './terminalService';  // 终端命令服务
 
 /**
  * IPC服务类
@@ -50,6 +51,9 @@ export class IpcService {
     
     // 6. 注册文件操作相关的IPC处理程序（文件读写、保存等）
     FileService.registerIpcHandlers(ipcMain, mainWindow);
+    
+    // 7. 注册终端命令相关的IPC处理程序（cmd、powershell命令执行等）
+    TerminalService.getInstance().registerIpcHandlers();
   }
 
   /**

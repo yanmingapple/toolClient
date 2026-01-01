@@ -40,6 +40,10 @@
     <div class="app-footer">
       <span>ToolClient Database Manager © 2024</span>
     </div>
+
+    <div class="slot-content" v-if="$slots.default">
+      <slot></slot>
+    </div>
   </div>
 </template>
 
@@ -569,45 +573,61 @@ watch(
 
 <style scoped>
 .app-layout {
+  width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  background-color: #f5f5f5;
 }
 
 .app-header {
   flex-shrink: 0;
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
 }
 
 .app-body {
   flex: 1;
   display: flex;
   overflow: hidden;
-  min-height: 0;
 }
 
 .layout-sider {
   width: 280px;
-  background: #fff;
-  border-right: 1px solid #f0f0f0;
-  overflow-y: auto;
   flex-shrink: 0;
+  background-color: #fff;
+  border-right: 1px solid #e4e7ed;
+  overflow-y: auto;
 }
 
 .layout-content {
   flex: 1;
   overflow: hidden;
-  min-height: 0;
+  background-color: #fff;
 }
 
 .app-footer {
   flex-shrink: 0;
-  height: 32px;
-  line-height: 32px;
-  text-align: center;
+  height: 30px;
+  background-color: #fff;
+  border-top: 1px solid #e4e7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
   font-size: 12px;
-  color: #909399;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+}
+
+.slot-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.95);
+  overflow: auto;
 }
 </style>

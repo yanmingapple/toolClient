@@ -41,11 +41,22 @@ interface ElectronAPI {
     connectionStatusChanged: (callback: (data: any) => void) => void
     databasesUpdated: (callback: (data: any) => void) => void
     tablesUpdated: (callback: (data: any) => void) => void
+    openNewConnectionDialog: (callback: () => void) => void
+    openTerminalConsole: (callback: () => void) => void
+    terminalResult: (callback: (data: any) => void) => void
   }
   off: {
     connectionStatusChanged: () => void
     databasesUpdated: () => void
     tablesUpdated: () => void
+    openNewConnectionDialog: () => void
+    openTerminalConsole: () => void
+    terminalResult: () => void
+  }
+  terminal: {
+    executeCommand: (command: string, shell: 'cmd' | 'powershell', cwd?: string, timeout?: number) => Promise<ServiceResult<any>>
+    executeCommands: (commands: any[], parallel: boolean) => Promise<ServiceResult<any[]>>
+    getSystemInfo: () => Promise<ServiceResult<any>>
   }
 }
 
@@ -92,6 +103,18 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
     case 'database:tables-updated':
       electronAPI.on.tablesUpdated(listener)
       return () => electronAPI.off.tablesUpdated()
+      
+    case 'open-new-connection-dialog':
+      electronAPI.on.openNewConnectionDialog(listener)
+      return () => electronAPI.off.openNewConnectionDialog()
+      
+    case 'terminal:open-console':
+      electronAPI.on.openTerminalConsole(listener)
+      return () => electronAPI.off.openTerminalConsole()
+      
+    case 'terminal:result':
+      electronAPI.on.terminalResult(listener)
+      return () => electronAPI.off.terminalResult()
 
     default:
       console.warn(`Unknown IPC channel: ${channel}`)
@@ -160,9 +183,29 @@ export const sendIpcMessage = (channel: string, ...args: any[]) => {
       }
       break
 
+    case 'terminal-execute-command':
+      if (args.length > 0) {
+        electronAPI.terminal.executeCommand(
+          args[0].command,
+          args[0].shell || 'powershell',
+          args[0].cwd,
+          args[0].timeout
+        )
+      }
+      break
+
+    case 'terminal-execute-commands':
+      if (args.length > 1) {
+        electronAPI.terminal.executeCommands(args[0], args[1])
+      }
+      break
+
+    case 'terminal-get-system-info':
+      electronAPI.terminal.getSystemInfo()
+      break
+
     default:
       console.warn(`Unknown IPC channel: ${channel}`)
-      break
   }
 }
 

@@ -216,6 +216,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     tablesUpdated: (callback: (data: any) => void): void => {
       ipcRenderer.on('database:tables-updated', (_: any, data: any) => callback(data));
+    },
+
+    /**
+     * 监听打开新连接对话框
+     * @param callback 回调函数
+     */
+    openNewConnectionDialog: (callback: () => void): void => {
+      ipcRenderer.on('open-new-connection-dialog', () => callback());
+    },
+
+    /**
+     * 监听打开终端控制台
+     * @param callback 回调函数
+     */
+    openTerminalConsole: (callback: () => void): void => {
+      ipcRenderer.on('terminal:open-console', () => callback());
+    },
+
+    /**
+     * 监听终端命令结果
+     * @param callback 回调函数
+     */
+    terminalResult: (callback: (data: any) => void): void => {
+      ipcRenderer.on('terminal:result', (_: any, data: any) => callback(data));
     }
   },
 
@@ -240,6 +264,60 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     tablesUpdated: (): void => {
       ipcRenderer.removeAllListeners('database:tables-updated');
+    },
+
+    /**
+     * 移除打开新连接对话框监听
+     */
+    openNewConnectionDialog: (): void => {
+      ipcRenderer.removeAllListeners('open-new-connection-dialog');
+    },
+
+    /**
+     * 移除打开终端控制台监听
+     */
+    openTerminalConsole: (): void => {
+      ipcRenderer.removeAllListeners('terminal:open-console');
+    },
+
+    /**
+     * 移除终端命令结果监听
+     */
+    terminalResult: (): void => {
+      ipcRenderer.removeAllListeners('terminal:result');
+    }
+  },
+
+  // 终端命令相关
+  terminal: {
+    /**
+     * 执行单个终端命令
+     * @param command 命令字符串
+     * @param shell shell类型 ('cmd' 或 'powershell')
+     * @param cwd 工作目录
+     * @param timeout 超时时间（毫秒）
+     * @returns Promise<ServiceResult<CommandExecutionResult>> 执行结果
+     */
+    executeCommand: (command: string, shell: 'cmd' | 'powershell' = 'powershell', cwd?: string, timeout?: number): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('terminal-execute-command', { command, shell, cwd, timeout });
+    },
+
+    /**
+     * 批量执行终端命令
+     * @param commands 命令配置数组
+     * @param parallel 是否并行执行
+     * @returns Promise<ServiceResult<CommandExecutionResult[]>> 执行结果数组
+     */
+    executeCommands: (commands: any[], parallel: boolean = false): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('terminal-execute-commands', commands, parallel);
+    },
+
+    /**
+     * 获取系统信息
+     * @returns Promise<ServiceResult<any>> 系统信息
+     */
+    getSystemInfo: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('terminal-get-system-info');
     }
   }
 });

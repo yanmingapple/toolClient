@@ -8,6 +8,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AppLayout: typeof import('./components/AppLayout/AppLayout.vue')['default']
+    CommandResult: typeof import('./components/CommandResult.vue')['default']
     ConnectionDialog: typeof import('./components/ConnectionDialog.vue')['default']
     ConnectionTree: typeof import('./components/ConnectionTree/ConnectionTree.vue')['default']
     ContextMenu: typeof import('./components/ConnectionTree/ContextMenu.vue')['default']
@@ -50,6 +51,7 @@ declare module 'vue' {
     ObjectViewPanel: typeof import('./components/ObjectPanel/components/ObjectViewPanel.vue')['default']
     PropertiesPanel: typeof import('./components/PropertiesPanel/PropertiesPanel.vue')['default']
     QueryEditor: typeof import('./components/QueryEditor.vue')['default']
+    TerminalConsole: typeof import('./components/TerminalConsole.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

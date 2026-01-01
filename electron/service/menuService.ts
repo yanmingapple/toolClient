@@ -1,5 +1,6 @@
 const electron = require('electron');
 const { Menu, app } = electron;
+import { TerminalService } from './terminalService';
 
 /**
  * 菜单服务类
@@ -138,6 +139,249 @@ export class MenuService {
           { label: '服务器监控', click: () => { } },
           { type: 'separator' },
           { label: '选项', click: () => { } },
+        ],
+      },
+      {
+        label: '终端(Terminal)',
+        submenu: [
+          {
+            label: '打开终端控制台',
+            accelerator: 'Ctrl+`',
+            click: () => {
+              // 发送消息到渲染进程打开终端控制台
+              this.mainWindow?.webContents.send('terminal:open-console');
+            }
+          },
+          { type: 'separator' },
+          {
+            label: '系统信息',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'systeminfo',
+                shell: 'cmd',
+                timeout: 15000
+              });
+              // 将结果发送到渲染进程显示
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '系统信息',
+                result: result
+              });
+            }
+          },
+          {
+            label: '当前目录',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'cd',
+                shell: 'cmd'
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '当前目录',
+                result: result
+              });
+            }
+          },
+          {
+            label: '列出目录',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'dir',
+                shell: 'cmd'
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '目录列表',
+                result: result
+              });
+            }
+          },
+          {
+            label: '查看进程',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'tasklist',
+                shell: 'cmd',
+                timeout: 10000
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '运行进程',
+                result: result
+              });
+            }
+          },
+          { type: 'separator' },
+          {
+            label: '网络诊断',
+            submenu: [
+              {
+                label: 'Ping 本地回环',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'ping 127.0.0.1 -n 4',
+                    shell: 'cmd',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'Ping 本地回环',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: 'Ping Google DNS',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'ping 8.8.8.8 -n 4',
+                    shell: 'cmd',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'Ping Google DNS',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: '查看网络配置',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'ipconfig /all',
+                    shell: 'cmd',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: '网络配置',
+                    result: result
+                  });
+                }
+              }
+            ]
+          },
+          {
+            label: '磁盘信息',
+            submenu: [
+              {
+                label: '查看磁盘空间',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'dir C:\\',
+                    shell: 'cmd'
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'C盘内容',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: '磁盘空间使用情况',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'fsutil volume diskfree C:',
+                    shell: 'cmd',
+                    timeout: 5000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: '磁盘空间使用情况',
+                    result: result
+                  });
+                }
+              }
+            ]
+          },
+          {
+            label: '系统服务',
+            submenu: [
+              {
+                label: '查看运行服务',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'net start',
+                    shell: 'cmd',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: '系统服务',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: '查看启动程序',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'wmic startup list brief',
+                    shell: 'cmd',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: '启动程序',
+                    result: result
+                  });
+                }
+              }
+            ]
+          },
+          { type: 'separator' },
+          {
+            label: 'PowerShell 工具',
+            submenu: [
+              {
+                label: '获取系统信息',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'Get-ComputerInfo',
+                    shell: 'powershell',
+                    timeout: 15000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'PowerShell 系统信息',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: '获取进程列表',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'Get-Process | Select-Object ProcessName, Id, CPU, PM | Format-Table -AutoSize',
+                    shell: 'powershell',
+                    timeout: 10000
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'PowerShell 进程列表',
+                    result: result
+                  });
+                }
+              },
+              {
+                label: '获取磁盘信息',
+                click: async () => {
+                  const terminalService = TerminalService.getInstance();
+                  const result = await terminalService.executeCommand({
+                    command: 'Get-PSDrive -PSProvider FileSystem | Format-Table -AutoSize',
+                    shell: 'powershell'
+                  });
+                  this.mainWindow?.webContents.send('terminal:result', {
+                    title: 'PowerShell 磁盘信息',
+                    result: result
+                  });
+                }
+              }
+            ]
+          }
         ],
       },
       {

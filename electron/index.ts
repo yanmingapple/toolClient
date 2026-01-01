@@ -37,6 +37,9 @@ function createWindow() {
       contextIsolation: true,
       preload: join(process.cwd(), 'dist/electron/preload.js'),
       devTools: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
     },
   })
 
