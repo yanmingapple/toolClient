@@ -565,6 +565,15 @@ watch(
   },
   { deep: true }
 )
+
+// 暴露MainPanel的方法给父组件
+defineExpose({
+  createPanel: (type: any, title: string, content: any) => {
+    if (mainPanelRef.value) {
+      mainPanelRef.value.createPanel(type, title, content)
+    }
+  }
+})
 </script>
 
 <style scoped>

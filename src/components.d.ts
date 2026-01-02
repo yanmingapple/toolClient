@@ -39,6 +39,7 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
     ElTabs: typeof import('element-plus/es')['ElTabs']
+    ElTag: typeof import('element-plus/es')['ElTag']
     ElText: typeof import('element-plus/es')['ElText']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElTree: typeof import('element-plus/es')['ElTree']
@@ -52,6 +53,7 @@ declare module 'vue' {
     PropertiesPanel: typeof import('./components/PropertiesPanel/PropertiesPanel.vue')['default']
     QueryEditor: typeof import('./components/QueryEditor.vue')['default']
     TerminalConsole: typeof import('./components/TerminalConsole.vue')['default']
+    ToolPanel: typeof import('./components/ToolPanel/ToolPanel.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
