@@ -50,7 +50,7 @@ declare module 'vue' {
     ObjectTablePanel: typeof import('./components/ObjectPanel/components/ObjectTablePanel.vue')['default']
     ObjectViewPanel: typeof import('./components/ObjectPanel/components/ObjectViewPanel.vue')['default']
     PropertiesPanel: typeof import('./components/PropertiesPanel/PropertiesPanel.vue')['default']
-    QueryEditor: typeof import('./components/QueryEditor.vue')['default']
+    QueryEditor: typeof import('./components/QueryEditor/index.vue')['default']
     TerminalConsole: typeof import('./components/TerminalConsole.vue')['default']
   }
   export interface ComponentCustomProperties {

@@ -141,10 +141,10 @@ import {
   ArrowDown
 } from '@element-plus/icons-vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
-import { useQueryStore } from '../stores/query'
-import { useConnectionStore } from '../stores/connection'
-import type { QueryResult } from '../types/leftTree/connection'
-import { generateUUID } from '../utils/formatUtils'
+import { useQueryStore } from '../../stores/query'
+import { useConnectionStore } from '../../stores/connection'
+import type { QueryResult } from '../../types/leftTree/connection'
+import { generateUUID } from '../../utils/formatUtils'
 
 const queryStore = useQueryStore()
 const connectionStore = useConnectionStore()
