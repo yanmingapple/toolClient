@@ -1,32 +1,20 @@
 <template>
   <div class="tool-panel">
-
-
     <!-- 主要内容区域 -->
     <div class="panel-content">
       <!-- 快速操作区域 -->
       <div class="quick-actions">
-        <h2 class="section-title">快速操作</h2>
+        <h2 class="section-title">工具</h2>
         <div class="action-grid">
-          <div class="action-card" @click="handleEnterDatabase">
-            <el-icon class="action-icon"><ArrowRight /></el-icon>
-            <div class="action-title">进入数据库</div>
-            <div class="action-desc">管理数据库连接、查询和对象</div>
-          </div>
-          <div class="action-card" @click="handleOpenTerminal">
-            <el-icon class="action-icon"><Tools /></el-icon>
-            <div class="action-title">终端控制台</div>
-            <div class="action-desc">执行SQL命令和脚本</div>
-          </div>
-          <div class="action-card" @click="handleServiceMonitor">
-            <el-icon class="action-icon"><PieChart /></el-icon>
-            <div class="action-title">服务监控</div>
-            <div class="action-desc">监控系统状态</div>
-          </div>
-          <div class="action-card" @click="handleImportData">
-            <el-icon class="action-icon"><Upload /></el-icon>
-            <div class="action-title">导入、导出数据</div>
-            <div class="action-desc">从文件导入数据</div>
+          <div 
+            v-for="action in quickActions" 
+            :key="action.id"
+            class="action-card" 
+            @click="handleQuickAction(action.handler)"
+          >
+            <el-icon class="action-icon"><component :is="iconMap[action.icon]" /></el-icon>
+            <div class="action-title">{{ action.title }}</div>
+            <div class="action-desc">{{ action.description }}</div>
           </div>
         </div>
       </div>
@@ -214,8 +202,8 @@ import {
   Folder, Timer, Clock, Grid, View, Document, Switch, Delete, Plus
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useConnectionStore } from '../../stores/connection'
-import type { TreeNode } from '../../electron/model/database'
+import { useConnectionStore } from '@/stores/connection'
+import type { TreeNode } from '../../../electron/model/database'
 
 // Props
 interface Props {
@@ -233,6 +221,61 @@ const emit = defineEmits<{
 
 // Store
 const connectionStore = useConnectionStore()
+
+// 图标组件映射
+const iconMap = {
+  ArrowRight,
+  Tools,
+  PieChart,
+  Upload
+}
+
+// 快速操作数据配置
+const quickActions = ref([
+  {
+    id: 'enter-database',
+    title: '进入数据库',
+    description: '管理数据库连接、查询和对象',
+    icon: 'ArrowRight',
+    handler: 'handleEnterDatabase'
+  },
+  {
+    id: 'open-terminal',
+    title: '终端控制台',
+    description: '执行SQL命令和脚本',
+    icon: 'Tools',
+    handler: 'handleOpenTerminal'
+  },
+  {
+    id: 'service-monitor',
+    title: '服务监控',
+    description: '监控系统状态',
+    icon: 'PieChart',
+    handler: 'handleServiceMonitor'
+  },
+  {
+    id: 'import-data',
+    title: '导入、导出数据',
+    description: '从文件导入数据',
+    icon: 'Upload',
+    handler: 'handleImportData'
+  }
+])
+
+// 统一处理快速操作点击事件
+const handleQuickAction = (handler: string) => {
+  const handlerMap: Record<string, () => void> = {
+    handleEnterDatabase,
+    handleOpenTerminal,
+    handleServiceMonitor,
+    handleImportData
+  }
+  
+  const actionHandler = handlerMap[handler]
+  if (actionHandler) {
+    actionHandler()
+  }
+}
 
 // 服务监控数据
 const services = ref([

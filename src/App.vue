@@ -58,8 +58,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ArrowLeft, Monitor } from '@element-plus/icons-vue'
-import AppLayout from './components/AppLayout/AppLayout.vue'
-import ToolPanel from './components/ToolPanel/ToolPanel.vue'
+import AppLayout from './view/database/index.vue'
+import ToolPanel from './view/workspace/index.vue'
 import QueryEditor from './components/QueryEditor.vue'
 import TerminalConsole from './components/TerminalConsole.vue'
 import ConnectionDialog from './components/ConnectionDialog.vue'
