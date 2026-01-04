@@ -1,2 +1,2 @@
-export { default } from './PropertiesPanel.vue'
-export type { ObjectType, TableObject, FunctionObject, DatabaseObject, PropertiesObject } from './PropertiesPanel.vue'
+export { default } from './index.vue'
+export type { ObjectType, TableObject, FunctionObject, DatabaseObject, PropertiesObject } from './index.vue'
