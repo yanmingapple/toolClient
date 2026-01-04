@@ -52,16 +52,10 @@
       :result="commandResult"
     />
 
-    <el-dialog
-      v-model="showTerminalConsole"
-      title="终端控制台"
-      width="80%"
-      :before-close="handleTerminalClose"
-      :close-on-click-modal="false"
-      :close-on-press-escape="true"
-    >
-      <TerminalConsole @close="handleTerminalClose" />
-    </el-dialog>
+    <TerminalConsole 
+      v-model="showTerminalConsole" 
+      @close="handleTerminalClose" 
+    />
   </div>
 </template>
 
@@ -114,6 +108,10 @@ const handleCancelDialog = () => {
 
 const handleTerminalClose = () => {
   showTerminalConsole.value = false
+}
+
+const handleOpenTerminal = () => {
+  showTerminalConsole.value = true
 }
 
 // 页面切换方法

@@ -1,73 +1,82 @@
 <template>
-  <div class="terminal-console">
-    <div class="terminal-header">
-      <h3>终端控制台</h3>
-      <div class="terminal-controls">
-        <div class="shell-selector">
-          <el-select v-model="selectedShell" placeholder="选择Shell">
-            <el-option label="PowerShell" value="powershell" />
-            <el-option label="CMD" value="cmd" />
-          </el-select>
+  <el-dialog
+    v-model="visible"
+    title="终端控制台"
+    width="80%"
+    :before-close="handleClose"
+    :close-on-click-modal="false"
+    :close-on-press-escape="true"
+  >
+    <div class="terminal-console">
+      <div class="terminal-header">
+        <h3>终端控制台</h3>
+        <div class="terminal-controls">
+          <div class="shell-selector">
+            <el-select v-model="selectedShell" placeholder="选择Shell">
+              <el-option label="PowerShell" value="powershell" />
+              <el-option label="CMD" value="cmd" />
+            </el-select>
+          </div>
+          <el-button @click="handleClose" type="danger" size="small">关闭</el-button>
         </div>
-        <el-button @click="handleClose" type="danger" size="small">关闭</el-button>
       </div>
-    </div>
 
-    <div class="terminal-content">
-      <div class="output-area">
-        <div class="output-header">
-          <span>执行输出</span>
-          <el-button size="small" @click="clearOutput">清空</el-button>
-        </div>
-        <div class="output-content" ref="outputRef">
-          <div v-for="(line, index) in outputLines" :key="index" class="output-line" :class="line.type">
-            <span class="timestamp">{{ line.timestamp }}</span>
-            <span class="command">{{ line.content }}</span>
+      <div class="terminal-content">
+        <div class="output-area">
+          <div class="output-header">
+            <span>执行输出</span>
+            <el-button size="small" @click="clearOutput">清空</el-button>
+          </div>
+          <div class="output-content" ref="outputRef">
+            <div v-for="(line, index) in outputLines" :key="index" class="output-line" :class="line.type">
+              <span class="timestamp">{{ line.timestamp }}</span>
+              <span class="command">{{ line.content }}</span>
+            </div>
           </div>
         </div>
+
+        <div class="command-input">
+          <el-input
+            v-model="currentCommand"
+            placeholder="输入命令..."
+            :disabled="isExecuting"
+            @keyup.enter="executeCurrentCommand"
+          >
+            <template #append>
+              <el-button 
+                :loading="isExecuting" 
+                @click="executeCurrentCommand"
+                :disabled="!currentCommand.trim()"
+              >
+                执行
+              </el-button>
+            </template>
+          </el-input>
+        </div>
       </div>
 
-      <div class="command-input">
-        <el-input
-          v-model="currentCommand"
-          placeholder="输入命令..."
-          :disabled="isExecuting"
-          @keyup.enter="executeCurrentCommand"
-        >
-          <template #append>
-            <el-button 
-              :loading="isExecuting" 
-              @click="executeCurrentCommand"
-              :disabled="!currentCommand.trim()"
-            >
-              执行
-            </el-button>
-          </template>
-        </el-input>
+      <div class="quick-commands">
+        <div class="quick-commands-header">
+          <span>快速命令</span>
+        </div>
+        <div class="quick-buttons">
+          <el-button 
+            v-for="cmd in quickCommandList" 
+            :key="cmd.key"
+            size="small" 
+            @click="executeQuickCommand(cmd.command, cmd.shell)"
+            :disabled="isExecuting"
+          >
+            {{ cmd.label }}
+          </el-button>
+        </div>
       </div>
     </div>
-
-    <div class="quick-commands">
-      <div class="quick-commands-header">
-        <span>快速命令</span>
-      </div>
-      <div class="quick-buttons">
-        <el-button 
-          v-for="cmd in quickCommandList" 
-          :key="cmd.key"
-          size="small" 
-          @click="executeQuickCommand(cmd.command, cmd.shell)"
-          :disabled="isExecuting"
-        >
-          {{ cmd.label }}
-        </el-button>
-      </div>
-    </div>
-  </div>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch, defineEmits, defineProps } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useTerminal } from '@/composables/useTerminal'
 
@@ -77,7 +86,23 @@ interface OutputLine {
   type: 'info' | 'success' | 'error' | 'command'
 }
 
+interface Props {
+  modelValue?: boolean
+}
+
+interface Emits {
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'close'): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: false
+})
+
+const emit = defineEmits<Emits>()
+
 // 组件状态
+const visible = ref(props.modelValue)
 const selectedShell = ref<'cmd' | 'powershell'>('powershell')
 const currentCommand = ref('')
 const outputLines = ref<OutputLine[]>([])
@@ -118,6 +143,11 @@ const addOutputLine = (content: string, type: OutputLine['type'] = 'info') => {
 
 const clearOutput = () => {
   outputLines.value = []
+}
+
+const handleClose = () => {
+  emit('update:modelValue', false)
+  emit('close')
 }
 
 const executeCurrentCommand = async () => {
@@ -180,6 +210,11 @@ const executeQuickCommand = async (command: string, shell: 'cmd' | 'powershell')
     ElMessage.error(err.message)
   }
 }
+
+// 监听 visible 变化
+watch(() => props.modelValue, (newVal) => {
+  visible.value = newVal
+})
 
 // 组件挂载时初始化
 onMounted(() => {
