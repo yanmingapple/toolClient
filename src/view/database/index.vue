@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import HeaderBar from '@/components/HeaderBar/HeaderBar.vue'
+import HeaderBar from '@/components/HeaderBar/index.vue'
 import ConnectionTree from '@/components/ConnectionTree/ConnectionTree.vue'
 import MainPanel from '@/components/MainPanel/index.vue'
 import { useConnectionStore } from '@/stores/connection'

@@ -138,6 +138,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     restartApp: (): void => {
       ipcRenderer.send('app:restart');
+    },
+
+    /**
+     * 切换菜单类型
+     * @param {string} menuType 菜单类型 ('workspace' 或 'database')
+     * @returns {Promise<boolean>} 是否成功
+     */
+    switchMenuType: (menuType: string): Promise<boolean> => {
+      return ipcRenderer.invoke('menu:switch-type', menuType);
     }
   },
 

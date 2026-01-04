@@ -27,6 +27,7 @@ interface ElectronAPI {
     maximizeWindow: () => void
     closeWindow: () => void
     restartApp: () => void
+    switchMenuType: (menuType: string) => Promise<boolean>
   }
   file: {
     selectFile: (filters: string[]) => Promise<string>
@@ -103,15 +104,15 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
     case 'database:tables-updated':
       electronAPI.on.tablesUpdated(listener)
       return () => electronAPI.off.tablesUpdated()
-      
+
     case 'open-new-connection-dialog':
       electronAPI.on.openNewConnectionDialog(listener)
       return () => electronAPI.off.openNewConnectionDialog()
-      
+
     case 'terminal:open-console':
       electronAPI.on.openTerminalConsole(listener)
       return () => electronAPI.off.openTerminalConsole()
-      
+
     case 'terminal:result':
       electronAPI.on.terminalResult(listener)
       return () => electronAPI.off.terminalResult()
@@ -153,6 +154,12 @@ export const sendIpcMessage = (channel: string, ...args: any[]) => {
 
     case 'app:restart':
       electronAPI.app.restartApp()
+      break
+
+    case 'menu:switch-type':
+      if (args.length > 0) {
+        electronAPI.app.switchMenuType(args[0])
+      }
       break
 
     case 'file:select-file':
@@ -314,4 +321,13 @@ export const disconnectDatabase = async (connectionId: string): Promise<ServiceR
     throw new Error('Electron API not available')
   }
   return electronAPI.database.disconnect(connectionId)
+}
+
+// 切换菜单类型
+export const switchMenuType = async (menuType: string): Promise<boolean> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return false
+  }
+  return electronAPI.app.switchMenuType(menuType)
 }
