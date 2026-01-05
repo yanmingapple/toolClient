@@ -5,6 +5,7 @@
 
 // 导入类型
 import type { TreeNode, ConnectionConfig } from '../../electron/model/database'
+import type { ServiceMonitor } from '../../electron/model/database/ServiceMonitor'
 import type { ServiceResult } from '../../electron/model/result/ServiceResult'
 
 // 定义 electronAPI 的类型
@@ -20,6 +21,12 @@ interface ElectronAPI {
     getConnectionStatus: (connectionId: string) => Promise<ServiceResult<any>>
     refreshConnection: (connectionId: string) => Promise<ServiceResult<boolean>>
     disconnect: (connectionId: string) => Promise<ServiceResult<void>>
+  }
+  serviceMonitor: {
+    getAll: () => Promise<ServiceResult<ServiceMonitor[]>>
+    save: (monitors: ServiceMonitor[]) => Promise<ServiceResult<void>>
+    deleteAll: () => Promise<ServiceResult<void>>
+    delete: (id: number) => Promise<ServiceResult<void>>
   }
   app: {
     showNewConnectionDialog: () => void
@@ -330,4 +337,42 @@ export const switchMenuType = async (menuType: string): Promise<boolean> => {
     return false
   }
   return electronAPI.app.switchMenuType(menuType)
+}
+
+// 服务监控相关函数
+
+// 获取所有服务监控
+export const getAllServiceMonitors = async (): Promise<ServiceResult<ServiceMonitor[]>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.serviceMonitor.getAll()
+}
+
+// 保存服务监控
+export const saveServiceMonitors = async (monitors: ServiceMonitor[]): Promise<ServiceResult<void>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.serviceMonitor.save(monitors)
+}
+
+// 删除所有服务监控
+export const deleteAllServiceMonitors = async (): Promise<ServiceResult<void>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.serviceMonitor.deleteAll()
+}
+
+// 删除一个服务监控
+export const deleteServiceMonitor = async (id: number): Promise<ServiceResult<void>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.serviceMonitor.delete(id)
 }

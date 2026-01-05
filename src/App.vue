@@ -35,7 +35,7 @@
       
       <div class="back-to-toolpanel" @click="switchToToolPanel">
         <el-icon><ArrowLeft /></el-icon>
-        <span>返回主工作区</span>
+        <span>返回</span>
       </div>
     </div>
 

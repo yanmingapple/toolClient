@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 import { ConnectionConfig } from './model/database'
 import { ServiceResult } from './model/result/ServiceResult'
 import { TreeNode } from './model/database/TreeNode'
+import type { ServiceMonitor } from './model/database/ServiceMonitor'
 /**
  * Preload 脚本
  * 使用 contextBridge 安全地向渲染进程暴露主进程 API
@@ -100,6 +101,37 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     disconnect: (connectionId: string): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('database:disconnect', connectionId);
+    }
+  },
+
+  // 服务监控相关
+  serviceMonitor: {
+    /**
+     * 获取所有服务监控
+     */
+    getAll: (): Promise<ServiceResult<ServiceMonitor[]>> => {
+      return ipcRenderer.invoke('service-monitor:get-all');
+    },
+
+    /**
+     * 保存服务监控
+     */
+    save: (monitors: ServiceMonitor[]): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:save', monitors);
+    },
+
+    /**
+     * 删除所有服务监控
+     */
+    deleteAll: (): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:delete-all');
+    },
+
+    /**
+     * 删除一个服务监控
+     */
+    delete: (id: number): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:delete', id);
     }
   },
 

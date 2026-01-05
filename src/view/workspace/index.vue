@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="tool-panel">
-    <!-- 主要内容区域 -->
+    <!-- 涓昏鍐呭鍖哄煙 -->
     <div class="panel-content">
-      <!-- 快速操作区域 -->
+      <!-- 蹇€熸搷浣滃尯鍩?-->
       <div class="quick-actions">
         <h2 class="section-title">工具</h2>
         <div class="action-grid">
@@ -19,52 +19,12 @@
         </div>
       </div>
 
-      <!-- 数据库连接列表 -->
-      <div class="database-connections">
-        <div class="section-header">
-          <h2 class="section-title">数据库连接</h2>
-          <div class="section-actions">
-            <el-button size="small" @click="handleRefreshConnections">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-            <el-button type="primary" size="small" @click="handleAddConnection">
-              <el-icon><Plus /></el-icon>
-              新增
-            </el-button>
-          </div>
-        </div>
-        <div class="connection-list-container">
-          <div class="connection-list">
-            <div 
-              v-for="connection in connectionStore.connections" 
-              :key="connection.id" 
-              class="connection-item"
-              @click="handleConnectToDatabase(connection)"
-            >
-              <div class="connection-info">
-                <el-icon class="connection-icon" :class="connection.status">
-                  <Connection v-if="connection.status === 'connected'"/>
-                  <CircleClose v-else />
-                </el-icon>
-                <div class="connection-details">
-                  <div class="connection-name">{{ connection.name }}</div>
-                  <div class="connection-type">{{ connection.type }} - {{ connection.host }}</div>
-                </div>
-              </div>
-              <div class="connection-status">
-                <el-tag 
-                  :type="connection.status === 'connected' ? 'success' : 'info'"
-                  size="small"
-                >
-                  {{ connection.status === 'connected' ? '已连接' : '未连接' }}
-                </el-tag>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <!-- 数据库连接组件 -->
+      <DataConnection 
+        @newConnection="emit('newConnection')"
+        @connectToDatabase="handleConnectToDatabase"
+      />
+      
       <!-- 服务监控表格 -->
       <div class="service-monitoring">
         <div class="section-header">
@@ -203,6 +163,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useConnectionStore } from '@/stores/connection'
+import DataConnection from '../dataConnection/index.vue'
 import type { TreeNode } from '../../../electron/model/database'
 
 // Props
@@ -332,16 +293,16 @@ const handleServiceAction = (service: any, action: string) => {
         let newStatus = ''
         switch (currentStatus) {
           case '运行中':
-            newStatus = '停止中'
+            newStatus = '停止中';
             break
           case '停止中':
-            newStatus = '运行中'
+            newStatus = '运行中';
             break
           case '已停止':
-            newStatus = '启动中'
+            newStatus = '启动中';
             break
           case '启动中':
-            newStatus = '已停止'
+            newStatus = '已停止';
             break
         }
         services.value[currentIndex].status = newStatus
@@ -402,10 +363,10 @@ const recentConnections = computed(() => {
 
 // 系统信息
 const systemInfo = computed(() => {
-  // 在浏览器环境中，process 不可用，使用更健壮的获取方式
+  // 在浏览器环境中，process 不可用，使用更兼容的获取方式
   const now = new Date()
   
-  // 更安全的时间获取方式
+  // 更兼容的时间获取方式
   let startTime: number
   try {
     startTime = performance.timeOrigin || Date.now()
@@ -430,12 +391,12 @@ const systemInfo = computed(() => {
     // 获取进程信息
     let processId = 'N/A'
     try {
-      // 尝试从全局对象获取进程信息（Electron环境）
+      // 尝试从全局对象获取进程信息（electron环境）
       if (typeof window !== 'undefined' && (window as any).process) {
         processId = (window as any).process.pid?.toString() || 'N/A'
       }
     } catch {
-      // 静默失败，使用默认值
+      // 忽略错误，使用默认值
     }
     
     // 获取版本信息
@@ -446,7 +407,7 @@ const systemInfo = computed(() => {
         version = (window as any).appVersion
       }
     } catch {
-      // 静默失败，使用默认值
+      // 闈欓粯澶辫触锛屼娇鐢ㄩ粯璁ゅ€?
     }
     
     return {
@@ -491,7 +452,7 @@ const toolCategories = ref([
   {
     title: '开发工具',
     items: [
-      { id: 'schema-designer', label: '架构设计', icon: Edit, handler: 'handleSchemaDesigner' },
+      { id: 'schema-designer', label: '结构设计', icon: Edit, handler: 'handleSchemaDesigner' },
       { id: 'query-builder', label: '查询构建器', icon: View, handler: 'handleQueryBuilder' },
       { id: 'performance', label: '性能分析', icon: PieChart, handler: 'handlePerformance' }
     ]
@@ -600,7 +561,7 @@ const handleCsvExport = () => {
 }
 
 const handleSchemaDesigner = () => {
-  ElMessage.info('架构设计工具开发中...')
+  ElMessage.info('结构设计工具开发中...')
 }
 
 const handleQueryBuilder = () => {
@@ -635,18 +596,9 @@ const handleAddService = () => {
 }
 
 // 数据库连接相关处理函数
-const handleRefreshConnections = () => {
-  // 刷新连接状态
-  connectionStore.initializeConnections()
-  ElMessage.success('数据库连接已刷新')
-}
 
-const handleAddConnection = () => {
-  // 新增连接
-  emit('newConnection')
-}
 
-// 组件挂载时初始化
+// 组件加载时初始化
 onMounted(() => {
   connectionStore.initializeConnections()
 })
@@ -731,77 +683,7 @@ onMounted(() => {
   color: #909399;
 }
 
-/* 数据库连接列表区域 */
-.database-connections {
-  margin-bottom: 32px;
-}
 
-.connection-list-container {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.connection-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.connection-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.connection-item:hover {
-  background: #f8f9fa;
-  border-color: #409eff;
-}
-
-.connection-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.connection-icon {
-  font-size: 18px;
-}
-
-.connection-icon.connected {
-  color: #67c23a;
-}
-
-.connection-icon:not(.connected) {
-  color: #909399;
-}
-
-.connection-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.connection-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.connection-type {
-  font-size: 12px;
-  color: #909399;
-}
-
-.connection-status {
-  flex-shrink: 0;
-}
 
 /* 服务监控区域 */
 .service-monitoring {
@@ -968,7 +850,7 @@ onMounted(() => {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
-/* 响应式设计 */
+/* 响应式设置 */
 @media (max-width: 768px) {
   
   .panel-content {

@@ -6,6 +6,7 @@ import { SQLStatements } from '../dataService/sql';
 import { DatabaseManager } from '../manager/databaseMananger';
 import { TreeNode, TreeNodeFactory } from '../model/database/TreeNode';
 import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
+import { ServiceMonitor } from '../model/database/ServiceMonitor';
 
 /**
  * 统一数据库服务
@@ -72,6 +73,10 @@ export class DatabaseService {
                 // 5. 创建连接配置表
                 await client.executeBatch(SQLStatements.CREATE_CONNECTIONS_TABLE);
                 console.log('Connections table initialized successfully');
+
+                // 6. 创建服务监控表
+                await client.executeBatch(SQLStatements.CREATE_SERVICE_MONITOR_TABLE);
+                console.log('Service monitor table initialized successfully');
 
                 // 6. 创建数据库服务实例
                 const service = new DatabaseService(client);
@@ -311,6 +316,86 @@ export class DatabaseService {
     }
 
     /**
+     * 查询所有服务监控
+     */
+    public async getAllServiceMonitors(): Promise<ServiceResult<ServiceMonitor[]>> {
+        try {
+            const monitors = await this.database.execute(SQLStatements.SELECT_ALL_SERVICE_MONITORS);
+            return ServiceResultFactory.success(monitors);
+        } catch (error) {
+            console.error('Failed to get service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 保存服务监控列表
+     * @param monitors 服务监控列表
+     */
+    public async saveServiceMonitors(monitors: ServiceMonitor[]): Promise<ServiceResult<void>> {
+        try {
+            // 根据id判断是插入还是更新
+            for (const monitor of monitors) {
+                if (monitor.id === 0 || monitor.id === undefined) {
+                    // 插入新记录
+                    await this.database.execute(SQLStatements.INSERT_SERVICE_MONITOR, [
+                        monitor.name,
+                        monitor.type,
+                        monitor.port,
+                        monitor.status,
+                        monitor.workspace,
+                        monitor.url,
+                        monitor.createTime,
+                        monitor.updateTime
+                    ]);
+                } else {
+                    // 更新现有记录
+                    await this.database.execute(SQLStatements.UPDATE_SERVICE_MONITOR, [
+                        monitor.name,
+                        monitor.type,
+                        monitor.port,
+                        monitor.status,
+                        monitor.workspace,
+                        monitor.url,
+                        monitor.updateTime,
+                        monitor.id
+                    ]);
+                }
+            }
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to save service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+    /**
+     * 删除一个服务监控
+     * @param id 服务监控ID
+     */
+    public async deleteServiceMonitor(id: number): Promise<ServiceResult<void>> {
+        try {
+            await this.database.execute(SQLStatements.DELETE_SERVICE_MONITOR_BY_ID, [id]);
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to delete service monitor:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 删除所有服务监控
+     */
+    public async deleteAllServiceMonitors(): Promise<ServiceResult<void>> {
+        try {
+            await this.database.execute(SQLStatements.DELETE_ALL_SERVICE_MONITORS);
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to delete service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
      * 注册数据库服务相关的 IPC 处理程序
      */
     public static registerIpcHandlers() {
@@ -385,6 +470,28 @@ export class DatabaseService {
                 console.error('Failed to disconnect:', error);
                 return ServiceResultFactory.error((error as Error).message);
             }
+        });
+
+
+        // 服务监控相关
+        ipcMain.handle('service-monitor:get-all', async () => {
+            const dbService = DatabaseManager.getInstance().getDatabaseService();
+            return await dbService.getAllServiceMonitors();
+        });
+
+        ipcMain.handle('service-monitor:save', async (_: any, monitors: ServiceMonitor[]) => {
+            const dbService = DatabaseManager.getInstance().getDatabaseService();
+            return await dbService.saveServiceMonitors(monitors);
+        });
+
+        ipcMain.handle('service-monitor:delete-all', async () => {
+            const dbService = DatabaseManager.getInstance().getDatabaseService();
+            return await dbService.deleteAllServiceMonitors();
+        });
+
+        ipcMain.handle('service-monitor:delete', async (_: any, id: number) => {
+            const dbService = DatabaseManager.getInstance().getDatabaseService();
+            return await dbService.deleteServiceMonitor(id);
         });
     }
 
