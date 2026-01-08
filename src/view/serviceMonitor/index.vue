@@ -74,43 +74,35 @@
       </div>
     </div>
   </div>
+  <!-- 新增服务对话框组件 -->
+<ServiceMonitorDlg
+  v-model:dialog-visible="dialogVisible"
+  :editing-service="editingService"
+  @save-success="handleRefreshService"
+/>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   Monitor, Refresh, Connection, Switch, Edit, Delete, Plus
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getAllServiceMonitors } from '@/utils/electronUtils'
+import ServiceMonitorDlg from './components/ServiceMonitorDlg.vue'
 
 // 服务监控数据
-const services = ref([
-  {
-    id: 1,
-    name: 'MySQL数据库',
-    status: '运行中',
-    port: '3306'
-  },
-  {
-    id: 2,
-    name: 'Redis缓存',
-    status: '运行中',
-    port: '6379'
-  },
-  {
-    id: 3,
-    name: 'PostgreSQL',
-    status: '已停止',
-    port: '5432'
-  },
-  {
-    id: 4,
-    name: 'MongoDB',
-    status: '启动中',
-    port: '27017'
-  }
-])
+const services = ref([])
+
+// 组件挂载时获取服务列表
+onMounted(() => {
+  handleRefreshService()
+})
+
+// 新增服务对话框
+const dialogVisible = ref(false)
+// 当前编辑的服务
+const editingService = ref(null)
 
 // 获取状态对应的标签类型
 const getStatusType = (status: string) => {
@@ -165,7 +157,8 @@ const handleServiceAction = (service: any, action: string) => {
       }
       break
     case 'edit':
-      ElMessage.info(`编辑服务: ${service.name}`)
+      editingService.value = service
+      dialogVisible.value = true
       break
     case 'delete':
       ElMessage.info(`删除服务: ${service.name}`)
@@ -191,8 +184,10 @@ const handleRefreshService = async () => {
 }
 
 const handleAddService = () => {
-  // 新增服务
-  ElMessage.info('新增服务功能开发中...')
+  // 清空编辑服务数据，确保是新增模式
+  editingService.value = null
+  // 打开新增服务对话框
+  dialogVisible.value = true
 }
 </script>
 

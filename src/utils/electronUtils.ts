@@ -376,3 +376,14 @@ export const deleteServiceMonitor = async (id: number): Promise<ServiceResult<vo
   }
   return electronAPI.serviceMonitor.delete(id)
 }
+
+// 文件操作便利函数
+
+// 选择文件夹
+export const selectFolder = async (): Promise<string> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.file.selectFolder()
+}

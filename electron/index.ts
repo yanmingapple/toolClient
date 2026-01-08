@@ -3,7 +3,7 @@ const electron = require('electron')
 const { app, BrowserWindow, Menu, Tray, nativeImage } = electron
 import * as path from 'path'
 import * as url from 'url'
-import { databaseManager } from './manager/databaseMananger'
+import { clientManager } from './manager/ClientManager'
 import { MenuService } from './service/menuService'
 import { IpcService } from './service/ipcService'
 import { join } from 'path'
@@ -16,7 +16,7 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database manager...')
     // 显式初始化数据库管理器
-    await databaseManager.initialize()
+    await clientManager.initialize()
     console.log('Database manager initialized successfully')
   } catch (error) {
     console.error('Failed to initialize database manager:', error)
@@ -109,7 +109,7 @@ app.on('activate', () => {
 app.on('before-quit', async () => {
   tray?.destroy()
   // 关闭数据库连接并清理资源
-  if (databaseManager) {
-    await databaseManager.shutdown()
+  if (clientManager) {
+    await clientManager.shutdown()
   }
 })
