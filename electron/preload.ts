@@ -281,6 +281,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     terminalResult: (callback: (data: any) => void): void => {
       ipcRenderer.on('terminal:result', (_: any, data: any) => callback(data));
+    },
+
+    /**
+     * 监听服务监控健康检查结果
+     * @param callback 回调函数
+     */
+    serviceMonitorHealthCheckResult: (callback: (data: any) => void): void => {
+      ipcRenderer.on('service-monitor:health-check-result', (_: any, data: any) => callback(data));
     }
   },
 
@@ -326,6 +334,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     terminalResult: (): void => {
       ipcRenderer.removeAllListeners('terminal:result');
+    },
+
+    /**
+     * 移除服务监控健康检查结果监听
+     */
+    serviceMonitorHealthCheckResult: (): void => {
+      ipcRenderer.removeAllListeners('service-monitor:health-check-result');
     }
   },
 

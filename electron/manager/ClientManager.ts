@@ -6,6 +6,10 @@ import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResu
 import * as fs from 'fs';
 import * as path from 'path';
 import { SQLStatements } from '../dataService/sql';
+import { PortChecker, PortCheckerImpl } from '../healthCheck/portChecker';
+import { PortCheckConfig } from '../model/healthCheck/portCheckConfig';
+import { CheckResult } from '../model/healthCheck/checkResult';
+import { WebContentsService } from '../service/webContentsService';
 
 /**
  * 数据库连接缓存管理类
@@ -267,19 +271,42 @@ export class DatabaseManager {
             const { host, port } = monitor;
             try {
                 await this.checkServiceHealth(host, port);
-                // 更新服务状态为正常
-                await this.databaseService.updateServiceMonitorStatus(monitor.id, ConnectionStatus.CONNECTED);
-            } catch (error) {
-                // 更新服务状态为异常
-                await this.databaseService.updateServiceMonitorStatus(monitor.id, ConnectionStatus.ERROR);
-            }
+            } catch (error) { }
         }
     }
 
     //引入PortChecker检查指定服务的端口，同步给前端刷新列表 
     private async checkServiceHealth(host: string, port: number): Promise<void> {
-        const portChecker = new PortChecker();
-        await portChecker.checkPort(host, port);
+        const portChecker = new PortCheckerImpl();
+        const config: PortCheckConfig = {
+            host: host,
+            port: port,
+            protocol: 'tcp',
+            timeout: 5000
+        };
+
+        try {
+            const result: CheckResult = await portChecker.checkPort(config);
+
+            // 将检查结果通知到前端
+            WebContentsService.sendToRenderer('service-monitor:health-check-result', {
+                host: host,
+                port: port,
+                status: result.status,
+                responseTime: result.responseTime,
+                error: result.error,
+                timestamp: result.timestamp
+            });
+        } catch (error) {
+            // 处理异常情况
+            WebContentsService.sendToRenderer('service-monitor:health-check-result', {
+                host: host,
+                port: port,
+                status: 'error',
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date()
+            });
+        }
     }
 
 
