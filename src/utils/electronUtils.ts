@@ -52,6 +52,7 @@ interface ElectronAPI {
     openNewConnectionDialog: (callback: () => void) => void
     openTerminalConsole: (callback: () => void) => void
     terminalResult: (callback: (data: any) => void) => void
+    serviceMonitorHealthCheckResult: (callback: (data: any) => void) => void
   }
   off: {
     connectionStatusChanged: () => void
@@ -60,6 +61,7 @@ interface ElectronAPI {
     openNewConnectionDialog: () => void
     openTerminalConsole: () => void
     terminalResult: () => void
+    serviceMonitorHealthCheckResult: () => void
   }
   terminal: {
     executeCommand: (command: string, shell: 'cmd' | 'powershell', cwd?: string, timeout?: number) => Promise<ServiceResult<any>>
@@ -123,6 +125,10 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
     case 'terminal:result':
       electronAPI.on.terminalResult(listener)
       return () => electronAPI.off.terminalResult()
+
+    case 'service-monitor:health-check-result':
+      electronAPI.on.serviceMonitorHealthCheckResult(listener)
+      return () => electronAPI.off.serviceMonitorHealthCheckResult()
 
     default:
       console.warn(`Unknown IPC channel: ${channel}`)
@@ -375,6 +381,20 @@ export const deleteServiceMonitor = async (id: number): Promise<ServiceResult<vo
     throw new Error('Electron API not available')
   }
   return electronAPI.serviceMonitor.delete(id)
+}
+
+// 执行服务控制命令
+export const controlService = async (serviceName: string, action: 'start' | 'stop' | 'restart'): Promise<ServiceResult<any>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+
+  // 构建服务控制命令
+  const command = `net  ${action} ${serviceName}`
+
+  // 执行命令
+  return electronAPI.terminal.executeCommand(command, 'cmd')
 }
 
 // 文件操作便利函数

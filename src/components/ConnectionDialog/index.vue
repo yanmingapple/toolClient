@@ -144,7 +144,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { type FormInstance, type FormRules } from 'element-plus'
 import { useConnectionStore } from '../../stores/connection'
 import { ConnectionType, ConnectionConfig, TreeNode } from '../../../electron/model/database'
 
@@ -268,12 +268,12 @@ const handleTestConnection = async () => {
 
     const result = await connectionStore.testConnection(conectionNode)
     if (result.success) {
-      ElMessage.success('连接测试成功！')
+      CTMessage.success('连接测试成功！')
     } else {
-      ElMessage.error(`连接测试失败：${result.error || '未知错误'}`)
+      CTMessage.error(`连接测试失败：${result.error || '未知错误'}`)
     }
   } catch (error: any) {
-    ElMessage.error(`表单验证失败：${error?.message || '请检查输入'}`)
+    CTMessage.error(`表单验证失败：${error?.message || '请检查输入'}`)
   } finally {
     testLoading.value = false
   }
@@ -288,15 +288,15 @@ const handleSave = async () => {
 
     if (props.connection) {
       connectionStore.updateConnection(props.connection.id, { ...formData })
-      ElMessage.success('连接更新成功！')
+      CTMessage.success('连接更新成功！')
     } else {
       connectionStore.addConnection({ ...formData })
-      ElMessage.success('连接添加成功！')
+      CTMessage.success('连接添加成功！')
     }
 
     handleCancel()
   } catch (error: any) {
-    ElMessage.error(`保存失败：${error?.message || '请检查输入'}`)
+    CTMessage.error(`保存失败：${error?.message || '请检查输入'}`)
   } finally {
     loading.value = false
   }

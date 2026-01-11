@@ -39,6 +39,7 @@ export const SQLStatements = {
     CREATE TABLE IF NOT EXISTS service_monitor (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      serverName TEXT,
       type TEXT NOT NULL,
       port INTEGER,
       status TEXT,
@@ -49,12 +50,17 @@ export const SQLStatements = {
     )
   `,
 
+  // 添加serverName列（用于现有表结构更新）
+  ALTER_SERVICE_MONITOR_ADD_SERVERNAME: `
+    ALTER TABLE service_monitor ADD COLUMN serverName TEXT
+  `,
+
   // 服务监控相关操作
   SELECT_ALL_SERVICE_MONITORS: 'SELECT * FROM service_monitor',
   SELECT_SERVICE_MONITOR_BY_ID: 'SELECT * FROM service_monitor WHERE id = ?',
-  INSERT_SERVICE_MONITOR: 'INSERT INTO service_monitor (name, type, port, status, workspace, url, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  INSERT_OR_REPLACE_SERVICE_MONITOR: 'INSERT OR REPLACE INTO service_monitor (id, name, type, port, status, workspace, url, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-  UPDATE_SERVICE_MONITOR: 'UPDATE service_monitor SET name = ?, type = ?, port = ?, status = ?, workspace = ?, url = ?, updateTime = ? WHERE id = ?',
+  INSERT_SERVICE_MONITOR: 'INSERT INTO service_monitor (name, serverName, type, port, status, workspace, url, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  INSERT_OR_REPLACE_SERVICE_MONITOR: 'INSERT OR REPLACE INTO service_monitor (id, name, serverName, type, port, status, workspace, url, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  UPDATE_SERVICE_MONITOR: 'UPDATE service_monitor SET name = ?, serverName = ?, type = ?, port = ?, status = ?, workspace = ?, url = ?, updateTime = ? WHERE id = ?',
   DELETE_SERVICE_MONITOR_BY_ID: 'DELETE FROM service_monitor WHERE id = ?',
   DELETE_ALL_SERVICE_MONITORS: 'DELETE FROM service_monitor'
 };

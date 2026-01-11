@@ -68,7 +68,7 @@ import ConnectionDialog from './components/ConnectionDialog/index.vue'
 import CommandResult from './components/CommandResult/index.vue'
 import { useConnectionStore } from './stores/connection'
 import type { ConnectionConfig, TreeNode } from '../electron/model/database'
-import { useIpcCommunication } from './composables/useIpcCommunication'
+import { useIpcCommunication as ipcUtils } from './composables/useIpcCommunication'
 import { switchMenuType } from './utils/electronUtils'
 
 // 动态引入组件，实现懒加载
@@ -155,7 +155,7 @@ onMounted(async () => {
   await connectionStore.initializeConnections()
 })
 
-useIpcCommunication({
+ipcUtils({
   onOpenNewConnectionDialog: handleNewConnection,
   onOpenTerminalConsole: () => {
     showTerminalConsole.value = true

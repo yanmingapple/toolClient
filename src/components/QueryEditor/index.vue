@@ -131,7 +131,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+
 import {
   Plus,
   VideoPlay,
@@ -203,7 +203,7 @@ const getEditorLanguage = (databaseType: string): string => {
 
 const handleAddTab = () => {
   if (connectionStore.connections.length === 0) {
-    ElMessage.warning('请先添加数据库连接')
+    CTMessage.warning('请先添加数据库连接')
     return
   }
   const connectionId = connectionStore.activeConnectionId || connectionStore.connections[0].id
@@ -223,14 +223,14 @@ const handleExecuteQuery = async () => {
   if (!activeTabId.value) return
   try {
     await queryStore.executeQuery(activeTabId.value, queryStore.tabs.find(t => t.id === activeTabId.value)?.query || '')
-    ElMessage.success('查询执行成功')
+    CTMessage.success('查询执行成功')
   } catch (error) {
-    ElMessage.error('查询执行失败: ' + (error as Error).message)
+    CTMessage.error('查询执行失败: ' + (error as Error).message)
   }
 }
 
 const handleSaveQuery = () => {
-  ElMessage.info('保存查询功能待实现')
+  CTMessage.info('保存查询功能待实现')
 }
 
 const handleClearQuery = () => {
@@ -242,7 +242,7 @@ const handleClearQuery = () => {
 }
 
 const handleReload = () => {
-  ElMessage.info('刷新功能待实现')
+  CTMessage.info('刷新功能待实现')
 }
 
 const handleEditorMount = (editor: any) => {
@@ -312,7 +312,7 @@ const handleSetEmptyString = () => {
   })
 
   queryStore.queryResults.set(activeTabId.value, { ...result, rows: updatedRows })
-  ElMessage.success('已将选中行设置为空白字符串')
+  CTMessage.success('已将选中行设置为空白字符串')
 }
 
 const handleSetNull = () => {
@@ -332,7 +332,7 @@ const handleSetNull = () => {
   })
 
   queryStore.queryResults.set(activeTabId.value, { ...result, rows: updatedRows })
-  ElMessage.success('已将选中行设置为NULL')
+  CTMessage.success('已将选中行设置为NULL')
 }
 
 const handleSetUUID = () => {
@@ -352,13 +352,13 @@ const handleSetUUID = () => {
   })
 
   queryStore.queryResults.set(activeTabId.value, { ...result, rows: updatedRows })
-  ElMessage.success('已将选中行设置为UUID')
+  CTMessage.success('已将选中行设置为UUID')
 }
 
 const handleDeleteRecord = async () => {
   if (!activeTabId.value || selectedRowKeys.value.length === 0) return
   try {
-    await ElMessageBox.confirm(`确定要删除选中的 ${selectedRowKeys.value.length} 条记录吗？`, '确认删除', {
+    await CTMessage.confirm(`确定要删除选中的 ${selectedRowKeys.value.length} 条记录吗？`, '确认删除', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -370,7 +370,7 @@ const handleDeleteRecord = async () => {
     const updatedRows = result.rows.filter((_, index) => !selectedRowKeys.value.includes(index))
     queryStore.queryResults.set(activeTabId.value, { ...result, rows: updatedRows })
     selectedRowKeys.value = []
-    ElMessage.success(`已删除 ${selectedRowKeys.value.length} 条记录`)
+    CTMessage.success(`已删除 ${selectedRowKeys.value.length} 条记录`)
   } catch {
     // 用户取消
   }
@@ -395,9 +395,9 @@ const handleCopy = async () => {
 
   try {
     await navigator.clipboard.writeText(csvContent)
-    ElMessage.success('已复制到剪贴板')
+    CTMessage.success('已复制到剪贴板')
   } catch {
-    ElMessage.error('复制失败，请重试')
+    CTMessage.error('复制失败，请重试')
   }
 }
 
@@ -433,9 +433,9 @@ const handlePaste = async () => {
     })
 
     queryStore.queryResults.set(activeTabId.value, { ...result, rows: updatedRows })
-    ElMessage.success('已粘贴数据')
+    CTMessage.success('已粘贴数据')
   } catch {
-    ElMessage.error('粘贴失败，请重试')
+    CTMessage.error('粘贴失败，请重试')
   }
 }
 
@@ -464,7 +464,7 @@ const handleSaveData = () => {
   link.click()
   document.body.removeChild(link)
 
-  ElMessage.success('数据已保存为CSV格式')
+  CTMessage.success('数据已保存为CSV格式')
 }
 
 const handleFind = () => {
@@ -485,7 +485,7 @@ const handleReplace = () => {
 }
 
 const handleGoToRecord = () => {
-  ElMessageBox.prompt('请输入记录号:', '前往记录', {
+  CTMessage.prompt('请输入记录号:', '前往记录', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     inputPattern: /^[1-9]\d*$/,
@@ -497,7 +497,7 @@ const handleGoToRecord = () => {
       const rowHeight = 48
       tableBody.scrollTop = index * rowHeight
     }
-    ElMessage.success(`已定位到记录 ${value}`)
+    CTMessage.success(`已定位到记录 ${value}`)
   }).catch(() => {})
 }
 </script>

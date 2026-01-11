@@ -2,6 +2,7 @@
 export interface ServiceMonitor {
     id: number
     name: string
+    serverName?: string
     type: ServiceType
     port: number
     status: string

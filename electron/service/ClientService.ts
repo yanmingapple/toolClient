@@ -138,7 +138,23 @@ export class ClientService {
      */
     public static async handleSaveConnectionList(connections: ConnectionConfig[]): Promise<ServiceResult<void>> {
         try {
-            await this.databaseClient.execute(SQLStatements.INSERT_CONNECTION, connections);
+            // 由于没有批量插入的SQL语句，我们需要逐个插入
+            for (const connection of connections) {
+                // 获取DatabaseManager实例
+                const dbManager = require('../manager/ClientManager').clientManager;
+                await dbManager.initialize();
+                const databaseService = dbManager['databaseService'];
+                const databaseClient = databaseService['databaseClient'];
+
+                // 使用正确的ConnectionConfig属性名
+                await databaseClient.execute(
+                    SQLStatements.INSERT_OR_REPLACE_CONNECTION,
+                    [connection.id, connection.name, connection.type, connection.host, connection.port,
+                    connection.username, connection.password, connection.database, connection.sshHost,
+                    connection.sshPort, connection.sshUsername, connection.sshPassword,
+                    connection.sshPassphrase, connection.sshPrivateKey]
+                );
+            }
             return ServiceResultFactory.success<void>();
         } catch (error) {
             console.error('Failed to save connections:', error);
@@ -152,9 +168,10 @@ export class ClientService {
      */
     public async handleDeleteConnection(connectionId: string): Promise<ServiceResult<void>> {
         try {
-            await this.databaseClient.execute(SQLStatements.DELETE_CONNECTION, [connectionId]);
+            await this.databaseClient.execute(SQLStatements.DELETE_CONNECTION_BY_ID, [connectionId]);
             //删除ClientMananger中的连接
-            ClientManager.getInstance().removeConnection(connectionId);
+            const dbManager = require('../manager/ClientManager').clientManager;
+            dbManager.removeConnection(connectionId);
             return ServiceResultFactory.success<void>();
         } catch (error) {
             console.error('Failed to delete connection:', error);
@@ -169,7 +186,8 @@ export class ClientService {
     public async handleDisconnect(connectionId: string): Promise<ServiceResult<void>> {
         try {
             // 从 ClientManager 中移除连接
-            ClientManager.getInstance().removeConnection(connectionId);
+            const dbManager = require('../manager/ClientManager').clientManager;
+            dbManager.removeConnection(connectionId);
             return ServiceResultFactory.success<void>();
         } catch (error) {
             console.error('Failed to disconnect connection:', error);
@@ -203,6 +221,7 @@ export class ClientService {
                     // 插入新记录
                     await this.databaseClient.execute(SQLStatements.INSERT_SERVICE_MONITOR, [
                         monitor.name,
+                        monitor.serverName,
                         monitor.type,
                         monitor.port,
                         monitor.status,
@@ -215,6 +234,7 @@ export class ClientService {
                     // 更新现有记录
                     await this.databaseClient.execute(SQLStatements.UPDATE_SERVICE_MONITOR, [
                         monitor.name,
+                        monitor.serverName,
                         monitor.type,
                         monitor.port,
                         monitor.status,
@@ -237,7 +257,10 @@ export class ClientService {
      */
     public async handleDeleteServiceMonitors(ids: number[]): Promise<ServiceResult<void>> {
         try {
-            await this.databaseClient.execute(SQLStatements.DELETE_SERVICE_MONITOR_BY_IDS, [ids]);
+            // 由于没有批量删除的SQL语句，我们需要逐个删除
+            for (const id of ids) {
+                await this.databaseClient.execute(SQLStatements.DELETE_SERVICE_MONITOR_BY_ID, [id]);
+            }
             return ServiceResultFactory.success<void>();
         } catch (error) {
             console.error('Failed to delete service monitors:', error);
@@ -262,14 +285,17 @@ export class ClientService {
      * 注册数据库服务相关的 IPC 处理程序
      */
     public static registerIpcHandlers() {
-
         // 数据库操作相关
         ipcMain.handle('database:test-connection', async (_: any, config: ConnectionConfig) => {
             return await this.handleTestConnection(_, config);
         });
 
+        // 获取所有连接配置
         ipcMain.handle('database:get-all-connections', async () => {
-            return await this.handleGetAllConnections();
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleGetAllConnections();
         });
 
         ipcMain.handle('database:get-databases', async (_: any, config: ConnectionConfig) => {
@@ -287,30 +313,47 @@ export class ClientService {
 
         // 删除连接逻辑
         ipcMain.handle('database:delete-connection', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
-            return await this.handleDeleteConnection(connectionId);
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleDeleteConnection(connectionId);
         });
 
         // 断开连接逻辑
         ipcMain.handle('database:disconnect', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
-            return await this.handleDisconnect(connectionId);
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleDisconnect(connectionId);
         });
-
 
         // 服务监控相关
         ipcMain.handle('service-monitor:get-all', async () => {
-            return await this.handleGetAllServiceMonitors();
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleGetAllServiceMonitors();
         });
 
         ipcMain.handle('service-monitor:save', async (_: any, monitors: ServiceMonitor[]) => {
-            return await this.handleSaveServiceMonitors(monitors);
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleSaveServiceMonitors(monitors);
         });
 
         ipcMain.handle('service-monitor:delete-service-monitors', async (_: any, ids: number[]) => {
-            return await this.handleDeleteServiceMonitors(ids);
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleDeleteServiceMonitors(ids);
         });
 
         ipcMain.handle('service-monitor:delete-all', async () => {
-            return await this.handleDeleteAllServiceMonitors();
+            const clientManager = require('../manager/ClientManager').clientManager;
+            await clientManager.initialize();
+            const databaseService = clientManager['databaseService'];
+            return await databaseService.handleDeleteAllServiceMonitors();
         });
     }
 

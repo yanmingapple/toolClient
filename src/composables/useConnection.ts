@@ -7,7 +7,7 @@ import { computed, watch, onMounted } from 'vue'
 import { useConnectionStore } from '../stores/connection'
 import { ConnectionConfig, ConnectionStatus } from '../../electron/model/database'
 import { ensureConnectionStatesMap } from '../utils/connectionUtils'
-import { ElMessage } from 'element-plus'
+
 
 export const useConnection = () => {
   const connectionStore = useConnectionStore()
@@ -92,13 +92,13 @@ export const useConnection = () => {
     }
 
     if (currentStatus === ConnectionStatus.CONNECTED) {
-      ElMessage.info('连接已建立')
+      CTMessage.info('连接已建立')
       await getDatabaseList(connection.id)
       return
     }
 
     if (currentStatus === ConnectionStatus.CONNECTING) {
-      ElMessage.info('正在连接中，请稍候...')
+      CTMessage.info('正在连接中，请稍候...')
       return
     }
 
@@ -108,15 +108,15 @@ export const useConnection = () => {
       if (result.success) {
         setConnectionStatus(connection.id, ConnectionStatus.CONNECTED)
         setActiveConnection(connection.id)
-        ElMessage.success('连接成功')
+        CTMessage.success('连接成功')
         await getDatabaseList(connection.id)
       } else {
         setConnectionStatus(connection.id, ConnectionStatus.ERROR)
-        ElMessage.error(`连接失败: ${result.error || '用户名或密码错误'}`)
+        CTMessage.error(`连接失败: ${result.error || '用户名或密码错误'}`)
       }
     } catch (error) {
       setConnectionStatus(connection.id, ConnectionStatus.ERROR)
-      ElMessage.error('连接失败: ' + error)
+      CTMessage.error('连接失败: ' + error)
     }
   }
 
@@ -138,7 +138,7 @@ export const useConnection = () => {
     if (activeConnectionId.value === connection.id) {
       setActiveConnection(null)
     }
-    ElMessage.success('已断开连接')
+    CTMessage.success('已断开连接')
   }
 
   const removeConnection = (id: string) => {
@@ -165,7 +165,7 @@ export const useConnection = () => {
       await connectionStore.getTableList(connectionId, databaseName, databaseId)
     } catch (error) {
       console.error('Failed to open database:', error)
-      ElMessage.error('打开数据库失败: ' + (error as Error).message)
+      CTMessage.error('打开数据库失败: ' + (error as Error).message)
     }
   }
 

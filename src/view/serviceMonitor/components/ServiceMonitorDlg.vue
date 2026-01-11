@@ -25,6 +25,9 @@
        <el-form-item label="服务名称" prop="name">
         <el-input v-model="form.name" placeholder="请输入服务名称" />
       </el-form-item>
+      <el-form-item label="服务标识">
+        <el-input v-model="form.serverName" placeholder="请输入服务标识（如mysql、redis）" />
+      </el-form-item>
       <el-form-item label="端口号" prop="port">
         <el-input-number
           v-model="form.port"
@@ -56,7 +59,7 @@
 <script setup lang="ts">
 import { ref, defineProps, defineEmits, watch } from 'vue'
 import { ElForm } from 'element-plus'
-import { ElMessage } from 'element-plus'
+
 import { Folder } from '@element-plus/icons-vue'
 import { saveServiceMonitors, selectFolder } from '@/utils/electronUtils'
 import type { ServiceMonitor } from '../../../../electron/model/database/ServiceMonitor'
@@ -80,6 +83,7 @@ const formRef = ref<InstanceType<typeof ElForm> | null>(null)
 // 表单数据
 const form = ref({
   name: '数据库服务',
+  serverName: '',
   type: 'database',
   port: 3306,
   workspace: '',
@@ -100,6 +104,7 @@ watch([() => props.dialogVisible, () => props.editingService], ([visible, editin
       // 新增模式：重置表单
       form.value = {
         name: typeNameMap['database'],
+        serverName: typeServerNameMap['database'],
         type: 'database',
         port: typePortMap['database'],
         workspace: '',
@@ -128,10 +133,20 @@ const typePortMap: Record<string, number> = {
   service: 8080
 }
 
+// 服务类型对应的默认服务标识映射
+const typeServerNameMap: Record<string, string> = {
+  database: 'mysql',
+  redis: 'redis',
+  mq: 'rabbitmq',
+  es: 'elasticsearch',
+  service: ''
+}
+
 // 处理服务类型变更
 const handleTypeChange = (type: string) => {
   form.value.name = typeNameMap[type] || ''
   form.value.port = typePortMap[type] || 8080
+  form.value.serverName = typeServerNameMap[type] || ''
 }
 
 // 处理文件夹选择
@@ -141,7 +156,7 @@ const handleSelectFolder = async () => {
     form.value.workspace = folderPath
   } catch (error: any) {
     console.error('选择文件夹失败:', error)
-    ElMessage.error(error.message || '选择文件夹失败')
+    CTMessage.error(error.message || '选择文件夹失败')
   }
 }
 
@@ -175,9 +190,16 @@ const handleSaveService = async () => {
     
     // 准备保存的数据
     const isEditMode = !!props.editingService
+    // 创建一个纯净的对象，只包含需要的属性，避免Vue响应式属性导致的序列化问题
     const newService: ServiceMonitor = {
-      ...form.value,
+      id: isEditMode && props.editingService ? props.editingService.id : 0,
+      name: form.value.name,
+      serverName: form.value.serverName,
+      type: form.value.type,
+      port: form.value.port,
       status: form.value.status || '已停止',
+      workspace: form.value.workspace,
+      url: form.value.url,
       createTime: isEditMode && props.editingService ? props.editingService.createTime : new Date().toISOString(),
       updateTime: new Date().toISOString()
     }
@@ -185,15 +207,15 @@ const handleSaveService = async () => {
     // 保存服务监控
     const result: ServiceResult<void> = await saveServiceMonitors([newService])
     if (result.success) {
-      ElMessage.success(isEditMode ? '服务编辑成功' : '服务添加成功')
+      CTMessage.success(isEditMode ? '服务编辑成功' : '服务添加成功')
       emit('update:dialogVisible', false)
       emit('save-success')
     } else {
-      ElMessage.error(`${isEditMode ? '服务编辑' : '服务添加'}失败: ${result.message}`)
+      CTMessage.error(`${isEditMode ? '服务编辑' : '服务添加'}失败: ${result.message}`)
     }
   } catch (error: any) {
     console.error('保存服务监控失败:', error)
-    ElMessage.error(error.message || (!!props.editingService ? '服务编辑失败' : '服务添加失败'))
+    CTMessage.error(error.message || (!!props.editingService ? '服务编辑失败' : '服务添加失败'))
   }
 }
 </script>

@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+
 
 interface CommandResult {
   command: string
@@ -155,9 +155,9 @@ ${stderr.value}`
 
   try {
     await navigator.clipboard.writeText(textToCopy)
-    ElMessage.success('结果已复制到剪贴板')
+    CTMessage.success('结果已复制到剪贴板')
   } catch (error) {
-    ElMessage.error('复制失败')
+    CTMessage.error('复制失败')
   }
 }
 </script>

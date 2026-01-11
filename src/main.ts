@@ -5,6 +5,7 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import './index.css'
+import './utils/CTMessage'
 
 const app = createApp(App)
 

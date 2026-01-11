@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { Refresh, Plus, Connection, CircleClose } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+
 import { useConnectionStore } from '@/stores/connection'
 import type { TreeNode } from '../../../electron/model/database'
 
@@ -61,7 +61,7 @@ const connectionStore = useConnectionStore()
 
 const handleRefreshConnections = () => {
   connectionStore.initializeConnections()
-  ElMessage.success('数据库连接已刷新')
+  CTMessage.success('数据库连接已刷新')
 }
 
 const handleAddConnection = () => {
@@ -71,10 +71,10 @@ const handleAddConnection = () => {
 const handleConnectToDatabase = async (connection: TreeNode) => {
   try {
     await connectionStore.setActiveConnection(connection.id)
-    ElMessage.success(`已连接到: ${connection.name}`)
+    CTMessage.success(`已连接到: ${connection.name}`)
     emit('connectToDatabase', connection)
   } catch (error) {
-    ElMessage.error('连接失败: ' + (error as Error).message)
+    CTMessage.error('连接失败: ' + (error as Error).message)
   }
 }
 

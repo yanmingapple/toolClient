@@ -16,7 +16,13 @@
         </div>
       </div>
       <div class="monitoring-table-container">
-        <el-table :data="services" style="width: 100%" class="service-table">
+        <el-table 
+          ref="tableRef"
+          :data="services" 
+          style="width: 100%" 
+          class="service-table"
+          @row-contextmenu="handleRowContextMenu"
+        >
           <el-table-column prop="name" label="服务名称" min-width="150">
             <template #default="{ row }">
               <div class="service-name">
@@ -40,36 +46,6 @@
               <span class="port-number">{{ row.port }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" >
-            <template #default="{ row }">
-              <div class="action-buttons">
-                <el-button 
-                  :type="row.status === '运行中' ? 'warning' : 'success'"
-                  size="small" 
-                  @click="handleServiceAction(row, 'toggle')"
-                >
-                  <el-icon><Switch /></el-icon>
-                  {{ row.status === '运行中' ? '停止' : '启动' }}
-                </el-button>
-                <el-button 
-                  type="primary" 
-                  size="small" 
-                  @click="handleServiceAction(row, 'edit')"
-                >
-                  <el-icon><Edit /></el-icon>
-                  编辑
-                </el-button>
-                <el-button 
-                  type="danger" 
-                  size="small" 
-                  @click="handleServiceAction(row, 'delete')"
-                >
-                  <el-icon><Delete /></el-icon>
-                  删除
-                </el-button>
-              </div>
-            </template>
-          </el-table-column>
         </el-table>
       </div>
     </div>
@@ -80,16 +56,28 @@
   :editing-service="editingService"
   @save-success="handleRefreshService"
 />
+
+<!-- 右键菜单组件 -->
+<CTRightMenu
+  v-model:visible="menuVisible"
+  :position="menuPosition"
+  :menu-items="menuItems"
+  :data="selectedService"
+  @menu-click="handleMenuClick"
+/>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import {
   Monitor, Refresh, Connection, Switch, Edit, Delete, Plus
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { getAllServiceMonitors } from '@/utils/electronUtils'
+
+import { getAllServiceMonitors, controlService } from '@/utils/electronUtils'
+import { useIpcCommunication } from '@/composables/useIpcCommunication'
+import { ServiceHealthStatus, ServiceMonitorStatus } from '@/types'
 import ServiceMonitorDlg from './components/ServiceMonitorDlg.vue'
+import CTRightMenu from '@/components/CTRightMenu/index.vue'
 
 // 服务监控数据
 const services = ref([])
@@ -99,21 +87,142 @@ onMounted(() => {
   handleRefreshService()
 })
 
+// 使用IPC通信获取服务监控健康检查结果
+useIpcCommunication({
+  onOpenNewConnectionDialog: () => {}, // 空实现，不使用
+  onServiceMonitorHealthCheckResult: (data) => {
+    // 查找对应的服务并更新状态
+    const serviceIndex = services.value.findIndex(service => service.id === data.id)
+    if (serviceIndex !== -1) {
+      // 将健康检查结果映射到服务状态
+      let serviceStatus = ServiceMonitorStatus.STOPPED
+      
+      switch (data.status) {
+        case ServiceHealthStatus.HEALTHY:
+          serviceStatus = ServiceMonitorStatus.RUNNING
+          break
+        case ServiceHealthStatus.UNHEALTHY:
+        case ServiceHealthStatus.WARNING:
+        case ServiceHealthStatus.UNKNOWN:
+        case ServiceHealthStatus.TIMEOUT:
+          serviceStatus = ServiceMonitorStatus.STOPPED
+          break
+      }
+      
+      services.value[serviceIndex] = {
+        ...services.value[serviceIndex],
+        status: serviceStatus,
+        healthCheckResult: data // 保存完整的健康检查结果
+      }
+    }
+  }
+})
+
 // 新增服务对话框
 const dialogVisible = ref(false)
 // 当前编辑的服务
 const editingService = ref(null)
 
+// 右键菜单相关
+const menuVisible = ref(false)
+const menuPosition = ref({ x: 0, y: 0 })
+const selectedService = ref(null)
+
+// 右键菜单项配置
+const menuItems = [
+  {
+    key: 'start',
+    label: '启动',
+    icon: Switch,
+    visible: (data) => data.status === ServiceMonitorStatus.STOPPED,
+    onClick: (data) => handleServiceAction(data, 'toggle')
+  },
+  {
+    key: 'stop',
+    label: '停止',
+    icon: Switch,
+    visible: (data) => data.status === ServiceMonitorStatus.RUNNING,
+    onClick: (data) => handleServiceAction(data, 'toggle')
+  },
+  {
+    key: 'edit',
+    label: '编辑',
+    icon: Edit,
+    visible: (data) => data.status !== ServiceMonitorStatus.STARTING && data.status !== ServiceMonitorStatus.STOPPING,
+    onClick: (data) => handleServiceAction(data, 'edit')
+  },
+  {
+    divider: true
+  },
+  {
+    key: 'delete',
+    label: '删除',
+    icon: Delete,
+    danger: true,
+    visible: (data) => data.status !== ServiceMonitorStatus.STARTING && data.status !== ServiceMonitorStatus.STOPPING,
+    onClick: (data) => handleServiceAction(data, 'delete')
+  },
+  {
+    key: 'refresh',
+    label: '刷新',
+    icon: Refresh,
+    onClick: () => handleRefreshService()
+  }
+]
+
+// 处理行右键菜单事件
+const handleRowContextMenu = (...args: any[]) => {
+  // 查看实际参数
+  console.log('右键菜单事件参数:', args)
+  console.log('参数数量:', args.length)
+  
+  // 兼容不同的参数顺序和数量
+  let row: any, event: MouseEvent | undefined
+  
+  // 查找事件对象（包含clientX属性）
+  event = args.find(arg => arg?.clientX !== undefined) as MouseEvent | undefined
+  
+  // 查找行数据（不包含clientX且具有id或name等服务监控属性）
+  row = args.find(arg => 
+    arg?.clientX === undefined && 
+    (arg?.id !== undefined || arg?.name !== undefined) 
+  ) || null
+  
+  console.log('解析后的数据:', { row, event })
+  
+  if (event) {
+    // 手动阻止默认右键菜单
+    event.preventDefault()
+    
+    // 先隐藏菜单，再更新位置和显示，确保位置更新生效
+    menuVisible.value = false
+    
+    // 使用 nextTick 确保菜单隐藏后再更新位置和显示
+    nextTick(() => {
+      menuPosition.value = { x: event.clientX, y: event.clientY }
+      selectedService.value = row
+      menuVisible.value = true
+    })
+  } else {
+    console.error('没有找到有效的事件对象')
+  }
+}
+
+// 处理右键菜单项点击事件
+const handleMenuClick = (key: string, data: any) => {
+  console.log('右键菜单点击:', key, data)
+}
+
 // 获取状态对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
-    case '运行中':
+    case ServiceMonitorStatus.RUNNING:
       return 'success'
-    case '启动中':
+    case ServiceMonitorStatus.STARTING:
       return 'warning'
-    case '已停止':
+    case ServiceMonitorStatus.STOPPED:
       return 'info'
-    case '停止中':
+    case ServiceMonitorStatus.STOPPING:
       return 'danger'
     default:
       return 'info'
@@ -121,7 +230,7 @@ const getStatusType = (status: string) => {
 }
 
 // 处理服务操作
-const handleServiceAction = (service: any, action: string) => {
+const handleServiceAction = async (service: any, action: string) => {
   switch (action) {
     case 'toggle':
       const currentIndex = services.value.findIndex(s => s.id === service.id)
@@ -129,31 +238,60 @@ const handleServiceAction = (service: any, action: string) => {
         // 切换状态
         const currentStatus = services.value[currentIndex].status
         let newStatus = ''
+        let serviceAction: 'start' | 'stop' | 'restart' | null = null
+        
         switch (currentStatus) {
-          case '运行中':
-            newStatus = '停止中'
+          case ServiceMonitorStatus.RUNNING:
+            newStatus = ServiceMonitorStatus.STOPPING
+            serviceAction = 'stop'
             break
-          case '停止中':
-            newStatus = '运行中'
+          case ServiceMonitorStatus.STOPPING:
+            newStatus = ServiceMonitorStatus.RUNNING
+            serviceAction = 'start'
             break
-          case '已停止':
-            newStatus = '启动中'
+          case ServiceMonitorStatus.STOPPED:
+            newStatus = ServiceMonitorStatus.STARTING
+            serviceAction = 'start'
             break
-          case '启动中':
-            newStatus = '已停止'
+          case ServiceMonitorStatus.STARTING:
+            newStatus = ServiceMonitorStatus.STOPPED
+            serviceAction = 'stop'
             break
         }
+        
         services.value[currentIndex].status = newStatus
         
-        // 模拟状态变化
-        if (newStatus === '启动中' || newStatus === '停止中') {
+        // 执行实际的服务控制命令
+        if (serviceAction && (currentStatus === ServiceMonitorStatus.RUNNING || currentStatus === ServiceMonitorStatus.STOPPED)) {
+          try {
+            const result = await controlService(service.serverName, serviceAction)
+            
+            // 根据命令结果更新最终状态
+            setTimeout(() => {
+              if (result.success) {
+                const finalStatus = newStatus === ServiceMonitorStatus.STARTING ? ServiceMonitorStatus.RUNNING : ServiceMonitorStatus.STOPPED
+                services.value[currentIndex].status = finalStatus
+                CTMessage.success(`服务 ${service.name} ${serviceAction === 'start' ? '已启动' : '已停止'}`)
+              } else {
+                // 命令执行失败，恢复原状态
+                services.value[currentIndex].status = currentStatus
+                CTMessage.error(`执行${serviceAction === 'start' ? '启动' : '停止'}服务 ${service.name} 失败: ${result.message}`)
+              }
+            }, 2000)
+          } catch (error) {
+            // 发生异常，恢复原状态
+            setTimeout(() => {
+              services.value[currentIndex].status = currentStatus
+              CTMessage.error(`执行${serviceAction === 'start' ? '启动' : '停止'}服务 ${service.name} 时发生异常: ${error instanceof Error ? error.message : '未知错误'}`)
+            }, 2000)
+          }
+        } else {
+          // 模拟状态变化（仅用于取消操作）
           setTimeout(() => {
-            const finalStatus = newStatus === '启动中' ? '运行中' : '已停止'
+            const finalStatus = newStatus === ServiceMonitorStatus.STARTING ? ServiceMonitorStatus.RUNNING : ServiceMonitorStatus.STOPPED
             services.value[currentIndex].status = finalStatus
           }, 2000)
         }
-        
-        ElMessage.success(`服务 ${service.name} ${newStatus === '运行中' ? '已启动' : '已停止'}`)
       }
       break
     case 'edit':
@@ -161,7 +299,7 @@ const handleServiceAction = (service: any, action: string) => {
       dialogVisible.value = true
       break
     case 'delete':
-      ElMessage.info(`删除服务: ${service.name}`)
+      CTMessage.info(`删除服务: ${service.name}`)
       break
   }
 }
@@ -173,13 +311,13 @@ const handleRefreshService = async () => {
     const result = await getAllServiceMonitors()
     if (result.success) {
       services.value = result.data || []
-      ElMessage.success('服务列表已刷新')
+      CTMessage.success('服务列表已刷新')
     } else {
-      ElMessage.error(`刷新失败: ${result.message}`)
+      CTMessage.error(`刷新失败: ${result.message}`)
     }
   } catch (error) {
     console.error('刷新服务列表失败:', error)
-    ElMessage.error('刷新服务列表失败')
+    CTMessage.error('刷新服务列表失败')
   }
 }
 

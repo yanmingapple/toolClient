@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, defineEmits, defineProps } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { useTerminal } from '@/composables/useTerminal'
 
 interface OutputLine {
@@ -177,7 +177,7 @@ const executeCurrentCommand = async () => {
     
   } catch (err: any) {
     addOutputLine(`执行错误: ${err.message}`, 'error')
-    ElMessage.error(err.message)
+    CTMessage.error(err.message)
   }
 
   currentCommand.value = ''
@@ -207,7 +207,7 @@ const executeQuickCommand = async (command: string, shell: 'cmd' | 'powershell')
     
   } catch (err: any) {
     addOutputLine(`执行错误: ${err.message}`, 'error')
-    ElMessage.error(err.message)
+    CTMessage.error(err.message)
   }
 }
 

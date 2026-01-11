@@ -11,6 +11,7 @@ declare module 'vue' {
     ConnectionDialog: typeof import('./components/ConnectionDialog/index.vue')['default']
     ConnectionTree: typeof import('./components/ConnectionTree/ConnectionTree.vue')['default']
     ContextMenu: typeof import('./components/ConnectionTree/ContextMenu.vue')['default']
+    CTRightMenu: typeof import('./components/CTRightMenu/index.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']

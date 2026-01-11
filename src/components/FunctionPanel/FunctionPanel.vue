@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+
 import { Plus, Delete, VideoPlay, Search } from '@element-plus/icons-vue'
 
 export interface FunctionData {

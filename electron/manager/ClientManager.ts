@@ -1,15 +1,14 @@
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
 import { ConnectionStatus, ConnectionInfo, ConnectionConfig, ConnectionType } from '../model/database';
 import { ClientService } from '../service/ClientService';
-import { TreeNode } from '../model/database/TreeNode';
-import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SQLStatements } from '../dataService/sql';
-import { PortChecker, PortCheckerImpl } from '../healthCheck/portChecker';
+import { PortCheckerImpl } from '../healthCheck/portChecker';
 import { PortCheckConfig } from '../model/healthCheck/portCheckConfig';
 import { CheckResult } from '../model/healthCheck/checkResult';
 import { WebContentsService } from '../service/webContentsService';
+import { ServiceMonitor } from '../model/database/ServiceMonitor';
 
 /**
  * 数据库连接缓存管理类
@@ -19,7 +18,7 @@ export class DatabaseManager {
     private static instance: DatabaseManager;
     private connections: Map<string, ConnectionInfo> = new Map();
     //添加ServiceMonitor数组列表
-    private serviceMonitors: Map<string, ServiceMonitor> = new Map();
+    private serviceMonitors: Map<number, ServiceMonitor> = new Map();
     private healthCheckInterval: number = 30000; // 30秒健康检查间隔
     private maxIdleTime: number = 300000; // 5分钟最大空闲时间
     private pingInterval: number = 60000; // 1分钟ping间隔
@@ -72,7 +71,11 @@ export class DatabaseManager {
             console.log('DatabaseManager initialized successfully');
 
             //获取监控中的连接
-            const monitorConnections = await this.databaseService.getAllServiceMonitors();
+            const serviceResult = await this.databaseService.handleGetAllServiceMonitors();
+            let monitorConnections: ServiceMonitor[] = [];
+            if (serviceResult.success && Array.isArray(serviceResult.data)) {
+                monitorConnections = serviceResult.data;
+            }
             this.serviceMonitors = new Map(monitorConnections.map(monitor => [monitor.id, monitor]));
             // 启动健康检查定时器
             this.startHealthCheck();
@@ -135,6 +138,22 @@ export class DatabaseManager {
             // 创建service_monitor表
             await sqliteClient.execute(SQLStatements.CREATE_SERVICE_MONITOR_TABLE);
             console.log('创建service_monitor表成功');
+
+            // 检查serverName列是否存在
+            try {
+                const result = await sqliteClient.execute('PRAGMA table_info(service_monitor)');
+                const hasServerNameColumn = (result as any[]).some(col => col.name === 'serverName');
+
+                if (!hasServerNameColumn) {
+                    // 添加serverName列
+                    await sqliteClient.execute(SQLStatements.ALTER_SERVICE_MONITOR_ADD_SERVERNAME);
+                    console.log('添加serverName列成功');
+                } else {
+                    console.log('serverName列已存在，跳过添加操作');
+                }
+            } catch (error) {
+                console.error('检查或添加serverName列时出错:', error);
+            }
         } catch (error) {
             console.error('创建数据库表失败:', error);
             await sqliteClient.disconnect();
@@ -219,6 +238,14 @@ export class DatabaseManager {
         }
     }
 
+    /**
+     * 释放连接（与removeConnection功能相同，用于兼容旧代码）
+     * @param config 连接配置
+     */
+    public async releaseConnection(config: ConnectionConfig): Promise<void> {
+        await this.removeConnection(config);
+    }
+
 
     /**
      * 关闭所有连接并清理资源
@@ -267,30 +294,40 @@ export class DatabaseManager {
      */
     private async performHealthCheck(): Promise<void> {
         //定时执行检查监控的服务是否正常再当前系统中端口是存在
-        for (const monitor of this.serviceMonitors.values()) {
-            const { host, port } = monitor;
+        for (const [id, monitor] of this.serviceMonitors.entries()) {
             try {
-                await this.checkServiceHealth(host, port);
+                // 从URL中解析出主机和端口
+                let host = "127.0.0.1";
+                const port = monitor.port;
+
+                // 调用健康检查方法，传递monitor的id
+                await this.checkServiceHealth(host, port, id);
             } catch (error) { }
         }
     }
 
     //引入PortChecker检查指定服务的端口，同步给前端刷新列表 
-    private async checkServiceHealth(host: string, port: number): Promise<void> {
+    private async checkServiceHealth(host: string, port: number, id: number): Promise<void> {
         const portChecker = new PortCheckerImpl();
+        const protocol = 'netstat';
+
+        // netstat模式下只检查本地端口，忽略传入的host
+        const configHost = protocol === 'netstat' ? 'localhost' : host;
+
         const config: PortCheckConfig = {
-            host: host,
+            host: configHost,
             port: port,
-            protocol: 'tcp',
+            protocol: protocol,
             timeout: 5000
         };
 
         try {
             const result: CheckResult = await portChecker.checkPort(config);
 
-            // 将检查结果通知到前端
+            // 将检查结果通知到前端，包含monitor的id
             WebContentsService.sendToRenderer('service-monitor:health-check-result', {
-                host: host,
+                id: id,
+                host: configHost,
                 port: port,
                 status: result.status,
                 responseTime: result.responseTime,
@@ -298,9 +335,10 @@ export class DatabaseManager {
                 timestamp: result.timestamp
             });
         } catch (error) {
-            // 处理异常情况
+            // 处理异常情况，包含monitor的id
             WebContentsService.sendToRenderer('service-monitor:health-check-result', {
-                host: host,
+                id: id,
+                host: configHost,
                 port: port,
                 status: 'error',
                 error: error instanceof Error ? error.message : String(error),

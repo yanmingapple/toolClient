@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="tool-panel">
     <!-- 涓昏鍐呭鍖哄煙 -->
     <div class="panel-content">
@@ -90,7 +90,7 @@ import {
   Tools, ArrowRight, CopyDocument, Edit, PieChart, InfoFilled, Cpu, 
   Folder, Timer, Clock, Grid, View, Document
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+
 import { useConnectionStore } from '@/stores/connection'
 import DataConnection from '../dataConnection/index.vue'
 import ServiceMonitor from '../serviceMonitor/index.vue'
@@ -353,7 +353,7 @@ const handleNewConnection = () => {
 const handleRefresh = () => {
   lastRefreshTime.value = new Date()
   connectionStore.initializeConnections()
-  ElMessage.success('已刷新连接状态')
+  CTMessage.success('已刷新连接状态')
 }
 
 const handleOpenTerminal = () => {
@@ -363,68 +363,68 @@ const handleOpenTerminal = () => {
 
 
 const handleServiceMonitor = () => {
-  ElMessage.info('服务监控功能开发中...')
+  CTMessage.info('服务监控功能开发中...')
 }
 
 const handleImportData = () => {
-  ElMessage.info('数据导入功能开发中...')
+  CTMessage.info('数据导入功能开发中...')
 }
 
 const handleConnectToDatabase = async (connection: TreeNode) => {
   try {
     await connectionStore.setActiveConnection(connection.id)
-    ElMessage.success(`已连接到: ${connection.name}`)
+    CTMessage.success(`已连接到: ${connection.name}`)
   } catch (error) {
-    ElMessage.error('连接失败: ' + (error as Error).message)
+    CTMessage.error('连接失败: ' + (error as Error).message)
   }
 }
 
 const handleBackup = () => {
-  ElMessage.info('数据备份功能开发中...')
+  CTMessage.info('数据备份功能开发中...')
 }
 
 const handleRestore = () => {
-  ElMessage.info('数据恢复功能开发中...')
+  CTMessage.info('数据恢复功能开发中...')
 }
 
 const handleSync = () => {
-  ElMessage.info('数据同步功能开发中...')
+  CTMessage.info('数据同步功能开发中...')
 }
 
 const handleExcelImport = () => {
-  ElMessage.info('Excel导入功能开发中...')
+  CTMessage.info('Excel导入功能开发中...')
 }
 
 const handleExcelExport = () => {
-  ElMessage.info('Excel导出功能开发中...')
+  CTMessage.info('Excel导出功能开发中...')
 }
 
 const handleCsvExport = () => {
-  ElMessage.info('CSV导出功能开发中...')
+  CTMessage.info('CSV导出功能开发中...')
 }
 
 const handleSchemaDesigner = () => {
-  ElMessage.info('结构设计工具开发中...')
+  CTMessage.info('结构设计工具开发中...')
 }
 
 const handleQueryBuilder = () => {
-  ElMessage.info('查询构建器开发中...')
+  CTMessage.info('查询构建器开发中...')
 }
 
 const handlePerformance = () => {
-  ElMessage.info('性能分析工具开发中...')
+  CTMessage.info('性能分析工具开发中...')
 }
 
 const handleHealthCheck = () => {
-  ElMessage.info('健康检查功能开发中...')
+  CTMessage.info('健康检查功能开发中...')
 }
 
 const handleSystemInfo = () => {
-  ElMessage.info('系统信息功能开发中...')
+  CTMessage.info('系统信息功能开发中...')
 }
 
 const handleResourceMonitor = () => {
-  ElMessage.info('资源监控功能开发中...')
+  CTMessage.info('资源监控功能开发中...')
 }
 
 

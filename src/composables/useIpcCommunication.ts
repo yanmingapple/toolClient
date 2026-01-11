@@ -5,6 +5,7 @@ interface IpcCallbacks {
   onOpenNewConnectionDialog: () => void
   onOpenTerminalConsole?: () => void
   onTerminalResult?: (data: any) => void
+  onServiceMonitorHealthCheckResult?: (data: any) => void
 }
 
 export const useIpcCommunication = (callbacks: IpcCallbacks) => {
@@ -22,6 +23,11 @@ export const useIpcCommunication = (callbacks: IpcCallbacks) => {
 
     if (callbacks.onTerminalResult) {
       listeners.push(listenToIpcMessage('terminal:result', callbacks.onTerminalResult))
+    }
+
+    // 添加服务监控健康检查结果监听器
+    if (callbacks.onServiceMonitorHealthCheckResult) {
+      listeners.push(listenToIpcMessage('service-monitor:health-check-result', callbacks.onServiceMonitorHealthCheckResult))
     }
 
     // 返回清理函数
