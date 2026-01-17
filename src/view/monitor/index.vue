@@ -2,9 +2,6 @@
   <div class="service-monitor">
     <!-- 服务监控表格 -->
     <div class="service-monitoring">
-      <div class="section-header">
-        <h2 class="section-title">服务监控</h2>
-      </div>
       <div class="monitoring-table-container">
         <TkTable :tableObj="tableObj">
           <template #tblTopRight>
