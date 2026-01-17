@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 16" class="design-iconfont">
+  <g fill="none" fill-rule="evenodd">
+    <path stroke="#000" stroke-width=".92857143" d="M0 -5.27159437e-14L8.43806941 0 11 2.97345133 11 14 0 14z" transform="translate(1 1)"/>
+    <path d="M2.5,10 L8.5,10 C8.77614237,10 9,10.2238576 9,10.5 C9,10.7761424 8.77614237,11 8.5,11 L2.5,11 C2.22385763,11 2,10.7761424 2,10.5 C2,10.2238576 2.22385763,10 2.5,10 Z" fill="#000" transform="translate(1 1)"/>
+    <g transform="translate(4 5)" fill="#000">
+      <rect transform="scale(-1 1) rotate(47 0 -6.77395595)" x="1.72967357" y="1.30370658" width="4" height="1" rx=".5"/>
+      <rect transform="rotate(47 1.729674 1.803707)" x="-.27032643" y="1.30370658" width="4" height="1" rx=".5"/>
+    </g>
+  </g>
+</svg>

@@ -7,7 +7,7 @@ const { ipcMain, app } = electron;
 import { FileService } from './fileService';           // 文件操作服务
 import { WebContentsService } from './webContentsService'; // Web内容服务
 import { NotificationService } from './notificationService'; // 通知服务
-import { ClientService } from './ClientService';   // 数据库服务
+import { DatabaseManager } from '../manager/ClientManager';   // 数据库管理器
 import { TerminalService } from './terminalService';  // 终端命令服务
 import { MenuService } from './menuService';  // 菜单服务
 
@@ -42,7 +42,7 @@ export class IpcService {
     this.registerWindowControlHandlers();
 
     // 2. 注册数据库相关的IPC处理程序（连接管理、查询执行等）
-    ClientService.registerIpcHandlers();
+    DatabaseManager.registerIpcHandlers();
 
     // 3. 初始化WebContentsService，传入主窗口引用用于后续通信
     WebContentsService.initialize(mainWindow);

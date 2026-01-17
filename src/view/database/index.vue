@@ -40,14 +40,22 @@
     <div class="database-footer">
       <span>ToolClient Database Manager © 2024</span>
     </div>
+
+    <!-- 连接对话框 -->
+    <ConnectionDialog
+      v-model:visible="connectionDialogVisible"
+      :connection="editingConnection"
+      @cancel="handleCancelDialog"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import HeaderBar from '@/components/HeaderBar/index.vue'
-import ConnectionTree from '@/components/ConnectionTree/ConnectionTree.vue'
-import MainPanel from '@/components/MainPanel/index.vue'
+import { ref, nextTick, watch } from 'vue'
+import HeaderBar from '@/clientComponents/HeaderBar/index.vue'
+import ConnectionTree from '@/clientComponents/ConnectionTree/ConnectionTree.vue'
+import MainPanel from '@/clientComponents/MainPanel/index.vue'
+import ConnectionDialog from '@/clientComponents/ConnectionDialog/index.vue'
 import { useConnectionStore } from '@/stores/connection'
 import type { TreeNode } from '../../../electron/model/database'
 
@@ -101,12 +109,41 @@ const handleBIClick = () => {
   console.log('BI工具')
 }
 
-const onNewConnection = () => {
-  console.log('新建连接')
+// 连接对话框相关
+const connectionDialogVisible = ref(false)
+const editingConnection = ref<TreeNode | null>(null)
+
+const onNewConnection = async () => {
+  console.log('onNewConnection called')
+  editingConnection.value = null
+  connectionDialogVisible.value = true
+  await nextTick()
+  console.log('connectionDialogVisible after nextTick:', connectionDialogVisible.value)
+  // 检查对话框是否真的显示了
+  const dialogElement = document.querySelector('.el-dialog')
+  console.log('Dialog element found:', dialogElement)
 }
 
-const onEditConnection = () => {
-  console.log('编辑连接')
+const onEditConnection = async (node: TreeNode) => {
+  console.log('onEditConnection called with node:', node)
+  // ConnectionDialog 需要 TreeNode 类型
+  editingConnection.value = node ?? null
+  connectionDialogVisible.value = true
+  await nextTick()
+  console.log('connectionDialogVisible after nextTick:', connectionDialogVisible.value, 'editingConnection:', editingConnection.value)
+  // 检查对话框是否真的显示了
+  const dialogElement = document.querySelector('.el-dialog')
+  console.log('Dialog element found:', dialogElement)
+}
+
+// 监听对话框可见性变化
+watch(connectionDialogVisible, (newVal) => {
+  console.log('connectionDialogVisible changed to:', newVal)
+}, { immediate: true })
+
+const handleCancelDialog = () => {
+  connectionDialogVisible.value = false
+  editingConnection.value = null
 }
 
 const handleNodeSelect = (node: TreeNode) => {

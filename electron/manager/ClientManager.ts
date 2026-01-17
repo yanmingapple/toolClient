@@ -1,6 +1,5 @@
 import { DatabaseClient, createDatabaseClient } from '../dataService/database';
 import { ConnectionStatus, ConnectionInfo, ConnectionConfig, ConnectionType } from '../model/database';
-import { ClientService } from '../service/ClientService';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SQLStatements } from '../dataService/sql';
@@ -9,6 +8,9 @@ import { PortCheckConfig } from '../model/healthCheck/portCheckConfig';
 import { CheckResult } from '../model/healthCheck/checkResult';
 import { WebContentsService } from '../service/webContentsService';
 import { ServiceMonitor } from '../model/database/ServiceMonitor';
+import { TreeNode, TreeNodeFactory } from '../model/database/TreeNode';
+import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
+const { ipcMain } = require('electron');
 
 /**
  * 数据库连接缓存管理类
@@ -23,7 +25,7 @@ export class DatabaseManager {
     private maxIdleTime: number = 300000; // 5分钟最大空闲时间
     private pingInterval: number = 60000; // 1分钟ping间隔
     private healthCheckTimer: NodeJS.Timeout | null = null;
-    private databaseService: ClientService | null = null;
+    private databaseClient: DatabaseClient | null = null;
     private isInitialized: boolean = false;
     private initializationPromise: Promise<void> | null = null;
 
@@ -66,12 +68,12 @@ export class DatabaseManager {
     private async performInitialization(): Promise<void> {
         try {
             console.log('Initializing DatabaseManager...');
-            this.databaseService = await this.initializeSQLiteDatabase();
+            this.databaseClient = await this.initializeSQLiteDatabase();
             this.isInitialized = true;
             console.log('DatabaseManager initialized successfully');
 
             //获取监控中的连接
-            const serviceResult = await this.databaseService.handleGetAllServiceMonitors();
+            const serviceResult = await this.handleGetAllServiceMonitors();
             let monitorConnections: ServiceMonitor[] = [];
             if (serviceResult.success && Array.isArray(serviceResult.data)) {
                 monitorConnections = serviceResult.data;
@@ -90,9 +92,9 @@ export class DatabaseManager {
 
     /**
  * 初始化SQLite数据库
- * @returns ClientService实例
+ * @returns DatabaseClient实例
  */
-    private async initializeSQLiteDatabase(): Promise<ClientService> {
+    private async initializeSQLiteDatabase(): Promise<DatabaseClient> {
         const dbPath = path.join(process.cwd(), 'database', 'dbmanager.db');
         const dbDir = path.dirname(dbPath);
 
@@ -160,9 +162,8 @@ export class DatabaseManager {
             throw error;
         }
 
-        // 创建ClientService实例
-        const databaseService = ClientService.create(sqliteClient);
-        return databaseService;
+        // 返回数据库客户端实例
+        return sqliteClient;
     }
 
     /**
@@ -170,7 +171,7 @@ export class DatabaseManager {
      * @throws 如果未初始化则抛出错误
      */
     private ensureInitialized(): void {
-        if (!this.isInitialized || !this.databaseService) {
+        if (!this.isInitialized || !this.databaseClient) {
             throw new Error('DatabaseManager is not initialized. Call initialize() first.');
         }
     }
@@ -258,9 +259,9 @@ export class DatabaseManager {
         }
 
         // 关闭所有数据库连接
-        if (this.databaseService) {
-            await this.databaseService.close();
-            this.databaseService = null;
+        if (this.databaseClient) {
+            await this.databaseClient.disconnect();
+            this.databaseClient = null;
         }
 
         // 清空连接缓存
@@ -292,7 +293,7 @@ export class DatabaseManager {
     /**
      * 执行健康检查
      */
-    private async performHealthCheck(): Promise<void> {
+    public async performHealthCheck(): Promise<void> {
         //定时执行检查监控的服务是否正常再当前系统中端口是存在
         for (const [id, monitor] of this.serviceMonitors.entries()) {
             try {
@@ -347,6 +348,334 @@ export class DatabaseManager {
         }
     }
 
+    /**
+     * 处理数据库连接测试
+     * @param _event IPC 事件对象
+     * @param config 数据库配置
+     * @returns 连接测试结果
+     */
+    public static async handleTestConnection(_event: any, config: any): Promise<ServiceResult<boolean>> {
+        try {
+            // 使用工厂方法创建数据库客户端
+            const client = createDatabaseClient(config);
+
+            // 连接到数据库
+            await client.connect();
+
+            // 测试连接是否有效
+            const isHealthy = await client.ping();
+
+            // 断开连接
+            await client.disconnect();
+
+            if (isHealthy) {
+                return ServiceResultFactory.success(true, 'Connection successful');
+            } else {
+                return ServiceResultFactory.success(false, 'Connection test failed');
+            }
+        } catch (error) {
+            console.error('Connection test error:', error);
+            return ServiceResultFactory.error((error as Error).message, false);
+        }
+    }
+
+    /**
+     * 获取所有连接配置
+     * @returns TreeNode 数组
+     */
+    public async handleGetAllConnections(): Promise<ServiceResult<TreeNode[]>> {
+        this.ensureInitialized();
+        try {
+            const connections = await this.databaseClient!.execute(SQLStatements.SELECT_ALL_CONNECTIONS);
+
+            // 将连接配置转换为 TreeNode 格式
+            const treeNodes: TreeNode[] = connections.map((connection: ConnectionConfig) => {
+                return TreeNodeFactory.createConnection(connection);
+            });
+
+            return ServiceResultFactory.success(treeNodes);
+        } catch (error) {
+            console.error('Failed to get connections:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 获取数据库列表
+     * @param _event IPC 事件对象
+     * @param config 数据库配置
+     * @returns 数据库列表结果
+     */
+    public async handleGetDatabaseList(config: any): Promise<ServiceResult<any[]>> {
+        try {
+            // 使用 DatabaseManager 获取连接
+            const connection = await this.getConnection(config);
+
+            try {
+                // 使用 DatabaseClient 接口的方法
+                const databases = await connection.getDatabaseList();
+
+                return ServiceResultFactory.success(databases);
+            } finally {
+                // 释放连接回到连接池
+                await this.releaseConnection(config);
+            }
+        } catch (error) {
+            console.error('Get databases error:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 获取表列表
+     * @param _event IPC 事件对象
+     * @param config 数据库配置
+     * @returns 表列表结果
+     */
+    public async handleGetTableList(config: any) {
+        try {
+            // 使用 DatabaseManager 获取连接
+            const connection = await this.getConnection(config);
+
+            try {
+                // 使用 DatabaseClient 接口的方法
+                const tables = await connection.getTableList();
+
+                return ServiceResultFactory.success(tables);
+            } finally {
+                // 释放连接回到连接池
+                await this.releaseConnection(config);
+            }
+        } catch (error) {
+            console.error('Get tables error:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 保存连接列表
+     * @param connections 连接列表
+     */
+    public async handleSaveConnectionList(connections: ConnectionConfig[]): Promise<ServiceResult<void>> {
+        this.ensureInitialized();
+        try {
+            // 由于没有批量插入的SQL语句，我们需要逐个插入
+            for (const connection of connections) {
+                // 使用正确的ConnectionConfig属性名
+                await this.databaseClient!.execute(
+                    SQLStatements.INSERT_OR_REPLACE_CONNECTION,
+                    [connection.id, connection.name, connection.type, connection.host, connection.port,
+                    connection.username, connection.password, connection.database, connection.sshHost,
+                    connection.sshPort, connection.sshUsername, connection.sshPassword,
+                    connection.sshPassphrase, connection.sshPrivateKey]
+                );
+            }
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to save connections:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 删除连接
+     * @param connectionId 连接ID
+     */
+    public async handleDeleteConnection(connectionId: string): Promise<ServiceResult<void>> {
+        this.ensureInitialized();
+        try {
+            await this.databaseClient!.execute(SQLStatements.DELETE_CONNECTION_BY_ID, [connectionId]);
+            //删除ClientMananger中的连接
+            await this.removeConnection(connectionId);
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to delete connection:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 断开连接
+     * @param connectionId 连接ID
+     */
+    public async handleDisconnect(connectionId: string): Promise<ServiceResult<void>> {
+        try {
+            // 从 ClientManager 中移除连接
+            await this.removeConnection(connectionId);
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to disconnect connection:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 查询所有服务监控
+     */
+    public async handleGetAllServiceMonitors(): Promise<ServiceResult<ServiceMonitor[]>> {
+        this.ensureInitialized();
+        try {
+            const monitors = await this.databaseClient!.execute(SQLStatements.SELECT_ALL_SERVICE_MONITORS);
+            return ServiceResultFactory.success(monitors);
+        } catch (error) {
+            console.error('Failed to get service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 保存服务监控列表
+     * @param monitors 服务监控列表
+     */
+    public async handleSaveServiceMonitors(monitors: ServiceMonitor[]): Promise<ServiceResult<void>> {
+        this.ensureInitialized();
+        try {
+            // 根据id判断是插入还是更新
+            for (const monitor of monitors) {
+                if (monitor.id === 0 || monitor.id === undefined) {
+                    // 插入新记录
+                    await this.databaseClient!.execute(SQLStatements.INSERT_SERVICE_MONITOR, [
+                        monitor.name,
+                        monitor.serverName,
+                        monitor.type,
+                        monitor.port,
+                        monitor.status,
+                        monitor.workspace,
+                        monitor.url,
+                        monitor.createTime,
+                        monitor.updateTime
+                    ]);
+                } else {
+                    // 更新现有记录
+                    await this.databaseClient!.execute(SQLStatements.UPDATE_SERVICE_MONITOR, [
+                        monitor.name,
+                        monitor.serverName,
+                        monitor.type,
+                        monitor.port,
+                        monitor.status,
+                        monitor.workspace,
+                        monitor.url,
+                        monitor.updateTime,
+                        monitor.id
+                    ]);
+                }
+            }
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to save service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 删除一个服务监控
+     * @param ids 服务监控ID数组
+     */
+    public async handleDeleteServiceMonitors(ids: number[]): Promise<ServiceResult<void>> {
+        this.ensureInitialized();
+        try {
+            // 由于没有批量删除的SQL语句，我们需要逐个删除
+            for (const id of ids) {
+                await this.databaseClient!.execute(SQLStatements.DELETE_SERVICE_MONITOR_BY_ID, [id]);
+            }
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to delete service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 删除所有服务监控
+     */
+    public async handleDeleteAllServiceMonitors(): Promise<ServiceResult<void>> {
+        this.ensureInitialized();
+        try {
+            await this.databaseClient!.execute(SQLStatements.DELETE_ALL_SERVICE_MONITORS);
+            return ServiceResultFactory.success<void>();
+        } catch (error) {
+            console.error('Failed to delete service monitors:', error);
+            return ServiceResultFactory.error((error as Error).message);
+        }
+    }
+
+    /**
+     * 注册数据库服务相关的 IPC 处理程序
+     */
+    public static registerIpcHandlers() {
+        const instance = DatabaseManager.getInstance();
+        
+        // 数据库操作相关
+        ipcMain.handle('database:test-connection', async (_: any, config: ConnectionConfig) => {
+            return await DatabaseManager.handleTestConnection(_, config);
+        });
+
+        // 获取所有连接配置
+        ipcMain.handle('database:get-all-connections', async () => {
+            return await instance.handleGetAllConnections();
+        });
+
+        ipcMain.handle('database:get-databases', async (_: any, config: ConnectionConfig) => {
+            return await instance.handleGetDatabaseList(config);
+        });
+
+        ipcMain.handle('database:get-tables', async (_: any, config: ConnectionConfig) => {
+            return await instance.handleGetTableList(config);
+        });
+
+        // 连接配置相关
+        ipcMain.handle('database:save-connections', async (_: any, connections: Array<ConnectionConfig>) => {
+            return await instance.handleSaveConnectionList(connections);
+        });
+
+        // 删除连接逻辑
+        ipcMain.handle('database:delete-connection', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
+            return await instance.handleDeleteConnection(connectionId);
+        });
+
+        // 断开连接逻辑
+        ipcMain.handle('database:disconnect', async (_: any, connectionId: string): Promise<ServiceResult<void>> => {
+            return await instance.handleDisconnect(connectionId);
+        });
+
+        // 服务监控相关
+        ipcMain.handle('service-monitor:get-all', async () => {
+            return await instance.handleGetAllServiceMonitors();
+        });
+
+        ipcMain.handle('service-monitor:save', async (_: any, monitors: ServiceMonitor[]) => {
+            return await instance.handleSaveServiceMonitors(monitors);
+        });
+
+        ipcMain.handle('service-monitor:delete-service-monitors', async (_: any, ids: number[]) => {
+            return await instance.handleDeleteServiceMonitors(ids);
+        });
+
+        ipcMain.handle('service-monitor:delete-all', async () => {
+            return await instance.handleDeleteAllServiceMonitors();
+        });
+
+        // 手动触发健康检查
+        ipcMain.handle('service-monitor:perform-health-check', async () => {
+            try {
+                await instance.performHealthCheck();
+                return { success: true, message: '健康检查执行完成' };
+            } catch (error) {
+                return { 
+                    success: false, 
+                    message: error instanceof Error ? error.message : '健康检查执行失败' 
+                };
+            }
+        });
+    }
+
+    /**
+     * 获取内部的数据库客户端实例
+     * @returns 数据库客户端实例
+     */
+    public getDatabaseClient(): DatabaseClient | null {
+        return this.databaseClient;
+    }
 
 }
 

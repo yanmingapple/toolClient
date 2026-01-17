@@ -128,6 +128,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     /**
+     * 执行健康检查
+     */
+    performHealthCheck: (): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:perform-health-check');
+    },
+
+    /**
      * 删除一个服务监控
      */
     delete: (id: number): Promise<ServiceResult<void>> => {
@@ -233,114 +240,64 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-  // 事件监听
-  on: {
-    /**
-     * 监听连接状态变化
-     * @param callback 回调函数
-     */
-    connectionStatusChanged: (callback: (data: any) => void): void => {
-      ipcRenderer.on('connection:status-changed', (_: any, data: any) => callback(data));
-    },
+  // 通用事件监听器
+  /**
+   * 监听 IPC 事件
+   * @param channel 事件通道名称
+   * @param callback 回调函数
+   */
+  on: (channel: string, callback: (...args: any[]) => void): void => {
+    // 定义允许监听的通道白名单（安全考虑）
+    const validChannels = [
+      'connection:status-changed',
+      'database:databases-updated',
+      'database:tables-updated',
+      'open-new-connection-dialog',
+      'terminal:open-console',
+      'terminal:result',
+      'service-monitor:health-check-result',
+    ];
 
-    /**
-     * 监听数据库列表更新
-     * @param callback 回调函数
-     */
-    databasesUpdated: (callback: (data: any) => void): void => {
-      ipcRenderer.on('database:databases-updated', (_: any, data: any) => callback(data));
-    },
-
-    /**
-     * 监听表列表更新
-     * @param callback 回调函数
-     */
-    tablesUpdated: (callback: (data: any) => void): void => {
-      ipcRenderer.on('database:tables-updated', (_: any, data: any) => callback(data));
-    },
-
-    /**
-     * 监听打开新连接对话框
-     * @param callback 回调函数
-     */
-    openNewConnectionDialog: (callback: () => void): void => {
-      ipcRenderer.on('open-new-connection-dialog', () => callback());
-    },
-
-    /**
-     * 监听打开终端控制台
-     * @param callback 回调函数
-     */
-    openTerminalConsole: (callback: () => void): void => {
-      ipcRenderer.on('terminal:open-console', () => callback());
-    },
-
-    /**
-     * 监听终端命令结果
-     * @param callback 回调函数
-     */
-    terminalResult: (callback: (data: any) => void): void => {
-      ipcRenderer.on('terminal:result', (_: any, data: any) => callback(data));
-    },
-
-    /**
-     * 监听服务监控健康检查结果
-     * @param callback 回调函数
-     */
-    serviceMonitorHealthCheckResult: (callback: (data: any) => void): void => {
-      ipcRenderer.on('service-monitor:health-check-result', (_: any, data: any) => callback(data));
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (_event: any, ...args: any[]) => callback(...args));
+    } else {
+      console.warn(`[IPC] Invalid channel: ${channel}`);
     }
   },
 
-  // 移除监听器
-  off: {
-    /**
-     * 移除连接状态变化监听
-     */
-    connectionStatusChanged: (): void => {
-      ipcRenderer.removeAllListeners('connection:status-changed');
-    },
+  /**
+   * 移除 IPC 事件监听器
+   * @param channel 事件通道名称
+   * @param callback 可选，指定要移除的回调函数。如果不提供，将移除该通道的所有监听器
+   */
+  off: (channel: string, callback?: (...args: any[]) => void): void => {
+    if (callback) {
+      ipcRenderer.removeListener(channel, callback);
+    } else {
+      ipcRenderer.removeAllListeners(channel);
+    }
+  },
 
-    /**
-     * 移除数据库列表更新监听
-     */
-    databasesUpdated: (): void => {
-      ipcRenderer.removeAllListeners('database:databases-updated');
-    },
+  /**
+   * 一次性监听 IPC 事件（只触发一次后自动移除）
+   * @param channel 事件通道名称
+   * @param callback 回调函数
+   */
+  once: (channel: string, callback: (...args: any[]) => void): void => {
+    const validChannels = [
+      'connection:status-changed',
+      'database:databases-updated',
+      'database:tables-updated',
+      'open-new-connection-dialog',
+      'terminal:open-console',
+      'terminal:result',
+      'service-monitor:health-check-result',
+    ];
 
-    /**
-     * 移除表列表更新监听
-     */
-    tablesUpdated: (): void => {
-      ipcRenderer.removeAllListeners('database:tables-updated');
-    },
-
-    /**
-     * 移除打开新连接对话框监听
-     */
-    openNewConnectionDialog: (): void => {
-      ipcRenderer.removeAllListeners('open-new-connection-dialog');
-    },
-
-    /**
-     * 移除打开终端控制台监听
-     */
-    openTerminalConsole: (): void => {
-      ipcRenderer.removeAllListeners('terminal:open-console');
-    },
-
-    /**
-     * 移除终端命令结果监听
-     */
-    terminalResult: (): void => {
-      ipcRenderer.removeAllListeners('terminal:result');
-    },
-
-    /**
-     * 移除服务监控健康检查结果监听
-     */
-    serviceMonitorHealthCheckResult: (): void => {
-      ipcRenderer.removeAllListeners('service-monitor:health-check-result');
+    if (validChannels.includes(channel)) {
+      ipcRenderer.once(channel, (_event: any, ...args: any[]) => callback(...args));
+    } else {
+      console.warn(`[IPC] Invalid channel: ${channel}`);
     }
   },
 
@@ -375,7 +332,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSystemInfo: (): Promise<ServiceResult<any>> => {
       return ipcRenderer.invoke('terminal-get-system-info');
     }
-  }
+  },
+
 });
 
 // 控制台输出预加载脚本加载成功的消息

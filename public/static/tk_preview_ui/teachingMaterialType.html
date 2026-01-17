@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+  <meta charset="UTF-8">
+  <title>试卷页码表</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+  <meta name="renderer" content="webkit">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="author" content="nop">
+  <meta name="generator" content="wkhtmltopdf">
+  <meta name="description" content="">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=0">
+  <link rel="stylesheet" href="./css/teachingMaterialType.css">
+</head>
+
+<body>
+  <div id="content-box" style="display: none">
+    <div data-op-type="new-page"></div>
+    <div data-op-type="mix-box" class="paper-con">
+      <!-- <div class="nop-fill-box paper-con"></div> -->
+    </div>
+
+  </div>
+  <div class="model-con">试卷页码表生成中，请稍后</div>
+
+  <script src="./static/pdfrender/jquery.min.js"></script>
+  <script type="text/javascript" src="./js/jquery.base64.js"></script>
+  <script type="text/javascript" src="./js/uritdate.js"></script>
+  <script type="text/javascript" src="./js/bamboo.core.base.js"></script>
+  <script type="text/javascript" src="./js/Pub_ViewComp.js"></script>
+  <script type="text/javascript" src="./js/Pub_ViewProj.js"></script>
+
+  <script src="./static/pdfrender/lodash.min.js"></script>
+  <script src="./static/pdfrender/pdfjs/latest/bookjs-eazy.min.js"></script>
+
+  <!-- <script type="text/javascript" src="./pageCodeData.js"></script> -->
+
+  <script>
+
+    var retdata = [],
+      response = {},
+      examYear = '&nbsp;&nbsp;&nbsp;&nbsp;',
+      examMonth = '&nbsp;&nbsp;&nbsp;&nbsp;',
+      rowNum = 10,
+      syllabusNameList = [],
+      tempSyllabusNameIndex = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+      isSystem = getQueryString('isSystem') || '',
+      paperId = getQueryString('paperId') || '',
+      activityId = getQueryString('activityId') || '',
+      acttype = getQueryString('acttype') || '',
+      examTypeName = 'otherExam',
+      examTypeObj = {
+        otherExam: {
+          paperTitle: '江苏省高等教育自学考试'
+        },
+        countryExam: {
+          paperTitle: '高等教育自学考试全国统一命题考试'
+        },
+      }
+
+    // 1cm转换px
+    var pxOfCm = (function () {
+      var div = document.createElement("div");
+      div.id = "cm";
+      div.style.width = "1cm";
+      div.style.display = "block";
+      document.querySelector("body").appendChild(div);
+      var cm1 = document.getElementById("cm").getBoundingClientRect().width;
+      $('#cm').remove()
+      return cm1;
+    })()
+
+    function getQueryString(name) {
+      var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i');
+      var r = window.location.search.substr(1).match(reg);
+      if (r != null) {
+        return unescape(r[2]);
+      }
+      return null;
+    }
+
+    // 页面配置
+    var pageMap = {
+      paper: {
+        name: 'ISO_A4',
+        pxSizeOfW: pxOfCm * 21,
+        pxSizeOfH: pxOfCm * 29.7
+      },
+      padding: '2.54cm 3.18cm 2.54cm 3.18cm',
+    }
+    bookConfig = {
+      "pageSize": pageMap.paper.name,
+      "orientation": "portrait",// portrait/landscape 定义纸张是竖屏/横屏放置
+
+      // 可选,高度修复选项。
+      // 不同的浏览器在打印时PDF有可能出现每页都多出空白页
+      // 常用于自定义未适配的纸张。 
+      // 通过此值调节修正
+      pageFixedHeightOffset: 0, // 单位mm,一般为负值
+      "padding": pageMap.padding,
+      // 可选，文本内容在跨页差分时，不会出现在段首的字符，所列选项为默认值
+      textNoBreakChars: ['，', '。', '：', '”', '！', '？', '、', '；', '》', '】', '…', '.', ',', '!', ']', '}', '｝'],
+      "simpleCatalog": {
+        "positionSelector": ".pendant-title:first",
+        "showCatalog": false,
+      },
+      "simplePageNum": {
+        "pageBegin": 0,   // 从第几页开始编号，默认0为第一页开始
+        "pageEnd": -1,// 从第几页结束编号，默认-1为最后一页结束
+        "pendant": "<div style=\"padding-bottom: 25mm;left: 0px;width: 100%;height: 2.5cm; \" class=\"page-num-simple\"><span style=\"color: #000; font-size: 10.5pt;\">☆☆☆☆☆页码表</span></div>"
+      },
+
+      // 目录/书签插件，可选（默认未开启），所列选项为开启时的默认值
+      simpleCatalog: {
+        // 当前版本，如果需要生成PDF书签，toolBar.serverPrint.wkHtmlToPdf 必须为true
+        // titlesSelector不要修改，使用h1-h6标记书签
+        // titlesSelector : 'h1,h2,h3,h4,h5,h6', // 可选，作为目录标题的选择器，按目录级别依次
+
+
+        /** 目录相关选项 **/
+        showCatalog: false, // 可选，是否在页面中插入目录，默认，插入目录到页面
+        header: '<div class="catalog-title">目 录</div>', // 可选，目录页Header部分，放入你想加入的一切
+        itemFillChar: '…', // 可选，目录项填充字符, ""空字符串，不填充，使用自定义makeItem时，忽略该选项配置
+        positionSelector: '.nop-page-item-pagenum-1', //可选，目录位置会插入在匹配页的之前，默认为第一个编号页前
+        // 可选，自定义目录项。
+        makeItem: function (itemEl, itemInfo) {
+          /** 
+            * @var itemEl jQuery Element 
+            * @var object itemInfo PS: {title, pageNum, level,linkId}
+            **/
+          return '<div></div>';
+        },
+
+        /** 侧边栏（PDF书签）相关选项 **/
+        showSlide: false, // 可选，是否显示侧边栏，目录导航，工具栏按钮顺序index: 200, 在bookConfig.toolBar选项为false时无效
+        slideOn: false, // 可选，目录导航，默认是否打开状态
+        slideHeader: '<div class="title">目&nbsp;&nbsp;录</div>', // 可选，侧边栏标题
+        slideClassName: '', // 可选，侧边栏自定义class
+        slidePosition: 'left', // 可选，位置 left、right
+        slideMakeContent: null, // 自定义侧边栏内容处理函数，为null时,默认行为：使用目录内容填充， function(){ return '侧边栏内容';}
+      },
+
+      "toolBar": {
+        "serverPrint": false,
+        "webPrint": true,
+        saveHtml: false,
+        buttons: [],
+      },
+      "start": false
+    }
+
+    // 循环数组方法
+    function forFun(data, callback) {
+      for (var index = 0; index < data.length; index++) {
+        if (callback && callback instanceof Function) callback(data[index], index)
+      }
+    }
+
+    function getTargetData() {
+      let pageRangeOfItems = retdata //JSON.parse(JSON.stringify())
+        , tempArr = []
+        , splitCount = Math.ceil(pageRangeOfItems.length / rowNum)
+      for (var i = 0; i < splitCount; i++) {
+        if (i === splitCount - 1) tempArr.push(pageRangeOfItems.splice(0))
+        else tempArr.push(pageRangeOfItems.splice(0, rowNum))
+      }
+      // 补充空格
+      if (tempArr[tempArr.length - 1] && tempArr[tempArr.length - 1].length < rowNum) {
+        let blankNum = rowNum - tempArr[tempArr.length - 1].length,
+          tempBlankArr = []
+        for (var a = 0; a < blankNum; a++) {
+          tempBlankArr.push({})
+        }
+        tempArr[tempArr.length - 1] = tempArr[tempArr.length - 1].concat(tempBlankArr)
+      }
+      return tempArr
+    }
+
+    // 底部教材列表
+    function getSyllabusNameList() {
+      if (retdata && retdata instanceof Array && retdata.length > 0) {
+        let tempSyllabusNameList = []
+        retdata.forEach(item => {
+          if (item && item.syllabusListList && item.syllabusListList instanceof Array && item.syllabusListList.length > 0) {
+            item.syllabusListList.forEach(_s => {
+              // if (!tempSyllabusNameList.includes(_s.syllabusName))
+              if (!tempSyllabusNameList.some(_t => _t.syllabusName === _s.syllabusName))
+                tempSyllabusNameList.push(_s)
+            })
+          }
+        });
+        return tempSyllabusNameList
+      }
+      return []
+    }
+
+    function getPageValHtmlStr(item) {
+      if (item && item.syllabusListList && item.syllabusListList instanceof Array) {
+        let pageValArr = item.syllabusListList.map(_i => {
+          let nameIndexStr = ''
+          if (syllabusNameList.length > 1) {
+            let tempIndex // syllabusNameList.indexOf(_i.syllabusName)
+            syllabusNameList.forEach((_s, _sIndex) => {
+              if (_s.syllabusName == _i.syllabusName) {
+                tempIndex = _sIndex
+              }
+            })
+            nameIndexStr = tempSyllabusNameIndex[tempIndex] || ''
+          }
+          return (nameIndexStr || '') + (_i.pageValue || '')
+        })
+        return pageValArr.join(',')
+      }
+      return ''
+    }
+
+    // 获取教材名
+    function getSyllabusName(item, index, count) {
+      let tempStr = (index == 0 ? '注：' : '') +
+        (count > 1 ? `${tempSyllabusNameIndex[index]}：` : '') +
+        `《${item.syllabusName || ''}》，${item.author || ''}，${item.publisher || ''}，${item.edition || ''}。`
+      // (count > 1 ? 
+      // // 教材  主编  出版社  版次
+      //   `${this.tempSyllabusNameIndex[index]}：《${item.syllabusName || ''}》，${item.author || ''}，${item.publisher || ''}，${item.edition || ''}。` : 
+      //   `《${item.syllabusName || ''}》`)
+      return tempStr
+    }
+
+    // 获取第几卷
+    function getPaperNum(retdata) {
+      if (retdata && retdata[0] && retdata[0].paperName) {
+        let tempPaperNum = retdata[0].paperName.charAt(retdata[0].paperName.length - 1)
+        return `(第${tempPaperNum}卷)`
+      }
+      else return ''
+    }
+    /**
+    * 处理表格内容
+    */
+    function doPaperHtmlStr() {
+      let targetData = getTargetData()
+        , tblContentStr = ''
+        , tipsContentStr = ''
+      forFun(targetData, function (item, index) {
+        let thContentStr = ''
+          , tdContentStr = ''
+        forFun(item, function (iItem) {
+          thContentStr += `<th>${iItem.itemNumber || ''}</th>`
+          tdContentStr += `<td><div>${getPageValHtmlStr(iItem)}</div></td>`
+        })
+        tblContentStr += `<tr style="background-color: #D9D9D9;">
+            <th>题号</th>${thContentStr}
+          </tr>
+          <tr>
+            <td><div>页码</div></td>${tdContentStr}
+          </tr>`
+      })
+      forFun(syllabusNameList, function (item, index) {
+        tipsContentStr += `<p>${getSyllabusName(item, index, syllabusNameList.length)}</p>`
+      })
+
+      return `<div data-op-type="block" class="main-con">
+        <table border="1px">${tblContentStr}</table>
+      </div>
+      <div data-op-type="block" class="paper-tips-con">${tipsContentStr}</div>`
+    }
+
+
+    // 渲染页面内容
+    var d1 = $.Deferred();
+    function renderPaper() {
+      if (!retdata || retdata.length <= 0) {
+        return
+      }
+      //试卷头部,部分科目，头部不相同
+      bookConfig['simplePageNum']['pendant'] = '<div style="padding-bottom: 25mm;left: 0px;width: 100%;height: 2.5cm; " class="page-num-simple"><span style=\"color: #000; font-size: 10.5pt;\">' + (retdata[0].subjectName || '') + '页码表</span></div>'
+      // 设置预览页面的title
+      document.title = (response.subjectCode || '') + "-" + (response.subjectName || '') + "-" + (response.paperName || '') + '页码表'
+
+      var paperHtmlStr = '<div data-op-type="block" class="paper-name">' + examYear + '年' + examMonth + '月' + (examTypeObj && examTypeObj[examTypeName] && examTypeObj[examTypeName].paperTitle || '江苏省高等教育自学考试') + '</div>' +
+        '<div data-op-type="block" class="paper-grade">' + (response.subjectName || '') + '</div>' +
+        '<div data-op-type="block" class="paper-subject">（课程代码 ' + (response.subjectCode || '') + '）</div>' +
+        `<div data-op-type="block" class="item-range-name">试卷考核点分布对应教材页码表${acttype === 'Approving' ? getPaperNum(retdata) : ''}</div>`
+
+      paperHtmlStr += doPaperHtmlStr()
+      $('.paper-con').html(paperHtmlStr)
+      d1.resolve();
+    }
+
+    $.when(d1).then(function () {
+      /** 2个图表渲染完毕后，执行PDF Book渲染 **/
+      bookConfig.start = true;
+    });
+
+    /** * BOOK渲染完成前    book.before-complete**/
+    $(document).on('book.before-complete', function (e, info) {
+      // $("body").addClass("loadOver")
+      $("body").addClass("finish")
+      $('.model-con').remove()
+    })
+
+    /** * BOOK渲染完成前    book.before-complete**/
+    $(document).on('click', function (e, info) {
+      // console.log(e.clientX + '   ' +e.clientY ,document.elementFromPoint(e.clientX,e.clientY));
+    })
+
+    function getPaperData(data) {
+      if (isSystem == 'assignTool') {
+        retdata = paperData || [];
+        syllabusNameList = getSyllabusNameList()
+        renderPaper()
+        return
+      }
+      response = data;
+      retdata = data.pageCodeTables;
+      if ('assignTool' == isSystem) return (retdata = paperData || []), (syllabusNameList = getSyllabusNameList()), void renderPaper();
+      activityId && (e += '&activityId=' + activityId);
+      examYear = data.examYear || '&nbsp;&nbsp;&nbsp;&nbsp;';
+      examMonth = data.examMonth || '&nbsp;&nbsp;';
+      examTypeName = 1 == data.examType ? 'countryExam' : 'otherExam';
+      syllabusNameList = getSyllabusNameList();
+      renderPaper();
+    }
+    window.onmessage = function (e) {
+      getPaperData(e.data)
+    }
+  </script>
+</body>
+
+</html>

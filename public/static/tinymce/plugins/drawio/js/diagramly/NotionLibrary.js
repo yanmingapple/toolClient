@@ -1,0 +1,1 @@
+NotionLibrary=function(o,i,t){NotionFile.call(this,o,i,t)},mxUtils.extend(NotionLibrary,NotionFile),NotionLibrary.prototype.doSave=function(o,i,t){this.saveFile(o,!1,i,t)},NotionLibrary.prototype.open=function(){};

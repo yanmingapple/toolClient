@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+  <meta charset="UTF-8">
+  <title>试卷排版</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+  <meta name="renderer" content="webkit">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="author" content="nop">
+  <meta name="generator" content="wkhtmltopdf">
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=0">
+  <link rel="shortcut icon" href="./static/favicon.ico" />
+  <!-- <link rel="stylesheet" href="./css/paperView.css"> -->
+  <link rel="stylesheet" href="./css/paperEditor.css">
+  <link rel="stylesheet" type="text/css" id="mce-u0" href="../tinymce/skins/ui/oxide/content.min.css">
+  <link rel="stylesheet" type="text/css" id="mce-u1" href="../tinymce/skins/content/default/content.min.css">
+  <style>
+    .render-con>.pdf-con {
+      visibility: hidden;
+    }
+  </style>
+</head>
+
+<body style="overflow: hidden;">
+  <div class="paper-view-header"></div>
+  <div class="render-con">
+    <div class="origin-con">
+      <div class="calc-con"></div>
+    </div>
+    <div class="pdf-con">
+      <!-- <iframe id="paperViewRender" src="paperViewRender.html"></iframe> -->
+    </div>
+    <div class="svg-con" id="svgCon"></div>
+  </div>
+  <div class="model-con">试卷加载中，请稍后</div>
+  <script src="./static/pdfrender/jquery.min.js"></script>
+  <script src="../tinymce/tinymce.js"></script>
+  <script type="text/javascript" src="./js/jquery.base64.js"></script>
+  <script type="text/javascript" src="./js/uritdate.js"></script>
+  <script type="text/javascript" src="./js/bamboo.core.base.js"></script>
+  <script type="text/javascript" src="./js/Pub_ViewComp.js"></script>
+  <script type="text/javascript" src="./js/Pub_ViewProj.js"></script>
+  <script type="text/javascript" src="./js/previewCom.js" id="previewComScript"></script>
+  <!-- <script type="text/javascript" src="./js/paperCom.js"></script> -->
+
+  <script type="text/javascript" src="./js/opentype.min.js"></script>
+  <script type="text/javascript" src="./js/text-to-svg.js"></script>
+  <script type="text/javascript" src="./js/htmlToSvg.js"></script>
+  <script>
+    loadConfigFile()
+    loadHtml('paperViewRender', 'paperViewRender')
+    // 渲染页面内容
+    function renderPaper(editedCon) {
+      $('.model-con').show()
+      // 处理试卷数据成html内容，放到calc-con 中
+      dealPaperDataOfcalcCon()
+      setEditorCon()
+      $('.model-con').hide()
+      setEditedPaper(editedCon)
+      
+    }
+
+    // 设置可编辑区域
+    var tinymceEditor;
+    function setEditorCon() {
+      tinymceEditor = tinymce.init({
+        selector: '.calc-con',
+        inline: true,
+        menubar: false,
+        plugins: 'code  pagebreak noneditable image preventdelete',
+        toolbar: 'undo redo pagebreak',
+        conNoEdit:true,
+
+        pagebreak_split_block: true,
+        pagebreak_separator: '<div data-op-type="new-page" class="splitdom"></div>',
+        pre_cls: 'stem-con-content',
+
+        //contextmenu_avoid_overlap: '.mce-spelling-word',
+        //contextmenu_never_use_native: true,
+
+        autosave_ask_before_unload: false,
+
+        //不可编辑模块的样式
+        noneditable_noneditable_class: "mceNonEditable",
+        // 解决粘贴图片后，不自动上传，而是使用base64编码。
+        urlconverter_callback: (url, node, onSave, name) => {
+          return url
+        },
+        //是否允许style中属性是否有url格式的
+        allow_svg_data_urls:true,
+        //图片上传自定义实现
+        images_upload_handler: function (blobInfo, succFun, failFun) {
+          var file = blobInfo.blob();
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            succFun(e.target.result);
+          };
+          reader.readAsDataURL(file);
+        },
+        setup: function() {
+        }
+      });
+    }
+
+
+    // 接收页面的数据
+    window.onmessage = function(e) {
+      if (e.data == 'success') {
+        // 处理svg内容
+        $('.svg-con').html('')
+        var $pageItems = $('#paperViewRender').contents().find('.nop-page-item .nop-page')
+        , mm = $('#paperViewRender').contents().find(".mce-emphatic");
+        mm.removeClass("mce-emphatic").addClass("mce-emphatic_temp")
+        $pageItems.each((index,el) => {
+          dealAllPages(el, base64Map)
+        })
+        mm.removeClass("mce-emphatic_temp").addClass("mce-emphatic")
+        $('.model-con').hide()
+      } else if(e.data && e.data.constructor === Object) {
+        if (e.data.paperData && e.data.paperData.constructor === Object) {
+          getPaperData(renderPaper, () => {}, e.data.paperData)
+        }
+        if(e.data.optList && Array.isArray(e.data.optList)) {
+          setOptBtns(e.data.optList)
+        }
+      }
+    }
+
+    // 设置操作按钮
+    function setOptBtns(optList) {
+      let optBtnStr = ''
+      optList.forEach(_o => {
+        optBtnStr+=`<button class="opt-btn ${_o.type}-btn ${_o.visible}-btn" opt-type="${_o.optType}" func-name="${_o.funcName}">${_o.label}</button>`
+      });
+      $('.paper-view-header').html(optBtnStr)
+    }
+    // 操作按钮事件
+    $('.paper-view-header').on('click', '.opt-btn', function (e) {
+      let optType = this.getAttribute('opt-type')
+        , funcName = this.getAttribute('func-name')
+      if(optType == 'preview') previewFunc()
+      else if(optType == 'reset') resetPaperFunc()
+      else if(optType == 'previewLastTypeSet') previewLastTypeSetFunc()
+      else if(optType == 'print') printSvg()
+      else {
+        let paperHtmlStr = $('#svgCon').html()
+        let noPassArr = [
+          // { vali: !paperId, tips: '没有试卷信息！' },
+          { vali: !paperHtmlStr, tips: '请先预览试卷排版！' },
+          { vali: judgeUnPreview(), tips: '新插入分页符需要重新预览试卷！' },
+        ]
+        window.parent.postMessage({funcName, paperHtmlStr, noPassArr }, "*");
+      }
+    })
+
+    // 判断插入换页符之后是否生成svg
+    function judgeUnPreview() {
+      let $breakDoms = $('p>.mce-pagebreak')
+      for (let i = 0; i < $breakDoms.length; i++) {
+        let item = $breakDoms[i]
+        if(!$(item).attr('preview')) {
+          return true
+        }
+      }
+    }
+
+    // 图片转base64
+    var base64Map = {}
+    async function transitionImageToBase64(src) {
+      async function loadImage(src) {
+        return new Promise((resolve, reject) => {
+          let xhr = new XMLHttpRequest()
+          xhr.responseType = 'blob'
+          xhr.open('get', src, true)
+
+          xhr.onload = function () {
+            if (this.status == 200) {
+              let blob = this.response
+              let oFileReader = new FileReader()
+              oFileReader.onloadend = function (e) {
+                const base64 = e.target.result
+                resolve(base64)
+              }
+              oFileReader.readAsDataURL(blob)
+            }
+          }
+          xhr.send()
+        });
+      }
+      const result = await loadImage(src);
+      return result;
+    }
+    
+    // 左侧内容加载完成后生成图片base64对象
+    function getImgMap () {
+      let $imgsArr = $('.origin-con img')
+      if ($imgsArr && $imgsArr.length > 0) {
+        $imgsArr.each(async (index, el) => {
+          if (el.src.indexOf("data:image") == -1) {
+            base64Map[el.src] = await transitionImageToBase64(el.src)
+          }
+        })
+        // console.log(base64Map)
+      }
+    }
+
+    // 预览操作事件
+    // $('.preview').on('click', previewFunc)
+    function previewFunc() {
+      $('.model-con').text('svg格式试卷生成中，请稍后').show()
+      $('p>.mce-pagebreak').attr('preview', '1')
+      var wn = document.getElementById('paperViewRender').contentWindow;
+      wn.location.reload()
+      $('#paperViewRender').load(function () {
+        wn.postMessage({content: getEditHtmlStr()}, '*');
+        // navSideBarScroll()
+      })
+    }
+
+    // 重置试卷排版
+    // $('.resetPaper').on('click', resetPaperFunc)
+    function resetPaperFunc() {
+      lastDataIsPart = false
+      renderPaper()
+      previewFunc()
+    }
+
+    // 设置已经排版过的数据, 并显示查看上次排版
+    var editedHtmlData = ''
+    function setEditedPaper(editedCon) {
+      if (editedCon && !subjectCode) {
+        editedHtmlData = editedCon
+        $('.prePaperview').show()
+      }
+    }
+
+    // 查看上次排版
+    // $('.prePaperview').on('click', previewLastTypeSetFunc)
+    function previewLastTypeSetFunc() {
+      $('#svgCon').html(editedHtmlData)
+    }
+
+    // 打印
+    function printSvg() {
+      var printContent = document.getElementById('svgCon').innerHTML;
+      if (!printContent) {
+        // fePositionTexTips('请先预览试卷排版！')
+        window.parent.postMessage({WinMessage: 'warning', tips: '请先预览试卷排版！' }, "*");
+        return
+      }
+      printCon(printContent)
+    }
+    // $('.printPaper').on('click', printSvg)
+    $(document).keydown(function(e){
+      if (e.ctrlKey && e.keyCode === 80) {
+        printSvg()
+        return false
+      }
+    })
+  </script>
+</body>
+
+</html>

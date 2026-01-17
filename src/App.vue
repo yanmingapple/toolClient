@@ -61,11 +61,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
-import { ArrowLeft, Monitor } from '@element-plus/icons-vue'
-import ToolPanel from './view/workspace/index.vue'
-import TerminalConsole from './components/TerminalConsole/index.vue'
-import ConnectionDialog from './components/ConnectionDialog/index.vue'
-import CommandResult from './components/CommandResult/index.vue'
+import ToolPanel from './view/home/index.vue'
+import TerminalConsole from './clientComponents/TerminalConsole/index.vue'
+import ConnectionDialog from './clientComponents/ConnectionDialog/index.vue'
+import CommandResult from './clientComponents/CommandResult/index.vue'
 import { useConnectionStore } from './stores/connection'
 import type { ConnectionConfig, TreeNode } from '../electron/model/database'
 import { useIpcCommunication as ipcUtils } from './composables/useIpcCommunication'
@@ -73,7 +72,7 @@ import { switchMenuType } from './utils/electronUtils'
 
 // 动态引入组件，实现懒加载
 const AppLayout = defineAsyncComponent(() => import('./view/database/index.vue'))
-const QueryEditor = defineAsyncComponent(() => import('./components/QueryEditor/index.vue'))
+const QueryEditor = defineAsyncComponent(() => import('./clientComponents/QueryEditor/index.vue'))
 
 const connectionDialogVisible = ref(false)
 const editingConnection = ref<TreeNode | null>(null)

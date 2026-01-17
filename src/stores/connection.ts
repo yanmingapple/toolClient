@@ -367,6 +367,7 @@ export const useConnectionStore = defineStore('connection', () => {
    * @returns 数据库对象数组
    */
   const getDatabaseList = async (connectionId: string): Promise<DatabaseObject[]> => {
+    debugger
     const connection = connections.value.find(conn => conn.id === connectionId)
     if (!connection) {
       throw new Error('Connection not found')
@@ -385,15 +386,16 @@ export const useConnectionStore = defineStore('connection', () => {
         id: connectionId
       }
 
-      const dbNames = await getDatabases(decryptedConfig)
+      debugger
+      const dbResult = await getDatabases(decryptedConfig)
 
-      const dbObjects: DatabaseObject[] = dbNames?.data?.map((dbName: string) => ({
-        id: `db_${connectionId}_${dbName}`,
-        name: dbName,
+      const dbObjects: DatabaseObject[] = dbResult?.data?.map((db: Object) => ({
+        id: `db_${connectionId}_${db.id}`,
+        name: db.name,
         type: TreeNodeType.DATABASE,
         connectionType: config.type,
         parentId: connectionId as string | null,
-        metadata: { databaseName: dbName }
+        metadata: { databaseName: db.name }
       })) || []
 
       addDatabaseObjects(dbObjects)
@@ -401,7 +403,7 @@ export const useConnectionStore = defineStore('connection', () => {
       dbObjects.forEach(database => {
         setDatabaseStatus(database.id, DatabaseStatus.DISCONNECTED)
       })
-      return dbObjects
+      return dbList
     } catch (error) {
       console.error('Failed to get database list:', error)
       return []
@@ -412,11 +414,11 @@ export const useConnectionStore = defineStore('connection', () => {
    * 获取指定数据库的表列表
    * 通过 IPC 调用主进程获取表列表
    * @param connectionId 连接 ID
-   * @param databaseName 数据库名称
+   * @param database 数据库名称
    * @param databaseId 数据库 ID
    * @returns 表对象数组
    */
-  const getTableList = async (connectionId: string, databaseName: string, databaseId: string): Promise<DatabaseObject[]> => {
+  const getTableList = async (connectionId: string, database: string, databaseId: string): Promise<DatabaseObject[]> => {
     const connection = connections.value.find(conn => conn.id === connectionId)
     if (!connection) {
       throw new Error('Connection not found')
@@ -434,22 +436,22 @@ export const useConnectionStore = defineStore('connection', () => {
       const decryptedConfig = {
         ...config,
         password: isPasswordEncrypted ? decryptPassword(config.password) : config.password || '',
-        databaseName,
+        database:database,
         databaseId
       }
 
       const tableNames = await getTables(decryptedConfig)
 
-      const tableObjects: DatabaseObject[] = tableNames?.data?.map((tableName: string) => ({
-        id: `table_${connectionId}_${databaseName}_${tableName}`,
-        name: tableName,
+      const tableObjects: DatabaseObject[] = tableNames?.data?.map((table: Object) => ({
+        id: `table_${connectionId}_${database}_${table.id}`,
+        name: table.name,
         type: TreeNodeType.TABLE,
         connectionType: config.type,
         parentId: databaseId as string | null,
         metadata: {
-          tableName,
-          databaseName,
-          connectionId
+          tableName: table.name,
+          database: database,
+          connectionId: connectionId
         }
       })) || []
 

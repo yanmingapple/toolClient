@@ -27,6 +27,7 @@ interface ElectronAPI {
     save: (monitors: ServiceMonitor[]) => Promise<ServiceResult<void>>
     deleteAll: () => Promise<ServiceResult<void>>
     delete: (id: number) => Promise<ServiceResult<void>>
+    performHealthCheck: () => Promise<ServiceResult<void>>
   }
   app: {
     showNewConnectionDialog: () => void
@@ -45,24 +46,18 @@ interface ElectronAPI {
   notification: {
     show: (title: string, body: string) => void
   }
-  on: {
-    connectionStatusChanged: (callback: (data: any) => void) => void
-    databasesUpdated: (callback: (data: any) => void) => void
-    tablesUpdated: (callback: (data: any) => void) => void
-    openNewConnectionDialog: (callback: () => void) => void
-    openTerminalConsole: (callback: () => void) => void
-    terminalResult: (callback: (data: any) => void) => void
-    serviceMonitorHealthCheckResult: (callback: (data: any) => void) => void
-  }
-  off: {
-    connectionStatusChanged: () => void
-    databasesUpdated: () => void
-    tablesUpdated: () => void
-    openNewConnectionDialog: () => void
-    openTerminalConsole: () => void
-    terminalResult: () => void
-    serviceMonitorHealthCheckResult: () => void
-  }
+  /**
+   * 监听 IPC 事件
+   */
+  on: (channel: string, callback: (...args: any[]) => void) => void
+  /**
+   * 移除 IPC 事件监听器
+   */
+  off: (channel: string, callback?: (...args: any[]) => void) => void
+  /**
+   * 一次性监听 IPC 事件
+   */
+  once: (channel: string, callback: (...args: any[]) => void) => void
   terminal: {
     executeCommand: (command: string, shell: 'cmd' | 'powershell', cwd?: string, timeout?: number) => Promise<ServiceResult<any>>
     executeCommands: (commands: any[], parallel: boolean) => Promise<ServiceResult<any[]>>
@@ -100,39 +95,12 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
     return () => { }
   }
 
-  // 根据通道类型选择合适的监听器
-  switch (channel) {
-    case 'connection:status-changed':
-      electronAPI.on.connectionStatusChanged(listener)
-      return () => electronAPI.off.connectionStatusChanged()
-
-    case 'database:databases-updated':
-      electronAPI.on.databasesUpdated(listener)
-      return () => electronAPI.off.databasesUpdated()
-
-    case 'database:tables-updated':
-      electronAPI.on.tablesUpdated(listener)
-      return () => electronAPI.off.tablesUpdated()
-
-    case 'open-new-connection-dialog':
-      electronAPI.on.openNewConnectionDialog(listener)
-      return () => electronAPI.off.openNewConnectionDialog()
-
-    case 'terminal:open-console':
-      electronAPI.on.openTerminalConsole(listener)
-      return () => electronAPI.off.openTerminalConsole()
-
-    case 'terminal:result':
-      electronAPI.on.terminalResult(listener)
-      return () => electronAPI.off.terminalResult()
-
-    case 'service-monitor:health-check-result':
-      electronAPI.on.serviceMonitorHealthCheckResult(listener)
-      return () => electronAPI.off.serviceMonitorHealthCheckResult()
-
-    default:
-      console.warn(`Unknown IPC channel: ${channel}`)
-      return () => { }
+  // 使用通用的 on 方法注册监听器
+  electronAPI.on(channel, listener)
+  
+  // 返回清理函数
+  return () => {
+    electronAPI.off(channel, listener)
   }
 }
 
@@ -381,6 +349,15 @@ export const deleteServiceMonitor = async (id: number): Promise<ServiceResult<vo
     throw new Error('Electron API not available')
   }
   return electronAPI.serviceMonitor.delete(id)
+}
+
+// 执行健康检查
+export const performServiceHealthCheck = async (): Promise<ServiceResult<void>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.serviceMonitor.performHealthCheck()
 }
 
 // 执行服务控制命令

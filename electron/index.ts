@@ -83,6 +83,7 @@ app.on('ready', async () => {
   try {
     // 初始化数据库管理器
     await initializeDatabase()
+    
     createWindow()
     createTray()
     // 注册主进程相关的 IPC 处理程序
@@ -108,6 +109,7 @@ app.on('activate', () => {
 
 app.on('before-quit', async () => {
   tray?.destroy()
+  
   // 关闭数据库连接并清理资源
   if (clientManager) {
     await clientManager.shutdown()

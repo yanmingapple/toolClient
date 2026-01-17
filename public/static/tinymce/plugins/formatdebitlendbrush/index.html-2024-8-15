@@ -1,0 +1,806 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <style type="text/css">
+
+  </style>
+
+  <script src="../../tkDate.js"></script>
+  <script src="../../tkString.js"></script>
+</head>
+
+<body>
+  <!-- #region page -->
+  <section class="flat-container container-fluid~">
+    <div class="flat-row row~">
+      <div>
+        <span>请输入借贷文字描述</span>
+        <div>
+          <textarea id="copyValue" style="width: 100%;" rows="10" value="借：贷打发2121212 阿斯顿发斯蒂芬 21121"
+            placeholder="样例：&#13;&#10;借：xxx 1000 &#13;&#10;贷：xx 1000 &#13;&#10;&#13;&#10;说明：借贷分别为两行数据，每行以空格隔开，空格不限制数量。"></textarea>
+        </div>
+      </div>
+
+
+      <div style="margin-top: 25px;">
+        <div>借贷格式展示区：</div>
+
+        <div id="showDiv" style="margin-top: 10px;text-align: left;border: 1px outset rgb(110, 131, 33);padding: 5px;">
+
+        </div>
+
+        <!-- <div style="padding:5px; ">
+          <div>png图片：</div>
+          <canvas id="showCanvas"></canvas>
+        </div> -->
+
+      </div>
+
+
+      <!-- <div id="showDiv1" style="margin-top: 10px;text-align: left;border: 1px outset rgb(110, 131, 33);padding: 5px;">
+
+      </div> -->
+
+    </div>
+  </section>
+
+
+
+  <script type="text/javascript">
+
+    //借贷解析数据集合
+    var data = {
+      allData: [],//所有数据集合
+      jieDataArr: [],//借的数据集合
+      daiDataArr: [],//贷的数据集合
+      hanziWidthHeightObj: { width: 0, height: 0 },//一个汉字的宽高
+      yingwendthHeightObj: { width: 0, height: 0 },//一个英文的宽高
+      firtLineWidthHeight: { width: 0, height: 0 },//第一行的宽高
+      lineHeightPx: 0,//行高像素，按照汉字的字体高度*行高
+    }
+
+    //配置项
+    var config = {
+      saveAsSVG: true,//是否保存为svg
+      spaseRex: /\s+/ig,//空格
+      moneyRex: /[0-9\-\.]/ig,//数字
+      noMoneyRex: /[^0-9^\-^\.]/ig,//非数字
+      subjectRex: /[\—\—]/ig,//明细科目开头
+      outLinePlacehold: "-",//外边框识别字符串
+      placeCnt: 1,//替换的空位，按照汉字宽度
+      fontFamily: "'Times New Roman','宋体','Songti SC','SimSun'",//字体
+      fontSize: 16,//字体大小
+      zoom: 3,//放大的倍数
+      lineheight: 1.5,//行高
+      parseLine: true,//一行多个借、贷 ，需要解析成多行 
+      svgAddWidth:1,
+      svgAddHeight:2,
+    }
+
+
+
+    /**
+     * 重置解析数据
+     * **/
+    function resetData() {
+      data.allData = [],
+        data.jieDataArr = [],
+        data.daiDataArr = [];
+      console.log(data.daiDataArr.length);
+    }
+
+    //初始化
+    (function () {
+      //用于与父窗口信息传递
+      var Formatdebitlendbrush = window.parent.Formatdebitlendbrush || {};
+      window.parent.Formatdebitlendbrush = window.Formatdebitlendbrush = Formatdebitlendbrush;
+      Formatdebitlendbrush.data = Formatdebitlendbrush.data || '';
+      //赋值
+      document.getElementById('copyValue').value = Formatdebitlendbrush.data.tkDecodeBase64();
+
+      if (Formatdebitlendbrush.data && Formatdebitlendbrush.data != '') {
+        initData()
+        //格式化数据
+        parseInputData();
+        //同步svg
+        syncSvg();
+
+        //是否是png
+        if (config.saveAsSVG) {
+          saveAsSVG();
+        } else {
+          initData(true)
+          //格式化数据
+          parseInputData();
+          syncZoomSvg();
+        }
+
+
+      }
+
+
+      var time1 = null;
+      document.getElementById('copyValue').onkeyup = function (e) {
+        Formatdebitlendbrush.data = e.target.value.tkEncodeBase64();
+        if (time1) {
+          window.clearTimeout(time1);
+        }
+        time1 = window.setTimeout(function () {
+          initData()
+          //格式化数据
+          parseInputData();
+          //同步svg
+          syncSvg();
+          //是否是png
+          if (config.saveAsSVG) {
+            saveAsSVG();
+          } else {
+            initData(true)
+            //格式化数据
+            parseInputData();
+            syncZoomSvg();
+          }
+        }, 500);
+      };
+
+    })();
+
+    //保存为svg
+    function saveAsSVG() {
+      var showDiv = document.getElementById('showDiv');
+      var e = showDiv.firstElementChild;
+      e.removeAttribute("style"),
+      e.removeAttribute("focusable"),
+      e.removeAttribute("role");
+
+      var bbox = e.getBBox();
+      var width = bbox.width + bbox.x+ config.svgAddWidth;
+      var height = bbox.height + bbox.y + config.svgAddHeight;
+
+      e.setAttribute("width", width + "px"),
+        e.setAttribute("height", height + "px");
+      var n = e.outerHTML
+        , t = new Image;
+      t.width = width,
+        t.height = height;
+
+      const base64 = n.tkEncodeBase64();
+
+      const ImgBase64 = `${"data:image/svg+xml;base64," + base64}`;
+      Formatdebitlendbrush.imageData = ImgBase64;
+      Formatdebitlendbrush.width = width,
+      Formatdebitlendbrush.height = height;
+    }
+
+    //保存为png
+    function syncAsPng(showDiv) {
+      //原理为先将svg放大，然后在图片画到画布上
+      var e = showDiv.firstElementChild;
+      // e.setAttribute("width", "1920px"),
+      //   e.setAttribute("height", "1080px");
+      var n = e.outerHTML
+        , t = new Image;
+      t.src = "data:image/svg+xml;base64," + window.btoa(unescape(encodeURIComponent(n))),
+        t.onload = function () {
+          var e = document.createElement("canvas");
+          var mwidth = 3840, mheight = 2160;
+          e.width = mwidth,
+            e.height = mheight,
+            e.getContext("2d").drawImage(t, 0, 0, mwidth, mheight);
+          for (var n = e.getContext("2d").getImageData(0, 0, mwidth, mheight).data, o = e.width, a = 0, i = e.height, c = 0, l = 0; l < e.width; l++)
+            for (var s = 0; s < e.height; s++) {
+              var d = 4 * (l + e.width * s);
+              (n[d] > 0 || n[d + 1] > 0 || n[d + 2] || n[d + 3] > 0) && (c = Math.max(s, c),
+                a = Math.max(l, a),
+                i = Math.min(s, i),
+                o = Math.min(l, o))
+            }
+          o++,
+            a++,
+            i++,
+            c++;
+          var u = document.createElement("canvas");
+          u.width = a - o ,
+            u.height = c - i;
+          var m = u.getContext("2d")
+            , p = u.width
+            , f = u.height
+            , h = u.width
+            , b = u.height;
+          m.drawImage(e, o, i, p, f, 0, 0, h, b);
+
+
+          var showDiv = document.getElementById('showDiv');
+          var e = showDiv.firstElementChild;
+          var bbox = e.getBBox();
+          var width = bbox.width + bbox.x + 2;
+          var height = bbox.height + bbox.y + 3;
+
+          const base64 = u.toDataURL("image/png");
+          const ImgBase64 = `${base64}`;
+          Formatdebitlendbrush.imageData = ImgBase64;
+          Formatdebitlendbrush.width = width,
+            Formatdebitlendbrush.height = height;
+
+          //        var g = document.createElement("a");
+          //  g.href = u.toDataURL("image/png") ,
+          //   g.download = (new Date).getTime() + ".png",
+          //   g.click()
+
+        }
+    }
+
+    function initData(isZoom) {
+      if (isZoom) {
+        config.fontSize = config.fontSize * config.zoom;
+      } else {
+        config.fontSize = 16;
+      }
+
+      config.showStyle = "border:none;font-family:" + config.fontFamily + ";font-size:" + config.fontSize + "px;";//汉字样式
+      config.moneyStyleOutLine = "font-family:" + config.fontFamily + ";font-size:" + config.fontSize + "px;outline: 1px solid;";//已还数字样式
+
+      config.halfLineHeight = (config.fontSize * config.lineheight - config.fontSize) / 2;
+
+      getTextWidthHeight(' ');
+      data.hanziWidthHeightObj = getTextWidthHeight('中', 1);
+      data.firtLineWidthHeight = getTextWidthHeight('中', 1);
+      data.yingwendthHeightObj = getTextWidthHeight('A', 1);
+      //行高像素= 字体高度px * 字体行高
+      data.lineHeightPx = data.hanziWidthHeightObj.height;
+    }
+
+
+    function parseInputData() {
+      //重置
+      resetData();
+      //获取格式化数据
+      var copyValue = Formatdebitlendbrush.data.tkDecodeBase64();
+      //开始解析
+      var valueStringSplit = copyValue.split('\n');
+
+      //借：贷打发2121212 阿斯顿发斯蒂芬 21121
+      var autoSplitData = [];
+      valueStringSplit.forEach(item => {
+        var itemSplits = item.replace(config.spaseRex, '').replace(/(^[\s\n\t]+|[\s\n\t]+$)/g, "");
+        var temp = paseRowStr(itemSplits);
+        autoSplitData = autoSplitData.concat(temp);
+      })
+      //每一行的数据进行解析
+      //跟着借后面的归到借方，跟着贷后面的归并到贷
+      var isJie = true;//默认true
+      var currIndex = 1;
+      autoSplitData.forEach(item => {
+        //先去掉多余的空格和制表符号
+        var itemSplits = item.replace(config.spaseRex, '').replace(/(^[\s\n\t]+|[\s\n\t]+$)/g, "");
+        //当前行无数据，直接跳过
+        if (itemSplits == '') return;
+
+        if (itemSplits.indexOf('借：') == 0 || itemSplits.indexOf('借:') == 0) {
+          isJie = true;
+        } else if (itemSplits.indexOf('贷：') == 0 || itemSplits.indexOf('贷:') == 0) {
+          isJie = false;
+        }
+        //cat  借或贷的类型  type 为中间文字部分 money,为后面的金额，moneyStrArr保存小数
+        var retData = {
+          isJie: isJie,//是否借款
+          isFirstRow: false,//是否第一行
+          catStr: null,//借、贷的标记，汉字
+          subjectStr: '',//科目分类文字
+          isLessZero: false,//是否小于0
+          moneyStr: '',//金额文字
+          moneyParseStr: '',//科学计数法后的金额文字
+          moneyNumStr: '',//金额数字
+          moneyNumParseStr: '',//整数部分，科学计数法
+          moneyPointStr: '',//小数部分
+          isSubSubject: true,//是否为总科目
+          leftStrWidthPx: 0,//非金额的字符串像素长度
+          leftXPx: 0,//起始位置X坐标
+          yPx: 0,//起始位置X坐标
+          rowIndex: 0,//第几行
+          index: 0,//当前列表第几个
+        }
+
+        //分割每一行数据
+        var parseData = parseRow(itemSplits, currIndex);
+
+        //占位符替换
+        retData.moneyStr = parseData.money.replace(config.outLinePlacehold, '');
+        retData.catStr = parseData.cat;
+        retData.subjectStr = parseData.subject;
+        retData.isJie = retData.isJie;
+        retData.isFirstRow = parseData.cat != ''
+
+        var moneyStrArr = [];
+        //小数部分
+        if (retData.moneyStr.indexOf('.') > -1) {
+          moneyStrArr = retData.moneyStr.split('.');
+          retData.moneyPointStr = moneyStrArr[1];
+        } else {
+          //整数部分
+          moneyStrArr.push(retData.moneyStr);
+        }
+        //取整数部分，逻辑去掉“.”之前的非数字，将空格替换
+        retData.moneyNumStr = moneyStrArr[0];
+        retData.isLessZero = Number.parseFloat(parseData.money) < 0;
+        //科学计数法,整数部分
+        retData.moneyParseStr = retData.moneyNumParseStr = transNum(retData.moneyNumStr);
+        if (itemSplits.indexOf('.') > -1) {
+          //取小数部分，逻辑去掉“.”之后的非数字，将空格替换
+          retData.moneyParseStr += "." + moneyStrArr[1];
+        }
+
+        //是否为总科目
+        retData.isSubSubject = parseData.subject.search(config.subjectRex) == 0;
+        var widthHeightObj = getTextWidthHeight(retData.catStr || '' + retData.subjectStr);
+        retData.leftStrWidthPx = widthHeightObj.width;
+        if (currIndex == 1) {
+          retData.yPx = data.lineHeightPx //+ config.halfLineHeight
+        } else {
+          retData.yPx = data.lineHeightPx * currIndex + config.halfLineHeight * 2 * (currIndex - 1)
+        }
+        retData.rowIndex = currIndex;
+        currIndex++;
+
+        //存放到数据集合中
+        if (retData.isJie) {
+          retData.index = data.jieDataArr.length
+          data.jieDataArr.push(retData);
+        } else {
+          retData.index = data.daiDataArr.length
+          data.daiDataArr.push(retData);
+        }
+
+        data.allData.push(retData);
+      });
+
+      initJieDataparseInputData();
+      initDaiDataparseInputData();
+    }
+
+    //用户将借贷输入到一行数据中，需要自动解析
+    function paseRowStr(row) {
+      var data = [];
+      var noMoneyData = [], moneyData = [];
+      for (var index = 0; index < row.length; index++) {
+
+        var str = row.charAt(index);
+        //优先处理金额
+        if (str.search(config.noMoneyRex) == 0) {
+          noMoneyData.push(str)
+          if (moneyData.length > 0) {
+            data.push(moneyData.join(''));
+            moneyData = [];
+          }
+        } else {
+          moneyData.push(str)
+          if (noMoneyData.length > 0) {
+            data.push(noMoneyData.join(''));
+            noMoneyData = [];
+          }
+        }
+      }
+
+      if (noMoneyData.length > 0) {
+        data.push(noMoneyData.join(''));
+        noMoneyData = [];
+      }
+
+      if (moneyData.length > 0) {
+        data.push(moneyData.join(''));
+        moneyData = [];
+      }
+
+      var retData = [];
+      for (var index = 0; index < data.length; index += 2) {
+        retData.push(data[index] + (data[index + 1] || '0'));
+      }
+
+      return retData;
+    }
+
+    //格式化每一行的数据，借贷，科目及明细科目，金额
+    function parseRow(row, currIndex) {
+      //从后往前查找,先找金额，在找科目，再找分类
+      var retData = {
+        cat: '',
+        subject: '',
+        money: ''
+      };
+
+      //先处理借、贷的类型
+      if (row.indexOf('借：') == 0 || row.indexOf('借:') == 0) {
+        retData.cat = '借：';
+        row = row.replace('借：', '').replace('借:', '')
+      } else if (row.indexOf('贷：') == 0 || row.indexOf('贷:') == 0) {
+        retData.cat = '贷：';
+        row = row.replace('贷：', '').replace('贷:', '')
+      }
+      if (currIndex == 1 && retData.cat == '') retData.cat = '借：'
+
+      var data = [];
+      for (var index = row.length - 1; index >= 0; index--) {
+
+        var str = row.charAt(index);
+        //优先处理金额
+        if (!retData.money && str.search(config.noMoneyRex) == 0) {
+          retData.money = data.length == 0 ? ' ' : data.reverse().join('');
+          retData.money = retData.money == '-' ? '-0' : retData.money
+          data = [];
+          data.push(str);
+          continue;
+        } else {
+          data.push(str);
+        }
+      }
+      retData.subject = data.reverse().join('');
+
+      return retData;
+    }
+
+    function initJieDataparseInputData() {
+      //科目分组,一个科目一组数据处理
+      var subjectGroupTotal = [];
+      var subjectGroup = [];
+      data.jieDataArr.forEach(item => {
+        if (!item.isSubSubject) {
+          subjectGroup = [];
+          subjectGroupTotal.push(subjectGroup);
+        }
+
+        subjectGroup.push(item);
+      });
+
+      var jieWidth = getTextWidthHeight('借：').width;
+      //处理每一组数据
+      subjectGroupTotal.forEach(group => {
+        var lineStrArr = '';
+        const firstItem = group[0];
+        if (!firstItem.isFirstRow) {
+          firstItem.leftXPx = jieWidth;
+        }
+        //第一行分割
+        lineStrArr = firstItem.subjectStr.split('——');
+        lineStrArr = lineStrArr.length == 1 ? lineStrArr : lineStrArr.slice(0, -1);
+        lineBeforeStr = lineStrArr.join('——');
+        lineBeforeStr = '借：' + lineBeforeStr;
+
+        for (var gIndex = 1; gIndex < group.length; gIndex++) {
+          var gItem = group[gIndex];
+          gItem.leftXPx = getTextWidthHeight(lineBeforeStr).width;
+        }
+
+      });
+    }
+
+    function initDaiDataparseInputData() {
+      //科目分组
+      var subjectGroupTotal = [];
+      var subjectGroup = [];
+      data.daiDataArr.forEach(item => {
+        if (!item.isSubSubject) {
+          subjectGroup = [];
+          subjectGroupTotal.push(subjectGroup);
+        }
+
+        subjectGroup.push(item);
+      });
+
+      var jieWidth = getTextWidthHeight('借贷：').width;
+      var daiWidth = getTextWidthHeight('借').width;
+
+      subjectGroupTotal.forEach(group => {
+        var lineStrArr = '';
+        const firstItem = group[0];
+
+        //第一行，要有一个借的宽度
+        if (firstItem.isFirstRow) {
+          firstItem.leftXPx = daiWidth;
+        } else {
+          firstItem.leftXPx = jieWidth;
+        }
+
+        lineStrArr = firstItem.subjectStr.split('——');
+        lineStrArr = lineStrArr.length == 1 ? lineStrArr : lineStrArr.slice(0, -1);
+        lineBeforeStr = lineStrArr.join('——');
+        lineBeforeStr = '借贷：' + lineBeforeStr;
+
+
+        for (var gIndex = 1; gIndex < group.length; gIndex++) {
+          var gItem = group[gIndex];
+          gItem.leftXPx = getTextWidthHeight(lineBeforeStr).width;
+        }
+
+      });
+    }
+
+
+    function syncSvg() {
+      //创建 svg
+      var svg = document.createElement('svg');
+      svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+      // svg.setAttribute("style","border:1px solid;");
+      // svg.setAttribute ("style","overflow: visible;");
+
+      //借的文字
+      var jieSvgText = document.createElement('text');
+      jieSvgText.setAttribute("style", config.showStyle);
+      //设置文字空格占位
+      jieSvgText.setAttribute("xml:space", "preserve");
+      svg.appendChild(jieSvgText);
+
+      //计算最长的字符串，规则：借的金额需要在借贷中最长的后面
+      var maxStr = getMaxRowBeforeMoneyStr();//最长字符
+      var maxStrWidthHeight = getTextWidthHeight(maxStr);
+
+      //获取借款的最长金额，与最长的整数金额，规则：贷款金额需要放到借款金额的后面，借款金额的个位对齐
+      var jieMoneyObj = getMaxMoneyData(data.jieDataArr);
+      var jieMoneyMaxStr = jieMoneyObj.maxStr;//借的金额最长字符
+      var jieMoneyMaxStrWidthHeight = getTextWidthHeight(jieMoneyMaxStr);
+      var moneyZhengStr = jieMoneyObj.moneyNumParseStr;
+      var moneyZhengStrWidthHeight = getTextWidthHeight(moneyZhengStr);
+
+
+      //格式化借款金额
+      parseSvgDOM(jieSvgText, data.jieDataArr, maxStrWidthHeight, {}, moneyZhengStrWidthHeight)
+      //设置文字空格占位
+      var daiSvgText = document.createElement('text');
+      daiSvgText.setAttribute("style", config.showStyle);
+      //设置坐标
+      daiSvgText.setAttribute("xml:space", "preserve");
+      svg.appendChild(daiSvgText);
+      daiMoneyObj = getMaxMoneyData(data.daiDataArr);
+      moneyZhengStr = daiMoneyObj.moneyNumParseStr;
+      var moneyZhengStrWidthHeight = getTextWidthHeight(moneyZhengStr);
+      parseSvgDOM(daiSvgText, data.daiDataArr, maxStrWidthHeight, jieMoneyMaxStrWidthHeight, moneyZhengStrWidthHeight)
+
+
+      var showdiv = document.getElementById('showDiv');
+
+      showdiv.innerHTML = svg.outerHTML;
+
+      svg = showdiv.firstChild
+      var bbox = svg.getBBox();
+      var width = bbox.width + bbox.x+ config.svgAddWidth;
+      var height = bbox.height + bbox.y + config.svgAddHeight;
+
+
+
+      svg.setAttribute("width", width + "px"),
+      svg.setAttribute("height", height + "px");
+    }
+
+
+
+    //放大版
+    function syncZoomSvg() {
+      //创建 svg
+      var svg = document.createElement('svg');
+      svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      svg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+      // svg.setAttribute("style","border:1px solid;");
+      // svg.setAttribute ("style","overflow: visible;");
+
+      //借的文字
+      var jieSvgText = document.createElement('text');
+      jieSvgText.setAttribute("style", config.showStyle);
+      //设置文字空格占位
+      jieSvgText.setAttribute("xml:space", "preserve");
+      svg.appendChild(jieSvgText);
+
+      //计算最长的字符串，规则：借的金额需要在借贷中最长的后面
+      var maxStr = getMaxRowBeforeMoneyStr();//最长字符
+      var maxStrWidthHeight = getTextWidthHeight(maxStr);
+
+      //获取借款的最长金额，与最长的整数金额，规则：贷款金额需要放到借款金额的后面，借款金额的个位对齐
+      var jieMoneyObj = getMaxMoneyData(data.jieDataArr);
+      var jieMoneyMaxStr = jieMoneyObj.maxStr;//借的金额最长字符
+      var jieMoneyMaxStrWidthHeight = getTextWidthHeight(jieMoneyMaxStr);
+      var moneyZhengStr = jieMoneyObj.moneyNumParseStr;
+      var moneyZhengStrWidthHeight = getTextWidthHeight(moneyZhengStr);
+
+      //格式化借款金额
+      parseSvgDOM(jieSvgText, data.jieDataArr, maxStrWidthHeight, {}, moneyZhengStrWidthHeight)
+      //设置文字空格占位
+      var daiSvgText = document.createElement('text');
+      daiSvgText.setAttribute("style", config.showStyle);
+      //设置坐标
+      daiSvgText.setAttribute("xml:space", "preserve");
+      svg.appendChild(daiSvgText);
+      daiMoneyObj = getMaxMoneyData(data.daiDataArr);
+      moneyZhengStr = daiMoneyObj.moneyNumParseStr;
+      var moneyZhengStrWidthHeight = getTextWidthHeight(moneyZhengStr);
+      parseSvgDOM(daiSvgText, data.daiDataArr, maxStrWidthHeight, jieMoneyMaxStrWidthHeight, moneyZhengStrWidthHeight)
+
+
+      var showdiv = document.createElement('div');
+      // var showdiv = document.getElementById('showDiv1');
+      showdiv.innerHTML = svg.outerHTML;
+
+      syncAsPng(showdiv);
+
+    }
+
+    /***
+     * 格式化 借贷svg
+     * svgText svgtext
+     * dataArr  借贷数据集
+     * maxStrWidthHeight 最长字符串宽高
+     * jieMoneyMaxStr 金额的最大字符串宽高
+     * moneyZhengStrWidthHeight 整数金额的最大字符串 宽高
+     * 
+     */
+    function parseSvgDOM(svgText, dataArr, maxStrWidthHeight, jieMoneyMaxStrWidthHeight, moneyZhengStrWidthHeight) {
+      //数据为空，着不格式化
+      if (dataArr.length == 0) {
+        return;
+      }
+
+      var lineIndex = 0;
+      for (let index = 0; index < dataArr.length; index++) {
+        var item = dataArr[index];
+        var type = document.createElement('tspan');
+        type.innerText = item.catStr + item.subjectStr;
+        type.setAttribute("x", item.leftXPx);
+        type.setAttribute("y", item.yPx);
+        svgText.appendChild(type);
+
+        var money = document.createElement('tspan');
+        svgText.appendChild(money);
+
+        const subMoneyZheng = item.moneyNumParseStr;
+        const subMoneyZhengWidthHeight = getTextWidthHeight(subMoneyZheng);
+        var x = maxStrWidthHeight.width + (jieMoneyMaxStrWidthHeight.width || 0) + (moneyZhengStrWidthHeight.width || 0) - subMoneyZhengWidthHeight.width;
+
+        money.setAttribute("x", x);//前面字符+空格字符一个字
+        money.setAttribute("y", item.yPx);
+        money.innerText = item.moneyParseStr;
+        if (item.isLessZero) {
+          money.setAttribute("style", config.moneyStyleOutLine);
+        }
+
+      }
+    }
+
+    //获取金额前的最长行的字符串，贷的行前面还有一个借字的位置
+    function getMaxRowBeforeMoneyStr() {
+      var jieMaxStr = getMaxStrBeforeMoney(data.jieDataArr);//最长字符
+      var daiMaxStr = "借" + getMaxStrBeforeMoney(data.daiDataArr);//贷最长字符，贷在借后面，只留一个字
+      return jieMaxStr.length > daiMaxStr.length ? jieMaxStr : daiMaxStr;
+    }
+
+
+    //获取金额最大长度，与整数最大长度
+    function getMaxMoneyData(dataArr) {
+      var retData = {
+        moneyNumParseStr: '',
+        moneyPointStr: '',//小数点后面字符
+      }
+
+      //个位对齐，找小数后面最长的数字、整数最长数字
+      dataArr.forEach(item => {
+        retData.moneyPointStr = retData.moneyPointStr.length > item.moneyPointStr.length ? retData.moneyPointStr : item.moneyPointStr;
+        retData.moneyNumParseStr = retData.moneyNumParseStr.length > item.moneyNumParseStr.length ? retData.moneyNumParseStr : item.moneyNumParseStr;
+      });
+      retData.maxStr = retData.moneyNumParseStr + (retData.moneyPointStr.length > 0 ? '.' + retData.moneyPointStr : '')
+
+      return retData;
+    }
+
+    //获取最长的金额字符串是否小于0
+    function getLessZeroMaxMoneyLength(dataArr) {
+      //找出是否有小于0的情况
+      var lessZero = [];
+      dataArr.forEach(item => {
+        if (item.isLessZero) lessZero.push(item);
+      });
+      if (lessZero.length > 0) {
+        return true;
+      }
+      return false;
+    }
+
+    //获取金额前的最大长度字符串
+    function getMaxStrBeforeMoney(dataArr) {
+      var strArr = [],//存放字符串列表
+        catStr,//借贷分类
+        lineBeforeStr;//总科目后面最后一个明细科目前的字符串
+      //组装数据
+      dataArr.forEach(item => {
+        //借、贷 类型取值
+        if (item.index == 0) {
+          catStr = item.catStr;
+        }
+
+        //总科目，计算最后一个'——'前的字符串
+        if (!item.isSubSubject) {
+          var lineStrArr = item.subjectStr.split('——');
+          lineStrArr = lineStrArr.slice(0, -1);
+          lineBeforeStr = lineStrArr.join('——');
+
+          strArr.push(catStr + item.subjectStr);
+        } else {
+          strArr.push(catStr + lineBeforeStr + item.subjectStr);
+        }
+      });
+
+      //取最大的长度字符串
+      var maxStr = "";
+      strArr.forEach(item => {
+        var maxLenth = getLength(maxStr);
+        var itemLenth = getLength(item);
+        maxStr = maxLenth > itemLenth ? maxStr : item;
+      });
+
+
+
+      //添加了空格，金额前面添加
+      var zhanweifu = "";
+      for (var i = 0; i < config.placeCnt; i++) {
+        zhanweifu += "占";
+      }
+      return maxStr + zhanweifu;
+    }
+
+    //获取字符的长度，按照汉字与英文区分,分别按照像素的宽度计算
+    function getLength(str) {
+      ///<summary>获得字符串实际长度，中文2，英文1</summary>
+      ///<param name="str">要获得长度的字符串</param>
+      var realLength = 0, len = str.length, charCode = -1;
+      for (var i = 0; i < len; i++) {
+        charCode = str.charCodeAt(i);
+
+        if (charCode >= 0 && charCode <= 128) {
+          realLength += data.yingwendthHeightObj.width;
+        } else {
+          realLength += data.hanziWidthHeightObj.width;
+        }
+      }
+      return realLength;
+    }
+
+
+    //科学计数法
+    function transNum(value) {
+      if (!value) return '';
+      var re = /(?=(?!(\b))(\d{3})+$)/g;
+      value = value.replace(re, " ");
+      return value;
+    }
+
+    function getTextWidthHeight(text, lineHeight) {
+      const ele = document.createElement("span");
+      ele.style.position = 'absolute';
+      //ele.style.whiteSpace = 'nowrap';
+      ele.style.fontSize = config.fontSize + 'px';
+      ele.style.fontFamily = config.fontFamily;
+      ele.style.lineHeight = lineHeight || config.lineheight;
+
+      //ele.style.position = 'absolute';
+      ele.innerHTML = text == ' ' ? '&nbsp;' : text;
+      document.body.append(ele);
+
+      // 获取span的宽度
+
+      const width = ele.getBoundingClientRect().width;
+      const height = ele.getBoundingClientRect().height;
+
+      // const width= ele.clientWidth;
+      // const height = ele.clientHeight;
+      // 从body中删除该span
+      document.body.removeChild(ele);
+      // 返回span宽度
+      return { width: width, height: height };
+
+    }
+
+
+
+  </script>
+</body>
+
+</html>

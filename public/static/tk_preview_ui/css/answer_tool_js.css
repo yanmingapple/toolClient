@@ -1,0 +1,318 @@
+.model-con {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(50, 50, 50, .9);
+  display: block;
+  font-size: 100px;
+  text-align: center;
+  line-height: 100vh;
+  color: #fff;
+  z-index: 10
+}
+
+body,
+body blockquote,
+body dd,
+body dl,
+body dt,
+body fieldset,
+body figure,
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6,
+body hr,
+body iframe,
+body legend,
+body li,
+body ol,
+body p,
+body pre,
+body textarea,
+body ul,
+html {
+  margin: 0;
+  padding: 0;
+  font-family: Times New Roman, simsun
+}
+
+body,
+html {
+  height: 100%
+}
+
+.pt-9 {
+  line-height: 9pt
+}
+
+.paper-info {
+  font-size: 10.5pt;
+  font-family: Times New Roman, SimHei
+}
+
+* {
+  line-height: 1.5
+}
+
+.gradeCon,
+.paperName,
+.subjectCon {
+  line-height: 36pt;
+  text-align: center;
+  font-family: Times New Roman, simsun
+}
+
+.paperName {
+  font-size: 16pt
+}
+
+.gradeCon {
+  font-size: 22pt;
+  font-weight: 600 !important
+}
+
+.gradeCon.smaller {
+  font-size: 18pt
+}
+
+.gradeCon.m_smaller {
+  font-size: 17pt
+}
+
+.subjectCon {
+  font-size: 14pt
+}
+
+.noticeTips>p {
+  font-size: 10.5pt;
+  font-family: Times New Roman, SimHei
+}
+
+.part-con,
+.part-con * {
+  line-height: 36pt !important;
+  font-size: 16pt !important;
+  text-align: center;
+  font-family: Times New Roman, SimHei
+}
+
+.item-con>.f-prev-con>span:first-of-type,
+.parent-papernum-of-childitem>span:first-of-type {
+  text-align: right
+}
+
+.structure-con {
+  text-indent: -2em;
+  margin-left: 2em
+}
+
+.structure-con,
+.structure-con * {
+  font-size: 10.5pt !important;
+  font-family: Times New Roman, SimHei !important
+}
+
+.item-con,
+.item-con * {
+  font-size: 10.5pt !important;
+  line-height: 18pt
+}
+
+.item-con sub,
+.item-con sub *,
+.item-con sup,
+.item-con sup * {
+  font-size: smaller !important;
+  line-height: 1
+}
+
+.item-con table * {
+  line-height: 18pt
+}
+
+.item-con img {
+  vertical-align: middle;
+  line-height: 1.5
+}
+
+.item-con img.img-vertical-top {
+  vertical-align: top !important
+}
+
+img.img-vertical-middle {
+  vertical-align: middle !important
+}
+
+.item-con img.Wirisformula,
+.item-con img.img-vertical-baseline,
+.item-con img[data-formula-image] {
+  vertical-align: baseline
+}
+
+.item-con img.img-vertical-bottom {
+  vertical-align: bottom !important
+}
+
+.item-con img.img-vertical-textTop {
+  vertical-align: text-top !important
+}
+
+.col-block-item {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap
+}
+
+.f-item-con.item-con-of-type-12:not(.block-item),
+.f-item-con.item-con-of-type-13:not(.block-item),
+.f-item-con.item-con-of-type-1:not(.block-item),
+.f-item-con.item-con-of-type-3:not(.block-item) {
+  width: 10%;
+  display: inline-block
+}
+
+.f-item-con.item-con-of-type-14:not(.block-item),
+.f-item-con.item-con-of-type-2:not(.block-item),
+.f-item-con.item-con-of-type-4:not(.block-item) {
+  width: 20%;
+  display: inline-block
+}
+
+.f-item-con.item-con-of-type-11:not(.block-item) {
+  width: 50%;
+  display: inline-block;
+  vertical-align: top
+}
+
+.f-item-con.item-con-of-type-11.whole-row {
+  width: 100%
+}
+
+.item-con.item-con-of-type-15,
+.item-con.item-con-of-type-8 {
+  width: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex
+}
+
+.item-con.item-con-of-type-15 .stem-con-content,
+.item-con.item-con-of-type-8 .stem-con-content {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1
+}
+
+.item-con>div {
+  display: inline-block
+}
+
+.item-con>.stem-prev-con {
+  display: inline-block;
+  width: 2em;
+  white-space: nowrap;
+  vertical-align: top
+}
+
+.item-con>.f-prev-con>span {
+  display: inline-block;
+  width: 1em
+}
+
+.item-con .judge-correct-ans-con * {
+  display: inline
+}
+
+.s-item-con {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex
+}
+
+.s-item-con.item-con-of-type-1 {
+  width: 10%;
+  display: inline-block
+}
+
+.parent-papernum-of-childitem>span {
+  display: inline-block;
+  width: 1em
+}
+
+.next-child-ans-prev {
+  margin-left: 2em
+}
+
+.mce-emphatic {
+  position: relative;
+  display: inline-block;
+  text-indent: 0
+}
+
+.mce-emphatic:before {
+  content: ".";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  font-family: initial;
+  text-indent: 0 !important;
+  font-size: 20px
+}
+
+.calc-con {
+  display: block
+}
+
+.page-num-simple {
+  font-size: 10.5pt !important;
+  font-family: Times New Roman, simsun
+}
+
+.dot-con {
+  font-family: simsun
+}
+
+.cn-dot-con {
+  font-family: simsun !important
+}
+
+figure {
+  display: table;
+  margin: 0 auto !important
+}
+
+figure figcaption {
+  color: #333;
+  display: block;
+  margin-top: 0;
+  text-align: center
+}
+
+table:not([cellpadding]) td,
+table:not([cellpadding]) th {
+  padding: 0 6px
+}
+
+#svgCon table:not([cellpadding]) td,
+#svgCon table:not([cellpadding]) th {
+  padding: 0 6px !important
+}
+
+#svgCon foreignObject {
+  overflow: visible
+}
+
+@media print {
+  body svg {
+    margin: 0
+  }
+}
