@@ -2,6 +2,9 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+
+// 为 @paddlejs-models/ocr 提供全局 Module 对象
+(window as any).Module = {}
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import "@/style/tk-common.less";

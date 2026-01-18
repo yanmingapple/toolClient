@@ -25,9 +25,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { CopyDocument, Upload, Refresh, Grid, Download, Document, Edit, View, PieChart, CircleCheck, InfoFilled, Cpu } from '@element-plus/icons-vue'
+import { ref, defineEmits } from 'vue'
+import { CopyDocument, Upload, Refresh, Grid, Download, Document, Edit, View, PieChart, CircleCheck, InfoFilled, Cpu, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
+
+const emit = defineEmits(['open-ocr']) 
 
 // 工具集配置
 const toolCategories = ref([
@@ -61,6 +63,12 @@ const toolCategories = ref([
       { id: 'health-check', label: '健康检查', icon: CircleCheck, handler: 'handleHealthCheck' },
       { id: 'system-info', label: '系统信息', icon: InfoFilled, handler: 'handleSystemInfo' },
       { id: 'resource-monitor', label: '资源监控', icon: Cpu, handler: 'handleResourceMonitor' }
+    ]
+  },
+  {
+    title: 'AI工具',
+    items: [
+      { id: 'ocr', label: '文字识别', icon: MagicStick, handler: 'handleOCR' }
     ]
   }
 ])
@@ -134,6 +142,12 @@ const handleSystemInfo = () => {
 
 const handleResourceMonitor = () => {
   CTMessage.info('资源监控功能开发中...')
+}
+
+const handleOCR = () => {
+  // 触发事件通知父组件打开OCR页面
+  emit('open-ocr')
+  CTMessage.success('正在打开文字识别工具...')
 }
 </script>
 

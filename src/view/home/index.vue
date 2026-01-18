@@ -12,14 +12,34 @@
 
     <!-- 主内容区 -->
     <main class="dashboard-main">
-      <!-- 主要工具面板 -->
-      <section class="main-tools-panel">
-        <div class="panel-header">
-          <h2 class="panel-title">核心功能</h2>
-          <span class="panel-subtitle">数据库管理工具集合</span>
-        </div>
-        <QuickActions />
-      </section>
+      <!-- 顶部快速操作和AI工具 -->
+      <div class="top-section">
+        <!-- 主要工具面板 -->
+        <section class="main-tools-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">工具集合</h2>
+          </div>
+          <QuickActions />
+        </section>
+
+        <!-- AI识别工具面板 -->
+        <section class="ai-tools-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">AI工具</h2>
+          </div>
+          <div class="ai-tool-items">
+            <div class="ai-tool-item" @click="handleOpenOCR">
+              <div class="ai-tool-icon">
+                <el-icon><MagicStick /></el-icon>
+              </div>
+              <div class="ai-tool-info">
+                <div class="ai-tool-title">文字识别</div>
+                <div class="ai-tool-desc">从图片中提取文字</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <!-- 服务监控面板 -->
       <section class="monitor-panel">
@@ -36,6 +56,14 @@
         </div>
         <SystemInfo />
       </section>
+
+      <!-- 工具集面板 -->
+      <section class="tools-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">工具集</h2>
+        </div>
+        <ToolSets @open-ocr="handleOpenOCR" />
+      </section>
     </main>
   </div>
 </template>
@@ -45,7 +73,7 @@ import { ref, computed, onMounted } from 'vue'
 import {
   Monitor, Refresh, Download, Upload, Connection, CircleCheck, CircleClose, 
   Tools, ArrowRight, CopyDocument, Edit, PieChart, InfoFilled, Cpu, 
-  Folder, Timer, Clock, Grid, View, Document
+  Folder, Timer, Clock, Grid, View, Document, MagicStick
 } from '@element-plus/icons-vue'
 
 import { useConnectionStore } from '@/stores/connection'
@@ -103,6 +131,12 @@ const handleRefresh = () => {
   lastRefreshTime.value = new Date()
   connectionStore.initializeConnections()
   CTMessage.success('已刷新连接状态')
+}
+
+const handleOpenOCR = () => {
+  // 触发事件通知父组件打开OCR页面
+  const event = new CustomEvent('open-ocr-page', { detail: {} })
+  window.dispatchEvent(event)
 }
 
 
@@ -170,6 +204,15 @@ onMounted(() => {
   gap: 16px;
   width: 100%;
   box-sizing: border-box;
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+}
+
+/* 顶部区域 */
+.top-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
 }
 
 /* 主要工具面板 */
@@ -178,8 +221,79 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* AI工具面板 */
+.ai-tools-panel {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.ai-tools-panel .panel-header {
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.ai-tools-panel .panel-title {
+  color: white;
+}
+
+.ai-tool-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ai-tool-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.ai-tool-icon {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+}
+
+.ai-tool-info {
+  flex: 1;
+}
+
+.ai-tool-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.ai-tool-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* 服务监控面板 */
@@ -188,7 +302,7 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -198,7 +312,17 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 工具集面板 */
+.tools-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -459,6 +583,10 @@ onMounted(() => {
 
 /* 响应式设置 */
 @media (max-width: 768px) {
+  
+  .top-section {
+    grid-template-columns: 1fr;
+  }
   
   .panel-content {
     padding: 16px;

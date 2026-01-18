@@ -10,6 +10,26 @@
       />
     </div>
     
+    <!-- OCR页面模式 -->
+    <div v-else-if="currentPage === 'ocr'" class="ocr-mode">
+      <!-- 顶部导航栏 -->
+      <header class="ocr-header">
+        <div class="header-content">
+          <div class="header-back" @click="switchToToolPanel">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>返回</span>
+          </div>
+          <h1 class="header-title">智能文字识别</h1>
+          <div class="header-spacer"></div>
+        </div>
+      </header>
+      
+      <!-- OCR内容区域 -->
+      <div class="ocr-content">
+        <OCRPage />
+      </div>
+    </div>
+    
     <!-- 工作面板模式 -->
     <div v-else class="workspace-mode">
       <!-- 工作区加载状态 -->
@@ -60,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import ToolPanel from './view/home/index.vue'
 import TerminalConsole from './clientComponents/TerminalConsole/index.vue'
 import ConnectionDialog from './clientComponents/ConnectionDialog/index.vue'
@@ -73,6 +93,7 @@ import { switchMenuType } from './utils/electronUtils'
 // 动态引入组件，实现懒加载
 const AppLayout = defineAsyncComponent(() => import('./view/database/index.vue'))
 const QueryEditor = defineAsyncComponent(() => import('./clientComponents/QueryEditor/index.vue'))
+const OCRPage = defineAsyncComponent(() => import('./view/orc/index.vue'))
 
 const connectionDialogVisible = ref(false)
 const editingConnection = ref<TreeNode | null>(null)
@@ -149,9 +170,27 @@ const handleCreatePanel = (type: any, title: string, content: any) => {
   }
 }
 
+// 切换到OCR页面
+const switchToOCR = async () => {
+  currentPage.value = 'ocr'
+}
+
+// 监听打开OCR页面的事件
+const handleOpenOCRPage = () => {
+  switchToOCR()
+}
+
 // 应用启动时从SQLite数据库加载连接数据
 onMounted(async () => {
   await connectionStore.initializeConnections()
+  
+  // 监听打开OCR页面的事件
+  window.addEventListener('open-ocr-page', handleOpenOCRPage)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('open-ocr-page', handleOpenOCRPage)
 })
 
 ipcUtils({
@@ -180,10 +219,76 @@ ipcUtils({
 }
 
 .toolpanel-mode,
-.workspace-mode {
+.workspace-mode,
+.ocr-mode {
   width: 100%;
   height: 100%;
   position: relative;
+}
+
+.ocr-mode {
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ocr-header {
+  background: white;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 12px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.header-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #606266;
+}
+
+.header-back:hover {
+  background: #f0f9ff;
+  color: #409eff;
+}
+
+.header-back .el-icon {
+  font-size: 16px;
+}
+
+.header-back span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-spacer {
+  width: 80px; /* 与返回按钮宽度保持一致，使标题居中 */
+}
+
+.ocr-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
 }
 
 /* 工作区加载状态样式 */
