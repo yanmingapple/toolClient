@@ -91,7 +91,7 @@ function createSidebarWindow() {
   sidebarWindow = new BrowserWindow({
     width: sidebarWidth,
     height: sidebarHeight,
-    x: width - 10,
+    x: width - 5,
     y: 0,
     frame: false,
     transparent: true,
@@ -173,6 +173,8 @@ app.on('ready', async () => {
     createSidebarWindow()
     // 注册主进程相关的 IPC 处理程序
     IpcService.registerHandlers(mainWindow, sidebarWindow)
+    // 设置侧边栏窗口事件监听
+    SidebarService.setupWindowEventListeners()
     console.log('Application startup completed successfully')
   } catch (error) {
     console.error('Failed to start application:', error)

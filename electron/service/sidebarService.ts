@@ -28,6 +28,17 @@ export class SidebarService {
 
     // 注册侧边栏相关的IPC处理程序
     this.registerSidebarHandlers();
+
+
+    // 监听鼠标进入事件 - 展开侧边栏
+    sidebarWindow.on('enter-full-screen', () => {
+      this.expandSidebarIcon();
+    });
+
+    // 监听鼠标离开事件 - 收起侧边栏
+    sidebarWindow.on('leave-full-screen', () => {
+      this.collapseSidebar();
+    });
   }
 
   /**
@@ -155,6 +166,21 @@ export class SidebarService {
   }
 
   /**
+ * 展开侧边栏
+ */
+  static expandSidebarIcon() {
+    if (this.sidebarWindow) {
+      const { screen } = require('electron');
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width } = primaryDisplay.workAreaSize;
+      const targetX = width - 10;
+      const [, y] = this.sidebarWindow.getPosition();
+      this.sidebarWindow.setSize(10, this.sidebarWindow.getSize()[1]);
+      this.sidebarWindow.setPosition(targetX, y);
+    }
+  }
+
+  /**
    * 展开侧边栏
    */
   static expandSidebar() {
@@ -177,10 +203,23 @@ export class SidebarService {
       const { screen } = require('electron');
       const primaryDisplay = screen.getPrimaryDisplay();
       const { width } = primaryDisplay.workAreaSize;
-      const targetX = width - 20;
+      const targetX = width - 5;
       const [, y] = this.sidebarWindow.getPosition();
-      this.sidebarWindow.setSize(20, this.sidebarWindow.getSize()[1]);
+      this.sidebarWindow.setSize(5, 30);
       this.sidebarWindow.setPosition(targetX, y);
+    }
+  }
+
+  /**
+   * 设置侧边栏窗口的事件监听
+   */
+  static setupWindowEventListeners() {
+    if (this.sidebarWindow) {
+      // 使用 webContents 监听页面加载完成事件
+      this.sidebarWindow.webContents.on('did-finish-load', () => {
+        // 向渲染进程发送消息，通知侧边栏已准备好
+        this.sidebarWindow.webContents.send('sidebar-ready');
+      });
     }
   }
 }

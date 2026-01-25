@@ -1,5 +1,11 @@
 <template>
-  <div class="sidebar-container" :class="{ expanded: isExpanded }" ref="sidebarRef">
+  <div 
+    class="sidebar-container" 
+    :class="{ expanded: isExpanded }" 
+    ref="sidebarRef"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+  >
     <!-- 左侧控制条 -->
     <div class="sidebar-handle" @click="handleToggleExpand">
       <el-icon class="toggle-icon" :class="{ expanded: isExpanded }"><ArrowRight /></el-icon>
@@ -24,18 +30,6 @@
             <el-icon><Money /></el-icon>
             <span>信用卡提醒</span>
           </div>
-        </div>
-      </div>
-      
-      <!-- 系统信息 -->
-      <div class="system-section">
-        <div class="system-item">
-          <el-icon><Cpu /></el-icon>
-          <span>CPU: {{ systemInfo.cpu }}</span>
-        </div>
-        <div class="system-item">
-          <el-icon><Monitor /></el-icon>
-          <span>内存: {{ systemInfo.memory }}</span>
         </div>
       </div>
     </div>
@@ -82,6 +76,7 @@ const updateSystemInfo = async () => {
 const handleOpenCalendar = () => {
   try {
     openCalendarReminder()
+    handleToggleExpand()
   } catch (error) {
     console.error('Failed to open calendar:', error)
   }
@@ -90,8 +85,27 @@ const handleOpenCalendar = () => {
 const handleOpenCreditCard = () => {
   try {
     openCreditCardReminder()
+    handleToggleExpand()
   } catch (error) {
     console.error('Failed to open credit card reminder:', error)
+  }
+}
+
+const handleMouseEnter = () => {
+  isExpanded.value = true
+  try {
+    expandSidebar()
+  } catch (error) {
+    console.error('Failed to expand sidebar on mouse enter:', error)
+  }
+}
+
+const handleMouseLeave = () => {
+  isExpanded.value = false
+  try {
+    collapseSidebar()
+  } catch (error) {
+    console.error('Failed to collapse sidebar on mouse leave:', error)
   }
 }
 

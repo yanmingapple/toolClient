@@ -1,13 +1,15 @@
 <template>
   <div class="event-reminder">
-    <el-dialog
+    <el-drawer
       v-model="visible"
-      width="95vw"
+      direction="rtl"
+      size="100vw"
       :close-on-click-modal="false"
-      class="event-reminder-dialog"
+      class="event-reminder-drawer"
       :fullscreen="true"
+      :show-close="false"
     >
-      <template #title>
+      <template #header>
         <div class="dialog-title">
           <div class="title-wrapper">
             <el-icon class="title-icon"><Calendar /></el-icon>
@@ -37,6 +39,10 @@
             >
               <el-icon><Bell /></el-icon>
               <span class="unread-count" v-if="unreadReminders > 0">{{ unreadReminders }}</span>
+            </el-button>
+            <el-button type="danger" size="small" @click="visible = false" class="close-btn">
+              <el-icon><Close /></el-icon>
+              关闭
             </el-button>
           </div>
         </div>
@@ -143,154 +149,74 @@
       </div>
       
       <!-- 添加/编辑事件对话框 -->
-      <el-dialog
+      <el-drawer
         v-model="addEventVisible"
         :title="editingEvent ? '编辑事件' : '添加事件'"
-        width="600px"
-        class="event-dialog"
+        size="600px"
         :close-on-click-modal="false"
       >
-        <template #title>
-          <div class="dialog-header">
-            <div class="header-icon-wrapper" :class="formData.type || '其他'">
-              <el-icon class="header-icon"><Calendar /></el-icon>
-            </div>
-            <div class="header-title-wrapper">
-              <h3 class="header-title">{{ editingEvent ? '编辑事件' : '添加事件' }}</h3>
-              <p class="header-subtitle">{{ editingEvent ? '修改已有事件信息' : '创建新的日程安排' }}</p>
-            </div>
-          </div>
-        </template>
-        
         <el-form :model="formData" :rules="rules" ref="formRef" label-width="100px" class="event-form">
-          <div class="form-row">
-            <el-form-item label="事件标题" prop="title" class="form-item-full">
-              <el-input 
-                v-model="formData.title" 
-                placeholder="请输入事件标题（如：团队周会）" 
-                class="form-input-large"
-              >
-                <template #prefix>
-                  <el-icon><Edit /></el-icon>
-                </template>
-              </el-input>
-            </el-form-item>
-          </div>
-          
-          <div class="form-row">
-            <el-form-item label="事件类型" prop="type" class="form-item-half">
-              <el-select 
-                v-model="formData.type" 
-                placeholder="请选择事件类型" 
-                class="form-select"
-                @change="handleTypeChange"
-              >
-                <el-option label="工作" value="工作" />
-                <el-option label="会议" value="会议" />
-                <el-option label="生日" value="生日" />
-                <el-option label="纪念日" value="纪念日" />
-                <el-option label="其他" value="其他" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="提醒时间" prop="remindBefore" class="form-item-half">
-              <el-select 
-                v-model="formData.remindBefore" 
-                placeholder="选择提醒时间" 
-                class="form-select"
-              >
-                <el-option label="不提醒" :value="0" />
-                <el-option label="提前5分钟" :value="5" />
-                <el-option label="提前15分钟" :value="15" />
-                <el-option label="提前30分钟" :value="30" />
-                <el-option label="提前1小时" :value="60" />
-                <el-option label="提前1天" :value="1440" />
-              </el-select>
-            </el-form-item>
-          </div>
-          
-          <div class="form-row">
-            <el-form-item label="日期" prop="date" class="form-item-half">
-              <el-date-picker
-                v-model="formData.date"
-                type="date"
-                placeholder="选择日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                class="form-datepicker"
-              >
-                <template #prefix>
-                  <el-icon><Calendar /></el-icon>
-                </template>
-              </el-date-picker>
-            </el-form-item>
-            
-            <el-form-item label="时间" prop="time" class="form-item-half">
-              <el-time-picker
-                v-model="formData.time"
-                placeholder="选择时间"
-                format="HH:mm"
-                value-format="HH:mm"
-                class="form-timepicker"
-              >
-                <template #prefix>
-                  <el-icon><Clock /></el-icon>
-                </template>
-              </el-time-picker>
-            </el-form-item>
-          </div>
-          
-          <div class="form-row">
-            <el-form-item label="事件描述" prop="description" class="form-item-full">
-              <el-input
-                v-model="formData.description"
-                type="textarea"
-                :rows="4"
-                placeholder="请输入事件描述（可选，如：讨论Q3工作计划，准备PPT）"
-                class="form-textarea"
-              >
-                <template #prefix>
-                  <el-icon><Document /></el-icon>
-                </template>
-              </el-input>
-            </el-form-item>
-          </div>
-          
-          <!-- 快捷选择区域 -->
-          <div class="form-row">
-            <div class="quick-actions">
-              <span class="quick-label">快捷设置：</span>
-              <div class="quick-buttons">
-                <el-button type="info" size="small" @click="setMorningTime">上午</el-button>
-                <el-button type="info" size="small" @click="setAfternoonTime">下午</el-button>
-                <el-button type="info" size="small" @click="setEveningTime">晚上</el-button>
-                <el-button type="info" size="small" @click="setAllDay">全天</el-button>
-              </div>
-            </div>
-          </div>
+          <el-form-item label="事件标题" prop="title">
+            <el-input v-model="formData.title" placeholder="请输入事件标题" />
+          </el-form-item>
+          <el-form-item label="事件类型" prop="type">
+            <el-select v-model="formData.type" placeholder="请选择事件类型">
+              <el-option label="工作" value="工作" />
+              <el-option label="会议" value="会议" />
+              <el-option label="生日" value="生日" />
+              <el-option label="纪念日" value="纪念日" />
+              <el-option label="其他" value="其他" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="提醒时间" prop="remindBefore">
+            <el-select v-model="formData.remindBefore" placeholder="选择提醒时间">
+              <el-option label="不提醒" :value="0" />
+              <el-option label="提前5分钟" :value="5" />
+              <el-option label="提前15分钟" :value="15" />
+              <el-option label="提前30分钟" :value="30" />
+              <el-option label="提前1小时" :value="60" />
+              <el-option label="提前1天" :value="1440" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="日期" prop="date">
+            <el-date-picker
+              v-model="formData.date"
+              type="date"
+              placeholder="选择日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item label="时间" prop="time">
+            <el-time-picker
+              v-model="formData.time"
+              placeholder="选择时间"
+              format="HH:mm"
+              value-format="HH:mm"
+            />
+          </el-form-item>
+          <el-form-item label="事件描述" prop="description">
+            <el-input
+              v-model="formData.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入事件描述"
+            />
+          </el-form-item>
         </el-form>
-        
         <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="addEventVisible = false" class="footer-btn footer-btn-cancel">
-              <el-icon><CircleClose /></el-icon>
-              取消
-            </el-button>
-            <el-button type="primary" @click="submitEvent" class="footer-btn footer-btn-submit">
-              <el-icon><CircleCheck /></el-icon>
-              {{ editingEvent ? '保存修改' : '创建事件' }}
-            </el-button>
-          </div>
+          <el-button @click="addEventVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitEvent">保存</el-button>
         </template>
-      </el-dialog>
-    </el-dialog>
+      </el-drawer>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
-import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell, Document, CircleClose, CircleCheck } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell, Document, CircleClose, CircleCheck, Close } from '@element-plus/icons-vue'
 import { Solar } from 'lunar-javascript'
 
 interface Event {
@@ -1545,10 +1471,17 @@ defineExpose({
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+.form-section {
+  margin-bottom: 28px;
+  padding: 20px;
+  background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
 .form-row {
   display: flex;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 24px;
 }
 
 .form-item-full {
@@ -1557,6 +1490,11 @@ defineExpose({
 
 .form-item-half {
   flex: 1;
+}
+
+.quick-section {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #7dd3fc;
 }
 
 .form-input-large {
@@ -1702,6 +1640,23 @@ defineExpose({
   font-size: 12px;
   color: #ef4444;
 }
+
+/* 抽屉样式 */
+  .event-reminder-drawer {
+    .el-drawer__header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 16px 20px;
+      border-bottom: none;
+    }
+    
+    .close-btn {
+      margin-left: 10px;
+      
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+  }
 
 /* 响应式设计 */
 @media (max-width: 768px) {

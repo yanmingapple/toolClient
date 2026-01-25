@@ -87,9 +87,16 @@
 
   <!-- 日历提醒对话框 -->
   <EventReminder v-model="showEventReminder" />
-  
-  <!-- 信用卡提醒对话框 -->
-  <CreditCardReminder v-model="showCreditCardReminder" />
+   
+  <!-- 信用卡管理组件 -->
+  <template v-if="showCreditCardReminder">
+    <CreditCardReminder 
+      :model-value="showCreditCardReminder" 
+      @update:model-value="showCreditCardReminder = $event"
+      @close="handleCloseCreditCard"
+    />
+  </template>
+
 </template>
 
 <script setup lang="ts">
@@ -137,12 +144,22 @@ const isWorkspaceLoading = ref(false) // 工作区加载状态
 const connectionStore = useConnectionStore()
 const activeConnectionId = computed(() => connectionStore.activeConnectionId)
 
+const closeAllDialogs = () => {
+  connectionDialogVisible.value = false
+  commandResultVisible.value = false
+  showTerminalConsole.value = false
+  showEventReminder.value = false
+  showCreditCardReminder.value = false
+}
+
 const handleNewConnection = () => {
+  closeAllDialogs()
   editingConnection.value = null
   connectionDialogVisible.value = true
 }
 
 const handleEditConnection = (connection: TreeNode) => {
+  closeAllDialogs()
   editingConnection.value = connection??null;
   connectionDialogVisible.value = true
 }
@@ -156,7 +173,13 @@ const handleTerminalClose = () => {
   showTerminalConsole.value = false
 }
 
+const handleCloseCreditCard = () => {
+  currentPage.value = 'toolpanel'
+  showCreditCardReminder.value = false
+}
+
 const handleOpenTerminal = () => {
+  closeAllDialogs()
   showTerminalConsole.value = true
 }
 
@@ -290,19 +313,21 @@ onUnmounted(() => {
 ipcUtils({
   onOpenNewConnectionDialog: handleNewConnection,
   onOpenTerminalConsole: () => {
+    closeAllDialogs()
     showTerminalConsole.value = true
   },
   onTerminalResult: (data) => {
+    closeAllDialogs()
     commandResultTitle.value = data.title
     commandResult.value = data.result
     commandResultVisible.value = true
   },
   onSidebarOpenCalendar: () => {
-    debugger
+    closeAllDialogs()
     showEventReminder.value = true
   },
   onSidebarOpenCreditCard: () => {
-    debugger
+    closeAllDialogs()
     showCreditCardReminder.value = true
   }
 })
