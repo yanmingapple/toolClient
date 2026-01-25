@@ -59,6 +59,14 @@ function createWindow() {
     )
   }
 
+  // 主窗口关闭时隐藏而不是退出
+  mainWindow.on('close', (event) => {
+    if (mainWindow) {
+      event.preventDefault()
+      mainWindow.hide()
+    }
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -72,11 +80,26 @@ function createTray() {
   const icon = nativeImage.createEmpty()
   tray = new Tray(icon)
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Show App', click: () => mainWindow?.show() },
-    { label: 'Toggle Sidebar', click: () => toggleSidebar() },
-    { label: 'Quit', click: () => app.quit() },
+    { label: '显示应用', click: () => mainWindow?.show() },
+    { label: '切换侧边栏', click: () => toggleSidebar() },
+    {
+      label: '退出',
+      click: () => {
+        // 先关闭侧边栏窗口
+        if (sidebarWindow) {
+          sidebarWindow.close()
+        }
+        // 再关闭主窗口
+        if (mainWindow) {
+          mainWindow.removeAllListeners('close')
+          mainWindow.close()
+        }
+        // 最后退出应用
+        app.quit()
+      }
+    },
   ] as any[])
-  tray.setToolTip('DBManager Pro')
+  tray.setToolTip('数据库管理器')
   tray.setContextMenu(contextMenu)
   tray.on('click', () => mainWindow?.show())
 }

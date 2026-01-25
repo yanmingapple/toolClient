@@ -3,8 +3,6 @@
     class="sidebar-container" 
     :class="{ expanded: isExpanded }" 
     ref="sidebarRef"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
   >
     <!-- 左侧控制条 -->
     <div class="sidebar-handle" @click="handleToggleExpand">
@@ -47,6 +45,8 @@ const currentDate = ref('')
 const systemInfo = ref({ cpu: '0%', memory: '0%' })
 const isExpanded = ref(false)
 let timer: number | null = null
+let expandTimeout: number | null = null
+let collapseTimeout: number | null = null
 
 const updateTime = () => {
   const now = new Date()
@@ -92,6 +92,17 @@ const handleOpenCreditCard = () => {
 }
 
 const handleMouseEnter = () => {
+  // 清除可能存在的收起定时器
+  if (collapseTimeout) {
+    clearTimeout(collapseTimeout)
+    collapseTimeout = null
+  }
+  
+  // 如果已经展开，直接返回
+  if (isExpanded.value) {
+    return
+  }
+  
   isExpanded.value = true
   try {
     expandSidebar()
@@ -100,14 +111,6 @@ const handleMouseEnter = () => {
   }
 }
 
-const handleMouseLeave = () => {
-  isExpanded.value = false
-  try {
-    collapseSidebar()
-  } catch (error) {
-    console.error('Failed to collapse sidebar on mouse leave:', error)
-  }
-}
 
 const handleToggleExpand = () => {
   isExpanded.value = !isExpanded.value
@@ -134,6 +137,12 @@ onMounted(() => {
 onUnmounted(() => {
   if (timer) {
     clearInterval(timer)
+  }
+  if (expandTimeout) {
+    clearTimeout(expandTimeout)
+  }
+  if (collapseTimeout) {
+    clearTimeout(collapseTimeout)
   }
 })
 </script>
