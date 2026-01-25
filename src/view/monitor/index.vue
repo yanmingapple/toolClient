@@ -3,8 +3,9 @@
     <!-- 服务监控表格 -->
     <div class="service-monitoring">
       <div class="monitoring-table-container">
-        <TkTable :tableObj="tableObj">
-          <template #tblTopRight>
+        <div class="table-header">
+          <h3 class="table-title">服务列表</h3>
+          <div class="table-actions">
             <el-button size="small" @click="handleRefreshService">
               <el-icon><Refresh /></el-icon>
               刷新
@@ -13,40 +14,102 @@
               <el-icon><Plus /></el-icon>
               新增
             </el-button>
-          </template>
-          <template #name="{ row }">
-            <div class="service-name">
-              <el-icon class="service-icon"><Connection /></el-icon>
-              <span>{{ row.name }}</span>
+          </div>
+        </div>
+        <div class="service-list">
+          <div
+            v-for="service in services"
+            :key="service.id"
+            class="service-item"
+            :class="{ 'is-running': service.status === 'running' }"
+            @contextmenu.prevent="handleContextMenu($event, service)"
+          >
+            <div class="service-info">
+              <div class="service-icon-wrapper" :class="service.status">
+                <el-icon class="service-icon">
+                  <Connection />
+                </el-icon>
+              </div>
+              <div class="service-details">
+                <div class="service-name">{{ service.name }}</div>
+                <div class="service-port">端口: {{ service.port }}</div>
+              </div>
             </div>
-          </template>
-          <template #status="{ row }">
-            <el-tag 
-              :type="getStatusType(row.status)" 
-              size="small"
-            >
-              {{ row.status }}
-            </el-tag>
-          </template>
-          <template #port="{ row }">
-            <span class="port-number">{{ row.port }}</span>
-          </template>
-        </TkTable>
+            <div class="service-status">
+              <el-tag
+                :type="getStatusType(service.status)"
+                size="small"
+              >
+                {{ getStatusText(service.status) }}
+              </el-tag>
+            </div>
+            <div class="service-actions">
+              <el-button
+                v-if="service.status === 'stopped'"
+                type="success"
+                size="small"
+                @click.stop="handleServiceAction(service, 'toggle')"
+              >
+                <el-icon><VideoPlay /></el-icon>
+                启动
+              </el-button>
+              <el-button
+                v-else-if="service.status === 'running'"
+                type="warning"
+                size="small"
+                @click.stop="handleServiceAction(service, 'toggle')"
+              >
+                <el-icon><VideoPause /></el-icon>
+                停止
+              </el-button>
+              <el-button
+                v-if="service.status !== 'starting' && service.status !== 'stopping'"
+                type="primary"
+                size="small"
+                @click.stop="handleServiceAction(service, 'edit')"
+              >
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button
+                v-if="service.status !== 'starting' && service.status !== 'stopping'"
+                type="danger"
+                size="small"
+                @click.stop="handleServiceAction(service, 'delete')"
+              >
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
+          </div>
+        </div>
+        <div v-if="services.length === 0" class="empty-state">
+          <el-icon><InfoFilled /></el-icon>
+          <p>暂无服务数据</p>
+        </div>
       </div>
     </div>
+    
+    <!-- 右键菜单 -->
+    <TkContextMenu
+      v-model:visible="contextMenuVisible"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :menu-items="contextMenuItems"
+      @menu-item-click="handleContextMenuItemClick"
+    />
   </div>
   <!-- 新增服务对话框组件 -->
-<ServiceMonitorDlg
-  v-model:dialog-visible="dialogVisible"
-  :editing-service="editingService"
-  @save-success="handleRefreshService"
-/>
-
+  <ServiceMonitorDlg
+    v-model:dialog-visible="dialogVisible"
+    :editing-service="editingService"
+    @save-success="handleRefreshService"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Refresh, Connection, Plus } from '@element-plus/icons-vue'
+import { ref, onMounted, computed } from 'vue'
+import { Refresh, Connection, Plus, Edit, Delete, VideoPlay, VideoPause, InfoFilled } from '@element-plus/icons-vue'
 import type { ServiceMonitor } from '../../../electron/model/database/ServiceMonitor'
 
 import { getAllServiceMonitors, controlService, performServiceHealthCheck } from '@/utils/electronUtils'
@@ -99,17 +162,24 @@ const dialogVisible = ref(false)
 // 当前编辑的服务
 const editingService = ref<ServiceMonitor | null>(null)
 
+// 右键菜单状态
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+const contextMenuData = ref<ServiceMonitor | null>(null)
+
 // 右键菜单项配置
-const getContextMenuItems = (service: ServiceMonitor | null) => {
-  if (!service) return []
+const contextMenuItems = computed(() => {
+  if (!contextMenuData.value) return []
   
   const items: any[] = []
+  const service = contextMenuData.value
   
   // 启动按钮
   if (service.status === ServiceMonitorStatus.STOPPED) {
     items.push({
       label: '启动',
-      icon: 'Switch',
+      icon: 'ic_play',
       handler: () => handleServiceAction(service, 'toggle')
     })
   }
@@ -118,7 +188,7 @@ const getContextMenuItems = (service: ServiceMonitor | null) => {
   if (service.status === ServiceMonitorStatus.RUNNING) {
     items.push({
       label: '停止',
-      icon: 'Switch',
+      icon: 'ic_pause',
       handler: () => handleServiceAction(service, 'toggle')
     })
   }
@@ -128,7 +198,7 @@ const getContextMenuItems = (service: ServiceMonitor | null) => {
       service.status !== ServiceMonitorStatus.STOPPING) {
     items.push({
       label: '编辑',
-      icon: 'Edit',
+      icon: 'ic_edit',
       handler: () => handleServiceAction(service, 'edit')
     })
   }
@@ -143,7 +213,7 @@ const getContextMenuItems = (service: ServiceMonitor | null) => {
       service.status !== ServiceMonitorStatus.STOPPING) {
     items.push({
       label: '删除',
-      icon: 'Delete',
+      icon: 'ic_delete',
       type: 'danger',
       handler: () => handleServiceAction(service, 'delete')
     })
@@ -152,72 +222,25 @@ const getContextMenuItems = (service: ServiceMonitor | null) => {
   // 刷新按钮
   items.push({
     label: '刷新',
-    icon: 'Refresh',
+    icon: 'ic_refresh',
     handler: () => handleRefreshService()
   })
   
   return items
-}
-
-// 表格配置对象
-const tableObj = ref({
-  type: 'table',
-  get tableData() {
-    return services.value
-  },
-  tableLoading: false,
-  border: true,
-  showHeader: true,
-  rowKey: 'id',
-  // 显示表格顶部区域和插槽
-  isShowTblTopCon: true,
-  isShowTblSlotTopCon: true,
-  column: [
-    {
-      label: '服务名称',
-      prop: 'name',
-      minWidth: 150,
-      slot: 'name'
-    },
-    {
-      label: '状态',
-      prop: 'status',
-      width: 150,
-      slot: 'status'
-    },
-    {
-      label: '端口号',
-      prop: 'port',
-      width: 150,
-      slot: 'port'
-    }
-  ],
-  // 右键菜单配置
-  contextMenuVisible: false,
-  contextMenuX: 0,
-  contextMenuY: 0,
-  contextMenuData: null as ServiceMonitor | null,
-  contextMenuItems: (data: ServiceMonitor | null) => getContextMenuItems(data),
-  // 表格引用
-  tableRef: null as any,
-  setTableRef: (ref: any) => {
-    tableObj.value.tableRef = ref
-  },
-  // 空方法（TkTable 需要）
-  search: () => {},
-  reset: () => {},
-  pagination: () => {},
-  pageObj: {
-    currentPage: 1,
-    pageSize: 10,
-    total: 0
-  },
-  isPagination: false,
-  autoHeight: () => {},
-  // 获取选中行（用于分页显示）
-  getSelectedRow: () => []
 })
 
+// 处理右键菜单
+const handleContextMenu = (event: MouseEvent, service: ServiceMonitor) => {
+  contextMenuX.value = event.clientX
+  contextMenuY.value = event.clientY
+  contextMenuData.value = service
+  contextMenuVisible.value = true
+}
+
+// 处理右键菜单项点击
+const handleContextMenuItemClick = (item: any) => {
+  contextMenuVisible.value = false
+}
 
 // 获取状态对应的标签类型
 const getStatusType = (status: string) => {
@@ -232,6 +255,22 @@ const getStatusType = (status: string) => {
       return 'danger'
     default:
       return 'info'
+  }
+}
+
+// 获取状态文本
+const getStatusText = (status: string) => {
+  switch (status) {
+    case ServiceMonitorStatus.RUNNING:
+      return '运行中'
+    case ServiceMonitorStatus.STARTING:
+      return '启动中'
+    case ServiceMonitorStatus.STOPPED:
+      return '已停止'
+    case ServiceMonitorStatus.STOPPING:
+      return '停止中'
+    default:
+      return status
   }
 }
 
@@ -305,47 +344,206 @@ const handleServiceAction = async (service: ServiceMonitor, action: string) => {
       dialogVisible.value = true
       break
     case 'delete':
-      CTMessage.info(`删除服务: ${service.name}`)
+      handleDeleteService(service)
       break
   }
+  // 关闭右键菜单
+  contextMenuVisible.value = false
 }
 
-// 服务监控相关处理函数
+// 刷新服务列表
 const handleRefreshService = async () => {
   try {
-   
-    
-    // 从数据库获取服务监控列表
-    const result = await getAllServiceMonitors()
-    if (result.success) {
-      services.value = result.data || []
-      CTMessage.success('服务列表已刷新')
-
-       // 执行健康检查
-      const healthCheckResult = await performServiceHealthCheck()
-      if (healthCheckResult.success) {
-        // 健康检查完成后，等待一段时间让健康检查结果通过 IPC 事件更新到前端
-        // 然后从数据库获取服务监控列表以刷新状态
-        await new Promise(resolve => setTimeout(resolve, 500))
-      }
-
-    } else {
-      CTMessage.error(`刷新失败: ${result.message}`)
-    }
+    const serviceMonitors = await getAllServiceMonitors()
+    services.value = serviceMonitors?.data??[]
+    CTMessage.success('服务列表已刷新')
   } catch (error) {
-    console.error('刷新服务列表失败:', error)
-    CTMessage.error('刷新服务列表失败')
+    CTMessage.error('刷新服务列表失败: ' + (error instanceof Error ? error.message : '未知错误'))
   }
 }
 
+// 新增服务
 const handleAddService = () => {
-  // 清空编辑服务数据，确保是新增模式
   editingService.value = null
-  // 打开新增服务对话框
   dialogVisible.value = true
+}
+
+// 删除服务
+const handleDeleteService = async (service: ServiceMonitor) => {
+  try {
+    await CTMessageBox.confirm(
+      `确定要删除服务 "${service.name}" 吗？此操作不可恢复。`,
+      '删除服务',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // 这里添加删除服务的逻辑
+    // await deleteService(service.id)
+    
+    // 从列表中移除
+    const index = services.value.findIndex(s => s.id === service.id)
+    if (index !== -1) {
+      services.value.splice(index, 1)
+    }
+    
+    CTMessage.success(`服务 "${service.name}" 已删除`)
+  } catch (error) {
+    if (error !== 'cancel') {
+      CTMessage.error('删除服务失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    }
+  }
 }
 </script>
 
 <style scoped>
+.service-monitor {
+  padding: 20px;
+}
 
+.service-monitoring {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.table-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.service-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+  }
+
+  &.is-running {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: #10b981;
+  }
+}
+
+.service-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.service-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+
+  &.running {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  &.starting {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+  }
+
+  &.stopped {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  &.stopping {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+  }
+}
+
+.service-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.service-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.service-port {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.service-status {
+  display: flex;
+  align-items: center;
+  min-width: 100px;
+}
+
+.service-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+
+  .el-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 16px;
+    margin: 0;
+  }
+}
 </style>

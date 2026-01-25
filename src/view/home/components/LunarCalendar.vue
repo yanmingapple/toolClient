@@ -1,28 +1,37 @@
 <template>
   <el-dialog 
     v-model="dialogVisible" 
-    title="农历日历"
-    width="800px"
+    title=""
+    width="900px"
+    height="750px"
     :close-on-click-modal="false"
     append-to-body
+    class="lunar-calendar-dialog"
   >
     <div class="calendar-container">
       <!-- 顶部控制栏 -->
       <div class="calendar-header">
-        <el-select v-model="currentYear" size="small" :style="{ width: '100px' }" @change="onYearChange">
-          <el-option v-for="year in yearRange" :key="year" :label="year + '年'" :value="year" />
-        </el-select>
-        <el-select v-model="currentMonth" size="small" :style="{ width: '80px', marginLeft: '8px' }" @change="onMonthChange">
-          <el-option v-for="month in 12" :key="month" :label="month + '月'" :value="month - 1" />
-        </el-select>
-
-        <div style="margin-left: 28px">
-          <el-button size="small"  @click="goToToday">
+        <div class="header-controls">
+          <div class="date-selector">
+            <el-select v-model="currentYear" size="default" @change="onYearChange">
+              <el-option v-for="year in yearRange" :key="year" :label="year + '年'" :value="year" />
+            </el-select>
+            <span class="separator">年</span>
+            <el-select v-model="currentMonth" size="default" @change="onMonthChange">
+              <el-option v-for="month in 12" :key="month" :label="month + '月'" :value="month - 1" />
+            </el-select>
+            <span class="separator">月</span>
+          </div>
+          
+          <el-button type="primary" size="default" @click="goToToday" class="today-btn">
+            <el-icon><Calendar /></el-icon>
             返回今天
           </el-button>
         </div>
-        <div class="clock" style="margin-left: auto">
-          北京时间：{{ currentTime }}
+        
+        <div class="clock-display">
+          <div class="clock-label">北京时间</div>
+          <div class="clock-time">{{ currentTime }}</div>
         </div>
       </div>
 
@@ -52,7 +61,7 @@
                 'other-month': day.isOtherMonth,
                 'today': day.isToday,
                 'selected': day.dateString === selectedDateString,
-                'weekend': day.weekday === 0 || day.weekday === 6,
+                'weekend': day.weekday === 5 || day.weekday === 6,
                 'has-festival': day.festival,
                 'has-lunar-festival': day.lunarFestival,
                 'rest-day': day.isRestDay,
@@ -63,13 +72,13 @@
               <div class="solar-day">{{ day.day }}</div>
               <div class="lunar-day">
                 <template v-if="day.festival">
-                  {{ truncateText(day.festival, 4) }}
+                  <span class="festival-text">{{ truncateText(day.festival, 4) }}</span>
                 </template>
                 <template v-else-if="day.lunarFestival">
-                  {{ truncateText(day.lunarFestival, 4) }}
+                  <span class="lunar-festival-text">{{ truncateText(day.lunarFestival, 4) }}</span>
                 </template>
                 <template v-else-if="day.solarTerm">
-                  {{ truncateText(day.solarTerm, 4) }}
+                  <span class="solar-term-text">{{ truncateText(day.solarTerm, 4) }}</span>
                 </template>
                 <template v-else>
                   {{ day.dayText }}
@@ -83,15 +92,51 @@
 
         <!-- 右侧：侧边栏（日期详情面板） -->
         <div class="sidebar" v-if="selectedDay">
-          <div class="sidebar-full-date">{{ selectedDay.fullDate }} 星期{{ selectedDay.weekdayText }}</div>
-          <div class="sidebar-date">{{ selectedDay.day }}</div>
-          <div class="sidebar-lunar">{{ selectedDay.lunarDate }}</div>
-          <div class="sidebar-gangzhi">{{ selectedDay.ganZhi }}</div>
-          <div class="sidebar-zodiac">{{ selectedDay.zodiac }}年 {{ selectedDay.constellation }}</div>
+          <div class="sidebar-header">
+            <div class="sidebar-full-date">{{ selectedDay.fullDate }}</div>
+            <div class="sidebar-weekday">星期{{ selectedDay.weekdayText }}</div>
+          </div>
+          
+          <div class="sidebar-date-large">{{ selectedDay.day }}</div>
+          
+          <div class="lunar-info">
+            <div class="lunar-date">{{ selectedDay.lunarDate }}</div>
+            <div class="gan-zhi">{{ selectedDay.ganZhi }}</div>
+          </div>
+          
+          <div class="zodiac-info">
+            <div class="zodiac-item">
+              <span class="zodiac-label">生肖</span>
+              <span class="zodiac-value">{{ selectedDay.zodiac }}年</span>
+            </div>
+            <div class="zodiac-item">
+              <span class="zodiac-label">星座</span>
+              <span class="zodiac-value">{{ selectedDay.constellation }}</span>
+            </div>
+          </div>
+          
+          <div v-if="selectedDay.festival || selectedDay.lunarFestival || selectedDay.solarTerm" class="festival-highlight">
+            <template v-if="selectedDay.festival">
+              <div class="highlight-item festival">
+                <el-icon><Star /></el-icon>
+                <span>{{ selectedDay.festival }}</span>
+              </div>
+            </template>
+            <template v-if="selectedDay.lunarFestival">
+              <div class="highlight-item lunar-festival">
+                <el-icon><Moon /></el-icon>
+                <span>{{ selectedDay.lunarFestival }}</span>
+              </div>
+            </template>
+            <template v-if="selectedDay.solarTerm">
+              <div class="highlight-item solar-term">
+                <el-icon><Sunny /></el-icon>
+                <span>{{ selectedDay.solarTerm }}</span>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-
-
     </div>
   </el-dialog>
 </template>
@@ -99,6 +144,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { Solar } from 'lunar-javascript'
+import { Calendar, Star, Moon, Sunny } from '@element-plus/icons-vue'
 
 // Props
 const props = defineProps<{
@@ -279,7 +325,6 @@ initSelectedDay()
 
 // 获取农历日历天数
 const calendarDays = computed(() => {
-  debugger
   const days: any[] = []
   const firstDay = new Date(currentYear.value, currentMonth.value, 1)
   const lastDay = new Date(currentYear.value, currentMonth.value + 1, 0)
@@ -445,34 +490,98 @@ watch(() => dialogVisible.value, (visible) => {
 </script>
 
 <style scoped>
+.lunar-calendar-dialog :deep(.el-dialog__header) {
+  display: none;
+}
+
+.lunar-calendar-dialog :deep(.el-dialog .el-dialog__body) {
+  padding: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
 .calendar-container {
-  padding: 8px;
+  padding: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 650px;
+  max-height: 700px;
 }
 
 .calendar-header {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid #e8e8e8;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.clock {
-  font-size: 14px;
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.date-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-selector .separator {
+  font-size: 16px;
   color: #606266;
+  font-weight: 500;
+}
+
+.today-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  padding: 8px 20px;
+  font-weight: 600;
+}
+
+.today-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.clock-display {
+  text-align: right;
+}
+
+.clock-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.clock-time {
+  font-size: 24px;
+  font-weight: 700;
+  color: #667eea;
   font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
 }
 
 .weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px 8px 0 0;
+  padding: 12px 0;
 }
 
 .weekday {
   text-align: center;
-  font-weight: 600;
-  color: #606266;
+  font-weight: 700;
+  color: #303133;
   padding: 8px 4px;
   font-size: 14px;
 }
@@ -483,19 +592,23 @@ watch(() => dialogVisible.value, (visible) => {
 
 .main-content {
   display: flex;
-  gap: 16px;
+  gap: 20px;
 }
 
 .calendar-section {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 6px;
   flex: 1;
 }
 
@@ -506,70 +619,112 @@ watch(() => dialogVisible.value, (visible) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
   position: relative;
-  padding: 4px;
-  transition: all 0.2s;
-  min-height: 60px;
+  padding: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 72px;
+  background: #f8f9fa;
 }
 
 .day-cell:hover {
-  background: #f0f9ff !important;
-  z-index: 1;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+}
+
+.day-cell.today:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+  color: white;
+}
+
+.day-cell.selected:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white;
+}
+
+.day-cell.selected.weekend:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white;
 }
 
 .day-cell.other-month {
   opacity: 0.3;
+  background: #f0f0f0;
 }
 
 .day-cell.today {
-  background: #ecf5ff;
-  border: 2px solid #409eff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #667eea;
 }
 
 .day-cell.selected {
-  background: #409eff;
+  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
   color: white;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
 }
 
 .day-cell.weekend {
-  color: #f56c6c;
+  background: #fef0f0;
 }
 
 .day-cell.selected.weekend {
-  color: #ffe0e0;
+  background: linear-gradient(135deg, #f56c6c 0%, #ff7875 100%);
 }
 
 .day-cell.rest-day .solar-day {
   color: #f56c6c;
+  font-weight: 700;
 }
 
 .day-cell.work-day .solar-day {
   color: #e6a23c;
+  font-weight: 700;
 }
 
 .solar-day {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.3;
+  margin-bottom: 2px;
 }
 
 .lunar-day {
-  font-size: 10px;
-  opacity: 0.7;
-  line-height: 1;
+  font-size: 11px;
+  opacity: 0.8;
+  line-height: 1.2;
+}
+
+.festival-text {
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.lunar-festival-text {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.solar-term-text {
+  color: #67c23a;
+  font-weight: 600;
 }
 
 .status-badge {
   position: absolute;
-  bottom: 2px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 8px;
-  padding: 1px 4px;
-  border-radius: 2px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 700;
+  min-width: 20px;
 }
 
 .rest-badge {
@@ -584,93 +739,128 @@ watch(() => dialogVisible.value, (visible) => {
   border: 1px solid #f3d19e;
 }
 
-.festival-badge {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  right: 2px;
-  font-size: 8px;
-  color: #e6a23c;
-  background: rgba(230, 162, 60, 0.1);
-  padding: 1px 2px;
-  border-radius: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lunar-festival-badge {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  right: 2px;
-  font-size: 8px;
-  color: #f56c6c;
-  background: rgba(245, 108, 108, 0.1);
-  padding: 1px 2px;
-  border-radius: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.solar-term-badge {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  right: 2px;
-  font-size: 8px;
-  color: #67c23a;
-  background: rgba(103, 194, 58, 0.1);
-  padding: 1px 2px;
-  border-radius: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.day-cell.has-festival .solar-day {
-  color: #e6a23c;
-}
-
-.day-cell.has-lunar-festival .solar-day {
-  color: #f56c6c;
-}
-
 .sidebar {
-  width: 180px;
-  background: #f5f7fa;
+  width: 220px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #667eea;
+}
+
+.sidebar-full-date {
+  font-size: 18px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.sidebar-weekday {
+  font-size: 14px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.sidebar-date-large {
+  font-size: 80px;
+  font-weight: 800;
+  color: #667eea;
+  text-align: center;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  margin: 12px 0;
+}
+
+.lunar-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border-radius: 8px;
   padding: 16px;
+  text-align: center;
+}
+
+.lunar-date {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.gan-zhi {
+  font-size: 12px;
+  color: #606266;
+  font-family: 'KaiTi', 'STKaiti', serif;
+}
+
+.zodiac-info {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.sidebar-date {
-  font-size: 64px;
-  font-weight: bold;
-  color: #409eff;
-  text-align: center;
-  line-height: 1;
+.zodiac-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
-.sidebar-lunar {
+.zodiac-item:hover {
+  background: #e9ecef;
+  transform: translateX(4px);
+}
+
+.zodiac-label {
   font-size: 14px;
   color: #606266;
-  text-align: center;
+  font-weight: 600;
 }
 
-.sidebar-gangzhi {
-  font-size: 12px;
-  color: #909399;
-  text-align: center;
-}
-
-.sidebar-zodiac {
+.zodiac-value {
   font-size: 14px;
   color: #303133;
-  text-align: center;
+  font-weight: 700;
+}
+
+.festival-highlight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
   font-weight: 600;
+  font-size: 14px;
+}
+
+.highlight-item.festival {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #d97706;
+}
+
+.highlight-item.lunar-festival {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  color: #be185d;
+}
+
+.highlight-item.solar-term {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
 }
 </style>

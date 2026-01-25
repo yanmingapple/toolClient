@@ -41,8 +41,14 @@ export class TesseractEngine implements IOCREngine {
     }
 
     // 使用本地 worker 和 core 文件
+    // <el-option label="自动检测" value="auto" />
+    //         <el-option label="中文" value="chi_sim" />
+    //         <el-option label="英文" value="eng" />
+    //         <el-option label="日文" value="jpn" />
+    //         <el-option label="韩文" value="kor" />
+    //         <el-option label="中英混合" value="chi_sim+eng" />
     this.worker = await Tesseract.createWorker(
-      'eng',
+      'auto+chi_sim+eng+jpn+kor',
       1,
       {
         logger: () => { },

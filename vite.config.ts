@@ -18,7 +18,7 @@ export default defineConfig({
     Components({
       resolvers: [ElementPlusResolver()],
       dts: 'src/components.d.ts'
-    })
+    }),
   ],
   base: './',  // 使用相对路径，这样资源文件会相对于 HTML 文件位置
   build: {

@@ -1,8 +1,11 @@
 <template>
   <div class="database-connections">
-    <div class="section-header">
-      <h2 class="section-title">数据库连接</h2>
-      <div class="section-actions">
+    <div class="panel-header">
+      <div class="panel-icon">
+        <el-icon><Connection /></el-icon>
+      </div>
+      <h2 class="panel-title">数据库连接</h2>
+      <div class="panel-actions">
         <el-button size="small" @click="handleRefreshConnections">
           <el-icon><Refresh /></el-icon>
           刷新
@@ -15,24 +18,27 @@
     </div>
     <div class="connection-list-container">
       <div class="connection-list">
-        <div 
-          v-for="connection in connectionStore.connections" 
-          :key="connection.id" 
+        <div
+          v-for="connection in connectionStore.connections"
+          :key="connection.id"
           class="connection-item"
+          :class="{ 'is-connected': connection.status === 'connected' }"
           @click="handleConnectToDatabase(connection)"
         >
           <div class="connection-info">
-            <el-icon class="connection-icon" :class="connection.status">
-              <Connection v-if="connection.status === 'connected'"/>
-              <CircleClose v-else />
-            </el-icon>
+            <div class="connection-icon-wrapper" :class="connection.status">
+              <el-icon class="connection-icon">
+                <Connection v-if="connection.status === 'connected'" />
+                <CircleClose v-else />
+              </el-icon>
+            </div>
             <div class="connection-details">
               <div class="connection-name">{{ connection.name }}</div>
               <div class="connection-type">{{ connection.type }} - {{ connection.host }}</div>
             </div>
           </div>
           <div class="connection-status">
-            <el-tag 
+            <el-tag
               :type="connection.status === 'connected' ? 'success' : 'info'"
               size="small"
             >
@@ -84,19 +90,127 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.database-connections { margin-bottom: 32px; }
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.section-title { font-size: 18px; font-weight: 600; color: #303133; margin: 0; padding-bottom: 8px; border-bottom: 2px solid #409eff; }
-.connection-list-container { background: white; border: 1px solid #e8e8e8; border-radius: 8px; padding: 20px; }
-.connection-list { display: flex; flex-direction: column; gap: 12px; }
-.connection-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; cursor: pointer; transition: all 0.3s ease; }
-.connection-item:hover { background: #f0f9ff; border-color: #91d5ff; }
-.connection-info { display: flex; align-items: center; gap: 12px; }
-.connection-icon { font-size: 20px; }
-.connection-icon.connected { color: #67c23a; }
-.connection-icon.disconnected { color: #f56c6c; }
-.connection-details { display: flex; flex-direction: column; gap: 2px; }
-.connection-name { font-size: 14px; font-weight: 500; color: #303133; }
-.connection-type { font-size: 12px; color: #909399; }
-.connection-status { display: flex; align-items: center; }
+.database-connections {
+  margin-bottom: 32px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.panel-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+}
+
+.panel-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+  flex: 1;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.connection-list-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.connection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connection-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #667eea;
+  }
+
+  &.is-connected {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    border-color: #10b981;
+  }
+}
+
+.connection-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.connection-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+
+  &.connected {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  &.disconnected {
+    background: linear-gradient(135deg, #f56c6c 0%, #e64980 100%);
+    color: white;
+  }
+}
+
+.connection-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.connection-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.connection-type {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+}
 </style>

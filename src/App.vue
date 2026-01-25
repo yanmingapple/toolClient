@@ -19,14 +19,14 @@
             <el-icon><ArrowLeft /></el-icon>
             <span>返回</span>
           </div>
-          <h1 class="header-title">智能文字识别</h1>
+          <h1 class="header-title">{{ ocrPageTitle }}</h1>
           <div class="header-spacer"></div>
         </div>
       </header>
       
       <!-- OCR内容区域 -->
       <div class="ocr-content">
-        <OCRPage />
+        <component :is="ocrPageComponent" />
       </div>
     </div>
     
@@ -94,10 +94,18 @@ import { switchMenuType } from './utils/electronUtils'
 const AppLayout = defineAsyncComponent(() => import('./view/database/index.vue'))
 const QueryEditor = defineAsyncComponent(() => import('./clientComponents/QueryEditor/index.vue'))
 const OCRPage = defineAsyncComponent(() => import('./view/orc/index.vue'))
+const TesseractPage = defineAsyncComponent(() => import('./view/orc/tesseract.vue'))
+const PaddleOCRPage = defineAsyncComponent(() => import('./view/orc/paddleocr.vue'))
+const DeepSeekPage = defineAsyncComponent(() => import('./view/orc/deepseek.vue'))
+const Qwen3VLPage = defineAsyncComponent(() => import('./view/orc/qwen3vl.vue'))
 
 const connectionDialogVisible = ref(false)
 const editingConnection = ref<TreeNode | null>(null)
 const showTerminalConsole = ref(false)
+
+// OCR页面状态
+const ocrPageComponent = ref<any>(OCRPage)
+const ocrPageTitle = ref('智能文字识别')
 const commandResultVisible = ref(false)
 const commandResultTitle = ref('')
 const commandResult = ref(null)
@@ -164,6 +172,33 @@ const handleCreatePanel = (type: any, title: string, content: any) => {
     return
   }
   
+  if (type === 'ocr') {
+    // OCR页面 - 切换到OCR模式
+    switchToOCR()
+    return
+  }
+  
+  // 特定OCR引擎页面
+  if (type === 'ocr-tesseract') {
+    switchToOCRWithEngine('tesseract', title)
+    return
+  }
+  
+  if (type === 'ocr-paddleocr') {
+    switchToOCRWithEngine('paddleocr', title)
+    return
+  }
+  
+  if (type === 'ocr-deepseek') {
+    switchToOCRWithEngine('deepseek', title)
+    return
+  }
+  
+  if (type === 'ocr-qwen3vl') {
+    switchToOCRWithEngine('qwen3vl', title)
+    return
+  }
+  
   if (appLayoutRef.value && appLayoutRef.value.createPanel) {
     appLayoutRef.value.createPanel(type, title, content)
     switchToWorkspace()
@@ -173,6 +208,31 @@ const handleCreatePanel = (type: any, title: string, content: any) => {
 // 切换到OCR页面
 const switchToOCR = async () => {
   currentPage.value = 'ocr'
+  ocrPageComponent.value = OCRPage
+  ocrPageTitle.value = '智能文字识别'
+}
+
+// 切换到特定OCR引擎页面
+const switchToOCRWithEngine = async (engine: string, title: string) => {
+  currentPage.value = 'ocr'
+  ocrPageTitle.value = title
+  
+  switch (engine) {
+    case 'tesseract':
+      ocrPageComponent.value = TesseractPage
+      break
+    case 'paddleocr':
+      ocrPageComponent.value = PaddleOCRPage
+      break
+    case 'deepseek':
+      ocrPageComponent.value = DeepSeekPage
+      break
+    case 'qwen3vl':
+      ocrPageComponent.value = Qwen3VLPage
+      break
+    default:
+      ocrPageComponent.value = OCRPage
+  }
 }
 
 // 监听打开OCR页面的事件
@@ -245,7 +305,6 @@ ipcUtils({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 1600px;
   margin: 0 auto;
 }
 

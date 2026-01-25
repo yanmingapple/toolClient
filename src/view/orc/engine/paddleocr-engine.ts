@@ -36,7 +36,7 @@ export class PaddleOCREngine implements IOCREngine {
       name: 'PaddleOCR',
       description: '百度飞桨 OCR，高精度产业级模型，支持80+语言',
       available: true,
-      supportedLanguages: ['auto', 'chi_sim', 'eng', 'jpn', 'kor', 'enm', 'latin', 'arabic', 'cyrillic', 'devanagari'],
+      supportedLanguages: [],
       requiresNetwork: false,
       modelSize: 10,
       avgSpeed: 1500,
@@ -85,8 +85,8 @@ export class PaddleOCREngine implements IOCREngine {
       // 支持离线模式：如果本地模型存在则使用本地模型
       const initOptions = this.buildInitOptions()
       console.log('初始化选项:', initOptions)
-      // await ocr.init()
-      await ocr.init("/paddleocr/ch_PP-OCRv3_det_infer", "/paddleocr/ch_PP-OCRv3_rec_infer")
+      await ocr.init()
+      // await ocr.init("/paddleocr/ch_PP-OCRv3_det_infer", "/paddleocr/ch_PP-OCRv3_rec_infer")
       // await ocr.init("https://paddlejs.bj.bcebos.com/models/ocr_v2_det_new/model.json", "https://paddlejs.bj.bcebos.com/models/ocr_v2_rec_320/model.json")
       this.initialized = true
       console.log('🎉 PaddleOCR 引擎初始化成功')

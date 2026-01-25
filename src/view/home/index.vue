@@ -1,40 +1,107 @@
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container" ref="mainPanelRef">
     <!-- 顶部标题栏 -->
     <header class="dashboard-header">
       <div class="header-content">
-        <h1 class="dashboard-title">数据库管理中心</h1>
-        <div class="header-actions">
+        <div class="header-left">
+          <div class="logo-section">
+            <div class="logo-icon">
+              <el-icon><Grid /></el-icon>
+            </div>
+            <h1 class="dashboard-title">工具集</h1>
+          </div>
+          <div class="header-events" @click="handleOpenEventReminder">
+            <div class="events-icon">
+              <el-icon><Bell /></el-icon>
+            </div>
+            <div class="events-info">
+              <div class="events-label">最近事件</div>
+              <div class="events-count" :class="{ 'has-events': upcomingEvents.length > 0 }">{{ upcomingEvents.length }}</div>
+            </div>
+            <div class="events-arrow">
+              <el-icon><ArrowRight /></el-icon>
+            </div>
+          </div>
+        </div>
+        <div class="header-right">
           <DigitalClock />
         </div>
       </div>
     </header>
+    
+    <!-- 事件提醒组件 -->
+    <EventReminder v-model="showEventReminder" />
 
     <!-- 主内容区 -->
     <main class="dashboard-main">
       <!-- 顶部快速操作和AI工具 -->
       <div class="top-section">
         <!-- 主要工具面板 -->
-        <section class="main-tools-panel">
+        <section class="panel main-tools-panel">
           <div class="panel-header">
+            <div class="panel-icon">
+              <el-icon><Tools /></el-icon>
+            </div>
             <h2 class="panel-title">工具集合</h2>
           </div>
-          <QuickActions />
+          <QuickActions @create-panel="handleCreatePanel" @open-terminal="handleOpenTerminal" />
         </section>
 
         <!-- AI识别工具面板 -->
-        <section class="ai-tools-panel">
+        <section class="panel ai-tools-panel">
           <div class="panel-header">
+            <div class="panel-icon">
+              <el-icon><MagicStick /></el-icon>
+            </div>
             <h2 class="panel-title">AI工具</h2>
           </div>
           <div class="ai-tool-items">
-            <div class="ai-tool-item" @click="handleOpenOCR">
-              <div class="ai-tool-icon">
+            <div class="ai-tool-item" @click="handleOpenOCR('tesseract')">
+              <div class="ai-tool-icon tesseract">
                 <el-icon><MagicStick /></el-icon>
               </div>
               <div class="ai-tool-info">
-                <div class="ai-tool-title">文字识别</div>
-                <div class="ai-tool-desc">从图片中提取文字</div>
+                <div class="ai-tool-title">Tesseract</div>
+                <div class="ai-tool-desc">经典开源OCR引擎</div>
+              </div>
+              <div class="ai-tool-arrow">
+                <el-icon><ArrowRight /></el-icon>
+              </div>
+            </div>
+            <div class="ai-tool-item" @click="handleOpenOCR('paddleocr')">
+              <div class="ai-tool-icon paddleocr">
+                <el-icon><Document /></el-icon>
+              </div>
+              <div class="ai-tool-info">
+                <div class="ai-tool-title">PaddleOCR</div>
+                <div class="ai-tool-desc">轻量级中文识别</div>
+              </div>
+              <div class="ai-tool-arrow">
+                <el-icon><ArrowRight /></el-icon>
+              </div>
+            </div>
+            <div class="ai-tool-item" @click="handleOpenOCR('deepseek')">
+              <div class="ai-tool-icon deepseek">
+                <el-icon><ChatDotRound /></el-icon>
+              </div>
+              <div class="ai-tool-info">
+                <div class="ai-tool-title">DeepSeek</div>
+                <div class="ai-tool-desc">多模态AI识别</div>
+              </div>
+              <div class="ai-tool-arrow">
+                <el-icon><ArrowRight /></el-icon>
+              </div>
+            </div>
+            <div class="ai-tool-item" @click="handleOpenOCR('qwen3vl')">
+              <div class="ai-tool-icon qwen3vl">
+                <el-icon><Picture /></el-icon>
+              </div>
+              <div class="ai-tool-info">
+                <div class="ai-tool-title">Qwen3-VL</div>
+                <div class="ai-tool-desc">视觉语言模型</div>
+              </div>
+              <div class="ai-tool-arrow">
+                <el-icon><ArrowRight /></el-icon>
               </div>
             </div>
           </div>
@@ -42,27 +109,47 @@
       </div>
 
       <!-- 服务监控面板 -->
-      <section class="monitor-panel">
+      <section class="panel monitor-panel">
         <div class="panel-header">
+          <div class="panel-icon">
+            <el-icon><Monitor /></el-icon>
+          </div>
           <h2 class="panel-title">服务监控</h2>
+          <el-button type="primary" size="small" @click="handleRefreshMonitor">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
         </div>
         <ServiceMonitor />
       </section>
 
       <!-- 系统信息面板 -->
-      <section class="system-info-panel">
+      <section class="panel system-info-panel">
         <div class="panel-header">
+          <div class="panel-icon">
+            <el-icon><InfoFilled /></el-icon>
+          </div>
           <h2 class="panel-title">系统信息</h2>
         </div>
         <SystemInfo />
       </section>
 
       <!-- 工具集面板 -->
-      <section class="tools-panel">
+      <section class="panel tools-panel">
         <div class="panel-header">
+          <div class="panel-icon">
+            <el-icon><Grid /></el-icon>
+          </div>
           <h2 class="panel-title">工具集</h2>
         </div>
-        <ToolSets @open-ocr="handleOpenOCR" />
+        <ToolSets 
+  @open-ocr="handleOpenOCR" 
+  @open-event-reminder="handleOpenEventReminder"
+  @open-paddleocr="() => handleOpenOCR('paddleocr')"
+  @open-deepseek="() => handleOpenOCR('deepseek')"
+  @open-qwen3vl="() => handleOpenOCR('qwen3vl')"
+  @open-tesseract="() => handleOpenOCR('tesseract')"
+/>
       </section>
     </main>
   </div>
@@ -71,9 +158,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
-  Monitor, Refresh, Download, Upload, Connection, CircleCheck, CircleClose, 
-  Tools, ArrowRight, CopyDocument, Edit, PieChart, InfoFilled, Cpu, 
-  Folder, Timer, Clock, Grid, View, Document, MagicStick
+  Monitor, Refresh, Download, Upload, Connection, CircleCheck, CircleClose,
+  Tools, ArrowRight, CopyDocument, Edit, PieChart, InfoFilled, Cpu,
+  Folder, Timer, Clock, Grid, View, Document, MagicStick, UserFilled
 } from '@element-plus/icons-vue'
 
 import { useConnectionStore } from '@/stores/connection'
@@ -82,6 +169,7 @@ import QuickActions from './components/QuickActions.vue'
 import ToolSets from './components/ToolSets.vue'
 import SystemInfo from './components/SystemInfo.vue'
 import DigitalClock from './components/DigitalClock.vue'
+import EventReminder from './components/EventReminder.vue'
 import type { TreeNode } from '../../../electron/model/database'
 
 // Props
@@ -100,153 +188,293 @@ const emit = defineEmits<{
 // Store
 const connectionStore = useConnectionStore()
 
-// 图标组件映射
-const iconMap = {
-  ArrowRight,
-  Tools,
-  PieChart,
-  Upload
+// State
+const showEventReminder = ref(false)
+const events = ref<any[]>([])
+
+// Computed
+const activeConnections = computed(() => {
+  return connectionStore.connections.filter(c => c.status === 'connected').length
+})
+
+const upcomingEvents = computed(() => {
+  return events.value
+    .filter(event => {
+      const eventTime = new Date(`${event.date} ${event.time}`).getTime()
+      return eventTime > Date.now()
+    })
+    .sort((a, b) => {
+      const timeA = new Date(`${a.date} ${a.time}`).getTime()
+      const timeB = new Date(`${b.date} ${b.time}`).getTime()
+      return timeA - timeB
+    })
+    .slice(0, 5)
+})
+
+// Methods
+const loadEvents = () => {
+  const stored = localStorage.getItem('calendar_events')
+  if (stored) {
+    try {
+      events.value = JSON.parse(stored)
+    } catch (e) {
+      console.error('Failed to load events:', e)
+      events.value = []
+    }
+  }
 }
 
-
-
-
-
-// 响应式数据
-const lastRefreshTime = ref(new Date())
-
-// 获取连接率颜色
-const getRateColor = (rate: number) => {
-  if (rate >= 80) return '#67c23a'
-  if (rate >= 60) return '#e6a23c'
-  return '#f56c6c'
+// Methods
+const handleOpenOCR = (engine: string) => {
+  const titles: Record<string, string> = {
+    'tesseract': 'Tesseract OCR 识别',
+    'paddleocr': 'PaddleOCR 识别',
+    'deepseek': 'DeepSeek 识别',
+    'qwen3vl': 'Qwen3-VL 识别'
+  }
+  emit('createPanel', `ocr-${engine}`, titles[engine] || '文字识别', { engine })
 }
 
-// 事件处理函数
-const handleNewConnection = () => {
-  emit('newConnection')
+const handleCreatePanel = (type: string, title: string, content: any) => {
+  emit('createPanel', type, title, content)
 }
 
-const handleRefresh = () => {
-  lastRefreshTime.value = new Date()
-  connectionStore.initializeConnections()
-  CTMessage.success('已刷新连接状态')
+const handleOpenTerminal = () => {
+  emit('openTerminal')
 }
 
-const handleOpenOCR = () => {
-  // 触发事件通知父组件打开OCR页面
-  const event = new CustomEvent('open-ocr-page', { detail: {} })
-  window.dispatchEvent(event)
+const handleOpenEventReminder = () => {
+  showEventReminder.value = true
 }
 
+const handleRefreshMonitor = () => {
+  // 刷新监控数据
+  console.log('刷新监控数据')
+}
 
-
-// 数据库连接相关处理函数
-
-
-// 组件加载时初始化
 onMounted(() => {
-  connectionStore.initializeConnections()
+  console.log('Dashboard mounted')
+  loadEvents()
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .dashboard-container {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-right: 12px;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
 }
 
-/* 顶部标题栏 */
 .dashboard-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-content {
-  width: 100%;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.dashboard-title {
-  font-size: 24px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin: 0;
-  letter-spacing: 1px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-
-/* 主内容区 */
-.dashboard-main {
-  flex: 1;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  box-sizing: border-box;
-  overflow-y: auto;
-  max-height: calc(100vh - 80px);
-}
-
-/* 顶部区域 */
-.top-section {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-}
-
-/* 主要工具面板 */
-.main-tools-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  padding: 16px 30px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* AI工具面板 */
-.ai-tools-panel {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  backdrop-filter: blur(10px);
   border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.ai-tools-panel .panel-header {
-  border-bottom-color: rgba(255, 255, 255, 0.3);
-}
-
-.ai-tools-panel .panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: white;
+  font-size: 24px;
+}
+
+.dashboard-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.header-events {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+}
+
+.event-label {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.event-count {
+  font-size: 24px;
+  font-weight: 700;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  min-width: 40px;
+  text-align: center;
+  
+  &.has-events {
+    background: #4ade80;
+    color: #166534;
+    animation: pulse 2s infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+
+
+.dashboard-main {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+
+.top-section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.panel-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+}
+
+.panel-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+  flex: 1;
+}
+
+.main-tools-panel {
+  grid-column: 1 / 9;
+}
+
+.ai-tools-panel {
+  grid-column: 9 / -1;
 }
 
 .ai-tool-items {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+.ai-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 72px;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  }
 }
 
 .ai-tool-item {
@@ -254,418 +482,134 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
   cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 80px;
 
-.ai-tool-item:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  &:hover {
+    transform: translateX(8px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  }
 }
 
 .ai-tool-icon {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: white;
+  font-size: 20px;
+}
+
+.ai-tool-icon.tesseract {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.ai-tool-icon.paddleocr {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+
+.ai-tool-icon.deepseek {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.ai-tool-icon.qwen3vl {
+  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
 }
 
 .ai-tool-info {
   flex: 1;
+  min-width: 0;
 }
 
 .ai-tool-title {
   font-size: 16px;
   font-weight: 600;
-  color: white;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ai-tool-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 服务监控面板 */
+.ai-tool-arrow {
+  font-size: 16px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
 .monitor-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  grid-column: 1 / 9;
 }
 
-/* 系统信息面板 */
 .system-info-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  grid-column: 9 / -1;
 }
 
-/* 工具集面板 */
 .tools-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  grid-column: 1 / -1;
 }
 
-/* 面板头部 */
-.panel-header {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #667eea;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.panel-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.panel-subtitle {
-  font-size: 12px;
-  color: #7f8c8d;
-  font-weight: 400;
-}
-
-/* 面板内容容器 */
-.panel-content {
-  width: 100%;
-}
-
-.subsection-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #606266;
-  margin: 0 0 12px 0;
-}
-
-/* 快速操作区域 */
-.quick-actions {
-  margin-bottom: 32px;
-}
-
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.action-card {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.action-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #409eff;
-}
-
-.action-icon {
-  font-size: 32px;
-  color: #409eff;
-  margin-bottom: 12px;
-}
-
-.action-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 8px;
-}
-
-.action-desc {
-  font-size: 14px;
-  color: #909399;
-}
-
-
-
-/* 服务监控区域 */
-.service-monitor {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.service-monitoring {
-  margin-bottom: 32px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #409eff;
-}
-
-.section-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.monitoring-table-container {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.service-table {
-  border-radius: 6px;
-  width: 100%;
-}
-
-.service-table .el-table__header {
-  background-color: #fafafa;
-}
-
-.service-table .el-table__header th {
-  background-color: #fafafa;
-  color: #303133;
-  font-weight: 600;
-}
-
-.service-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.service-icon {
-  color: #409eff;
-  font-size: 16px;
-}
-
-.port-number {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  color: #606266;
-  font-weight: 500;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.action-buttons .el-button {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-/* 工具集区域 */
-.tool-sets {
-  margin-bottom: 32px;
-}
-
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.tool-category {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.tool-category-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.tool-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tool-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: #606266;
-}
-
-.tool-item:hover {
-  background: #f0f9ff;
-  color: #409eff;
-}
-
-/* 系统信息区域 */
-.system-info {
-  margin-bottom: 24px;
-}
-
-.info-grid {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 6px;
-}
-
-.info-item .el-icon {
-  color: #409eff;
-  font-size: 16px;
-}
-
-.info-label {
-  font-size: 14px;
-  color: #606266;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #303133;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-}
-
-/* 响应式设置 */
-@media (max-width: 768px) {
-  
-  .top-section {
-    grid-template-columns: 1fr;
+// 响应式设计
+@media (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: repeat(6, 1fr);
   }
-  
-  .panel-content {
+
+  .main-tools-panel,
+  .ai-tools-panel,
+  .monitor-panel,
+  .system-info-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 12px;
+    padding-right: 8px;
+  }
+
+  .dashboard-header {
     padding: 16px;
   }
-  
-  .section-header {
+
+  .header-content {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
   }
-  
-  .section-actions {
-    width: 100%;
-    justify-content: flex-end;
+
+  .header-left {
+    flex-direction: column;
+    gap: 16px;
   }
-  
-  .action-grid {
-    grid-template-columns: 1fr;
+
+  .dashboard-title {
+    font-size: 22px;
   }
-  
-  .tools-grid {
-    grid-template-columns: 1fr;
+
+  .panel {
+    padding: 16px;
   }
-  
-  .info-grid {
-    grid-template-columns: 1fr;
+
+  .panel-title {
+    font-size: 18px;
   }
-}
 
-/* 服务监控样式 */
-.service-monitor {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #409eff;
-}
-
-.monitoring-table-container {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.service-table {
-  width: 100%;
-}
-
-.service-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.service-icon {
-  color: #409eff;
-}
-
-.port-number {
-  font-family: 'Courier New', Courier, monospace;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
+  .ai-tool-items {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 </style>

@@ -73,7 +73,7 @@
   .el-dialog {
     .el-dialog__body {
       padding: 0 20px;
-      max-height: 64vh;
+      max-height: 84vh;
       overflow: auto;
       box-sizing: border-box;
       .dlg-main-con {

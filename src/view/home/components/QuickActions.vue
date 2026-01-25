@@ -7,7 +7,9 @@
         class="action-card" 
         @click="handleQuickAction(action.handler)"
       >
-        <el-icon class="action-icon"><component :is="iconMap[action.icon]" /></el-icon>
+        <div class="action-icon-wrapper" :class="action.iconBgClass">
+          <el-icon class="action-icon"><component :is="iconMap[action.icon]" /></el-icon>
+        </div>
         <div class="action-title">{{ action.title }}</div>
         <div class="action-desc">{{ action.description }}</div>
       </div>
@@ -17,14 +19,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ArrowRight, Tools, PieChart, Upload } from '@element-plus/icons-vue'
+import { Connection, Setting, Upload } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
 
 // 图标组件映射
 const iconMap = {
-  ArrowRight,
-  Tools,
-  PieChart,
+  Connection,
+  Setting,
   Upload
 }
 
@@ -34,28 +35,24 @@ const quickActions = ref([
     id: 'enter-database',
     title: '进入数据库',
     description: '管理数据库连接、查询和对象',
-    icon: 'ArrowRight',
+    icon: 'Connection',
+    iconBgClass: 'icon-bg-blue',
     handler: 'handleEnterDatabase'
   },
   {
     id: 'open-terminal',
     title: '终端控制台',
     description: '执行SQL命令和脚本',
-    icon: 'Tools',
+    icon: 'Setting',
+    iconBgClass: 'icon-bg-green',
     handler: 'handleOpenTerminal'
-  },
-  {
-    id: 'service-monitor',
-    title: '服务监控',
-    description: '监控系统状态',
-    icon: 'PieChart',
-    handler: 'handleServiceMonitor'
   },
   {
     id: 'import-data',
     title: '导入、导出数据',
     description: '从文件导入数据',
     icon: 'Upload',
+    iconBgClass: 'icon-bg-purple',
     handler: 'handleImportData'
   }
 ])
@@ -65,7 +62,6 @@ const handleQuickAction = (handler: string) => {
   const handlerMap: Record<string, () => void> = {
     handleEnterDatabase,
     handleOpenTerminal,
-    handleServiceMonitor,
     handleImportData
   }
   
@@ -75,16 +71,17 @@ const handleQuickAction = (handler: string) => {
   }
 }
 
+const emit = defineEmits<{
+  createPanel: [type: string, title: string, content: any]
+  openTerminal: []
+}>()
+
 const handleEnterDatabase = () => {
-  CTMessage.info('进入数据库功能开发中...')
+  emit('createPanel', 'database', '数据库管理', null)
 }
 
 const handleOpenTerminal = () => {
-  CTMessage.info('终端控制台功能开发中...')
-}
-
-const handleServiceMonitor = () => {
-  CTMessage.info('服务监控功能开发中...')
+  emit('openTerminal')
 }
 
 const handleImportData = () => {
@@ -120,10 +117,36 @@ const handleImportData = () => {
   border-color: #409eff;
 }
 
-.action-icon {
-  font-size: 32px;
-  color: #409eff;
+.action-card:hover .action-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.action-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+
+.icon-bg-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-bg-green {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.icon-bg-purple {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.action-icon {
+  font-size: 24px;
+  color: white;
 }
 
 .action-title {

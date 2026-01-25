@@ -1,6 +1,5 @@
 <template>
   <div class="tool-sets">
-    <h2 class="section-title">工具集</h2>
     <div class="tools-grid">
       <div 
         v-for="category in toolCategories" 
@@ -26,10 +25,10 @@
 
 <script setup lang="ts">
 import { ref, defineEmits } from 'vue'
-import { CopyDocument, Upload, Refresh, Grid, Download, Document, Edit, View, PieChart, CircleCheck, InfoFilled, Cpu, MagicStick } from '@element-plus/icons-vue'
+import { CopyDocument, Upload, Refresh, Grid, Download, Document, Edit, View, PieChart, CircleCheck, InfoFilled, Cpu, MagicStick, Bell, Monitor, Star, Scissor, ChatDotRound } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
 
-const emit = defineEmits(['open-ocr']) 
+const emit = defineEmits(['open-ocr', 'open-event-reminder', 'open-paddleocr', 'open-deepseek', 'open-qwen3vl', 'open-tesseract'])
 
 // 工具集配置
 const toolCategories = ref([
@@ -66,9 +65,24 @@ const toolCategories = ref([
     ]
   },
   {
+    title: '日历事件',
+    items: [
+      { id: 'event-reminder', label: '事件提醒', icon: Bell, handler: 'handleEventReminder' }
+    ]
+  },
+  {
     title: 'AI工具',
     items: [
       { id: 'ocr', label: '文字识别', icon: MagicStick, handler: 'handleOCR' }
+    ]
+  },
+  {
+    title: 'AI工具集',
+    items: [
+      { id: 'paddleocr', label: 'PaddleOCR', icon: Monitor, handler: 'handlePaddleOCR' },
+      { id: 'deepseek', label: 'DeepSeek', icon: ChatDotRound, handler: 'handleDeepSeek' },
+      { id: 'qwen3vl', label: 'Qwen3-VL', icon: Star, handler: 'handleQwen3VL' },
+      { id: 'tesseract', label: 'Tesseract', icon: Scissor, handler: 'handleTesseract' }
     ]
   }
 ])
@@ -87,7 +101,12 @@ const handleToolClick = (handler: string) => {
     handlePerformance: handlePerformance,
     handleHealthCheck: handleHealthCheck,
     handleSystemInfo: handleSystemInfo,
-    handleResourceMonitor: handleResourceMonitor
+    handleResourceMonitor: handleResourceMonitor,
+    handleEventReminder: handleEventReminder,
+    handlePaddleOCR: handlePaddleOCR,
+    handleDeepSeek: handleDeepSeek,
+    handleQwen3VL: handleQwen3VL,
+    handleTesseract: handleTesseract
   }
   
   const toolHandler = handlerMap[handler]
@@ -144,10 +163,40 @@ const handleResourceMonitor = () => {
   CTMessage.info('资源监控功能开发中...')
 }
 
+const handleEventReminder = () => {
+  // 触发事件通知父组件打开事件提醒
+  emit('open-event-reminder')
+  CTMessage.success('正在打开事件提醒...')
+}
+
 const handleOCR = () => {
   // 触发事件通知父组件打开OCR页面
   emit('open-ocr')
   CTMessage.success('正在打开文字识别工具...')
+}
+
+const handlePaddleOCR = () => {
+  // 触发事件通知父组件打开PaddleOCR页面
+  emit('open-paddleocr')
+  CTMessage.success('正在打开PaddleOCR...')
+}
+
+const handleDeepSeek = () => {
+  // 触发事件通知父组件打开DeepSeek页面
+  emit('open-deepseek')
+  CTMessage.success('正在打开DeepSeek...')
+}
+
+const handleQwen3VL = () => {
+  // 触发事件通知父组件打开Qwen3-VL页面
+  emit('open-qwen3vl')
+  CTMessage.success('正在打开Qwen3-VL...')
+}
+
+const handleTesseract = () => {
+  // 触发事件通知父组件打开Tesseract页面
+  emit('open-tesseract')
+  CTMessage.success('正在打开Tesseract...')
 }
 </script>
 
