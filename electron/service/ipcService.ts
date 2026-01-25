@@ -10,6 +10,7 @@ import { NotificationService } from './notificationService'; // 通知服务
 import { DatabaseManager } from '../manager/ClientManager';   // 数据库管理器
 import { TerminalService } from './terminalService';  // 终端命令服务
 import { MenuService } from './menuService';  // 菜单服务
+import { SidebarService } from './sidebarService';  // 侧边栏服务
 
 /**
  * IPC服务类
@@ -19,12 +20,15 @@ import { MenuService } from './menuService';  // 菜单服务
 export class IpcService {
   // 静态属性，存储主窗口实例的引用，供IPC处理程序使用
   private static mainWindow: any;
+  //
+  private static sidebarWindow: any;
   // 静态属性，存储菜单服务实例的引用
   private static menuService: MenuService;
 
   /**
    * 注册所有IPC处理程序的统一入口
    * @param mainWindow 主窗口对象，用于窗口控制和通信
+   * @param sidebarWindow 侧边栏窗口对象，用于侧边栏控制
    * 
    * 此方法会依次调用各个服务模块的注册方法：
    * 1. 窗口控制处理程序
@@ -33,9 +37,11 @@ export class IpcService {
    * 4. 通知服务处理程序
    * 5. 对话框处理程序
    * 6. 文件操作处理程序
+   * 7. 侧边栏服务处理程序
    */
-  static registerHandlers(mainWindow: any) {
+  static registerHandlers(mainWindow: any, sidebarWindow?: any) {
     this.mainWindow = mainWindow;
+    this.sidebarWindow = sidebarWindow;
     this.menuService = new MenuService(mainWindow);
 
     // 1. 注册窗口控制相关的IPC处理程序（最小化、最大化、关闭、重启等）
@@ -61,6 +67,11 @@ export class IpcService {
 
     // 8. 注册菜单控制相关的IPC处理程序
     this.registerMenuHandlers();
+
+    // 9. 注册侧边栏相关的IPC处理程序（如果提供了侧边栏窗口）
+    if (sidebarWindow) {
+      SidebarService.registerIpcHandlers(mainWindow, sidebarWindow);
+    }
   }
 
   /**

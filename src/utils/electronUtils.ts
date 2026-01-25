@@ -63,6 +63,16 @@ interface ElectronAPI {
     executeCommands: (commands: any[], parallel: boolean) => Promise<ServiceResult<any[]>>
     getSystemInfo: () => Promise<ServiceResult<any>>
   }
+  sidebar: {
+    openOCRPage: (engine: string) => void
+    toggle: () => void
+    close: () => void
+    expand: () => void
+    collapse: () => void
+    getSystemResources: () => Promise<ServiceResult<any>>
+    openCalendar: () => void
+    openCreditCard: () => void
+  }
 }
 
 // 扩展 Window 接口
@@ -97,7 +107,7 @@ export const listenToIpcMessage = (channel: string, listener: (...args: any[]) =
 
   // 使用通用的 on 方法注册监听器
   electronAPI.on(channel, listener)
-  
+
   // 返回清理函数
   return () => {
     electronAPI.off(channel, listener)
@@ -383,4 +393,96 @@ export const selectFolder = async (): Promise<string> => {
     throw new Error('Electron API not available')
   }
   return electronAPI.file.selectFolder()
+}
+
+// 侧边栏相关函数
+
+/**
+ * 打开OCR页面
+ * @param engine OCR引擎名称
+ */
+export const openOCRPage = (engine: string): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.openOCRPage(engine)
+}
+
+/**
+ * 切换侧边栏显示/隐藏
+ */
+export const toggleSidebar = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.toggle()
+}
+
+/**
+ * 关闭侧边栏
+ */
+export const closeSidebar = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.close()
+}
+
+/**
+ * 展开侧边栏
+ */
+export const expandSidebar = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.expand()
+}
+
+/**
+ * 收起侧边栏
+ */
+export const collapseSidebar = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.collapse()
+}
+
+/**
+ * 获取系统资源信息（CPU和内存使用率）
+ * @returns Promise<ServiceResult<any>> 系统资源信息
+ */
+export const getSystemResources = async (): Promise<ServiceResult<any>> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    throw new Error('Electron API not available')
+  }
+  return electronAPI.sidebar.getSystemResources()
+}
+
+/**
+ * 打开日历提醒
+ */
+export const openCalendarReminder = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.openCalendar()
+}
+
+/**
+ * 打开信用卡提醒工具
+ */
+export const openCreditCardReminder = (): void => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    return
+  }
+  electronAPI.sidebar.openCreditCard()
 }

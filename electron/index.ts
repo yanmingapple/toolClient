@@ -1,15 +1,18 @@
 // 使用 require 语法避免与本地 electron 目录冲突
 const electron = require('electron')
-const { app, BrowserWindow, Menu, Tray, nativeImage } = electron
+const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain } = electron
 import * as path from 'path'
 import * as url from 'url'
+import * as os from 'os'
 import { clientManager } from './manager/ClientManager'
 import { MenuService } from './service/menuService'
 import { IpcService } from './service/ipcService'
+import { SidebarService } from './service/sidebarService'
 import { join } from 'path'
 
 let mainWindow: typeof BrowserWindow | null
 let tray: typeof Tray | null
+let sidebarWindow: typeof BrowserWindow | null
 
 // 初始化数据库管理类
 async function initializeDatabase() {
@@ -70,6 +73,7 @@ function createTray() {
   tray = new Tray(icon)
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show App', click: () => mainWindow?.show() },
+    { label: 'Toggle Sidebar', click: () => toggleSidebar() },
     { label: 'Quit', click: () => app.quit() },
   ] as any[])
   tray.setToolTip('DBManager Pro')
@@ -77,17 +81,98 @@ function createTray() {
   tray.on('click', () => mainWindow?.show())
 }
 
+function createSidebarWindow() {
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+  const sidebarWidth = 120;
+  const sidebarHeight = height;
 
+  sidebarWindow = new BrowserWindow({
+    width: sidebarWidth,
+    height: sidebarHeight,
+    x: width - 10,
+    y: 0,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(process.cwd(), 'dist/electron/preload.js'),
+      devTools: true,
+    },
+  });
+
+  // 加载侧边栏页面
+  if (process.env.NODE_ENV === 'development') {
+    sidebarWindow.loadURL('http://localhost:3000/sidebar')
+  } else {
+    sidebarWindow.loadURL(
+      url.format({
+        pathname: path.join(__dirname, '../renderer/index.html'),
+        protocol: 'file:',
+        slashes: true,
+        hash: '#sidebar'
+      })
+    )
+  }
+
+  sidebarWindow.on('closed', () => {
+    sidebarWindow = null
+  });
+
+  return sidebarWindow;
+}
+
+function toggleSidebar() {
+  if (sidebarWindow) {
+    if (sidebarWindow.isVisible()) {
+      sidebarWindow.hide();
+    } else {
+      sidebarWindow.show();
+    }
+  } else {
+    createSidebarWindow();
+  }
+}
+
+function expandSidebar() {
+  if (sidebarWindow) {
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width } = primaryDisplay.workAreaSize;
+    const targetX = width - 300;
+    const [, y] = sidebarWindow.getPosition();
+    sidebarWindow.setSize(300, sidebarWindow.getSize()[1]);
+    sidebarWindow.setPosition(targetX, y);
+  }
+}
+
+function collapseSidebar() {
+  if (sidebarWindow) {
+    const { screen } = require('electron');
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width } = primaryDisplay.workAreaSize;
+    const targetX = width - 20;
+    const [, y] = sidebarWindow.getPosition();
+    sidebarWindow.setSize(20, sidebarWindow.getSize()[1]);
+    sidebarWindow.setPosition(targetX, y);
+  }
+}
 
 app.on('ready', async () => {
   try {
     // 初始化数据库管理器
     await initializeDatabase()
-    
+
     createWindow()
     createTray()
+    createSidebarWindow()
     // 注册主进程相关的 IPC 处理程序
-    IpcService.registerHandlers(mainWindow)
+    IpcService.registerHandlers(mainWindow, sidebarWindow)
     console.log('Application startup completed successfully')
   } catch (error) {
     console.error('Failed to start application:', error)
@@ -109,7 +194,8 @@ app.on('activate', () => {
 
 app.on('before-quit', async () => {
   tray?.destroy()
-  
+  sidebarWindow?.close()
+
   // 关闭数据库连接并清理资源
   if (clientManager) {
     await clientManager.shutdown()

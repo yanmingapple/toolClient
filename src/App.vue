@@ -1,7 +1,12 @@
 <template>
-  <div class="app-container">
-    <!-- 工具面板模式 -->
-    <div v-if="currentPage === 'toolpanel'" class="toolpanel-mode">
+  <template v-if="currentPage === 'sidebar'">
+    <div class="app-container sidebar-app-container">
+      <SidebarPanel />
+    </div>
+  </template>
+  
+  <template v-else-if="currentPage === 'toolpanel'">
+    <div class="app-container toolpanel-app-container">
       <ToolPanel
         :main-panel-ref="mainPanelRef"
         @open-terminal="handleOpenTerminal"
@@ -9,9 +14,10 @@
         @create-panel="handleCreatePanel"
       />
     </div>
-    
-    <!-- OCR页面模式 -->
-    <div v-else-if="currentPage === 'ocr'" class="ocr-mode">
+  </template>
+  
+  <template v-else-if="currentPage === 'ocr'">
+    <div class="app-container ocr-app-container">
       <!-- 顶部导航栏 -->
       <header class="ocr-header">
         <div class="header-content">
@@ -29,9 +35,10 @@
         <component :is="ocrPageComponent" />
       </div>
     </div>
-    
-    <!-- 工作面板模式 -->
-    <div v-else class="workspace-mode">
+  </template>
+  
+  <template v-else>
+    <div class="app-container workspace-app-container">
       <!-- 工作区加载状态 -->
       <div v-if="isWorkspaceLoading" class="workspace-loading">
         <el-icon class="loading-icon" :size="32">
@@ -58,25 +65,31 @@
         <span>返回</span>
       </div>
     </div>
+  </template>
+  
+  <!-- 全局对话框组件 -->
+  <ConnectionDialog
+    v-model:visible="connectionDialogVisible"
+    :connection="editingConnection"
+    @cancel="handleCancelDialog"
+  />
 
-    <!-- 原有对话框组件 -->
-    <ConnectionDialog
-      v-model:visible="connectionDialogVisible"
-      :connection="editingConnection"
-      @cancel="handleCancelDialog"
-    />
+  <CommandResult
+    v-model:visible="commandResultVisible"
+    :title="commandResultTitle"
+    :result="commandResult"
+  />
 
-    <CommandResult
-      v-model:visible="commandResultVisible"
-      :title="commandResultTitle"
-      :result="commandResult"
-    />
+  <TerminalConsole 
+    v-model="showTerminalConsole" 
+    @close="handleTerminalClose" 
+  />
 
-    <TerminalConsole 
-      v-model="showTerminalConsole" 
-      @close="handleTerminalClose" 
-    />
-  </div>
+  <!-- 日历提醒对话框 -->
+  <EventReminder v-model="showEventReminder" />
+  
+  <!-- 信用卡提醒对话框 -->
+  <CreditCardReminder v-model="showCreditCardReminder" />
 </template>
 
 <script setup lang="ts">
@@ -85,6 +98,9 @@ import ToolPanel from './view/home/index.vue'
 import TerminalConsole from './clientComponents/TerminalConsole/index.vue'
 import ConnectionDialog from './clientComponents/ConnectionDialog/index.vue'
 import CommandResult from './clientComponents/CommandResult/index.vue'
+import SidebarPanel from './view/sidebar/index.vue'
+import EventReminder from './view/home/components/EventReminder.vue'
+import CreditCardReminder from './view/home/components/CreditCardReminder.vue'
 import { useConnectionStore } from './stores/connection'
 import type { ConnectionConfig, TreeNode } from '../electron/model/database'
 import { useIpcCommunication as ipcUtils } from './composables/useIpcCommunication'
@@ -102,6 +118,8 @@ const Qwen3VLPage = defineAsyncComponent(() => import('./view/orc/qwen3vl.vue'))
 const connectionDialogVisible = ref(false)
 const editingConnection = ref<TreeNode | null>(null)
 const showTerminalConsole = ref(false)
+const showEventReminder = ref(false)
+const showCreditCardReminder = ref(false)
 
 // OCR页面状态
 const ocrPageComponent = ref<any>(OCRPage)
@@ -111,7 +129,7 @@ const commandResultTitle = ref('')
 const commandResult = ref(null)
 
 // 页面状态管理
-const currentPage = ref<'toolpanel' | 'workspace'>('toolpanel') // 默认显示工具面板
+const currentPage = ref<'sidebar' | 'toolpanel' | 'workspace'>('toolpanel') // 默认显示工具面板
 const appLayoutRef = ref<any>(null)
 const mainPanelRef = ref<any>(null)
 const isWorkspaceLoading = ref(false) // 工作区加载状态
@@ -246,11 +264,27 @@ onMounted(async () => {
   
   // 监听打开OCR页面的事件
   window.addEventListener('open-ocr-page', handleOpenOCRPage)
+  
+  // 监听侧边栏打开OCR页面事件
+  window.addEventListener('sidebar-open-ocr', (event: any) => {
+    const { engine } = event.detail
+    if (engine) {
+      switchToOCRWithEngine(engine, getOCRTitle(engine))
+    }
+  })
+  
+
+  
+  // 检查是否为侧边栏窗口
+  if (window.location.pathname === '/sidebar' || window.location.hash === '#sidebar') {
+    currentPage.value = 'sidebar'
+  }
 })
 
 // 组件卸载时移除事件监听
 onUnmounted(() => {
   window.removeEventListener('open-ocr-page', handleOpenOCRPage)
+  window.removeEventListener('sidebar-open-ocr', () => {})
 })
 
 ipcUtils({
@@ -262,6 +296,14 @@ ipcUtils({
     commandResultTitle.value = data.title
     commandResult.value = data.result
     commandResultVisible.value = true
+  },
+  onSidebarOpenCalendar: () => {
+    debugger
+    showEventReminder.value = true
+  },
+  onSidebarOpenCreditCard: () => {
+    debugger
+    showCreditCardReminder.value = true
   }
 })
 </script>

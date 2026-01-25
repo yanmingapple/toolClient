@@ -247,22 +247,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * @param callback 回调函数
    */
   on: (channel: string, callback: (...args: any[]) => void): void => {
-    // 定义允许监听的通道白名单（安全考虑）
-    const validChannels = [
-      'connection:status-changed',
-      'database:databases-updated',
-      'database:tables-updated',
-      'open-new-connection-dialog',
-      'terminal:open-console',
-      'terminal:result',
-      'service-monitor:health-check-result',
-    ];
-
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, (_event: any, ...args: any[]) => callback(...args));
-    } else {
-      console.warn(`[IPC] Invalid channel: ${channel}`);
-    }
+    ipcRenderer.on(channel, (_event: any, ...args: any[]) => callback(...args));
   },
 
   /**
@@ -292,6 +277,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'terminal:open-console',
       'terminal:result',
       'service-monitor:health-check-result',
+      'sidebar-open-calendar',
     ];
 
     if (validChannels.includes(channel)) {
@@ -331,6 +317,67 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     getSystemInfo: (): Promise<ServiceResult<any>> => {
       return ipcRenderer.invoke('terminal-get-system-info');
+    }
+  },
+
+  // 侧边栏相关
+  sidebar: {
+    /**
+     * 打开OCR页面
+     * @param engine OCR引擎名称
+     */
+    openOCRPage: (engine: string): void => {
+      ipcRenderer.send('sidebar:open-ocr-page', engine);
+    },
+
+    /**
+     * 切换侧边栏显示/隐藏
+     */
+    toggle: (): void => {
+      ipcRenderer.send('sidebar:toggle');
+    },
+
+    /**
+     * 关闭侧边栏
+     */
+    close: (): void => {
+      ipcRenderer.send('sidebar:close');
+    },
+
+    /**
+     * 展开侧边栏
+     */
+    expand: (): void => {
+      ipcRenderer.send('sidebar:expand');
+    },
+
+    /**
+     * 收起侧边栏
+     */
+    collapse: (): void => {
+      ipcRenderer.send('sidebar:collapse');
+    },
+
+    /**
+     * 获取系统资源信息（CPU和内存使用率）
+     * @returns Promise<ServiceResult<any>> 系统资源信息
+     */
+    getSystemResources: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('sidebar:get-system-resources');
+    },
+
+    /**
+     * 打开日历提醒
+     */
+    openCalendar: (): void => {
+      ipcRenderer.send('sidebar:open-calendar');
+    },
+
+    /**
+     * 打开信用卡提醒工具
+     */
+    openCreditCard: (): void => {
+      ipcRenderer.send('sidebar:open-credit-card');
     }
   },
 

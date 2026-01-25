@@ -6,6 +6,8 @@ interface IpcCallbacks {
   onOpenTerminalConsole?: () => void
   onTerminalResult?: (data: any) => void
   onServiceMonitorHealthCheckResult?: (data: any) => void
+  onSidebarOpenCalendar?: () => void
+  onSidebarOpenCreditCard?: () => void
 }
 
 export const useIpcCommunication = (callbacks: IpcCallbacks) => {
@@ -28,6 +30,15 @@ export const useIpcCommunication = (callbacks: IpcCallbacks) => {
     // 添加服务监控健康检查结果监听器
     if (callbacks.onServiceMonitorHealthCheckResult) {
       listeners.push(listenToIpcMessage('service-monitor:health-check-result', callbacks.onServiceMonitorHealthCheckResult))
+    }
+
+    // 添加侧边栏相关监听器
+    if (callbacks.onSidebarOpenCalendar) {
+      listeners.push(listenToIpcMessage('sidebar-open-calendar', callbacks.onSidebarOpenCalendar))
+    }
+
+    if (callbacks.onSidebarOpenCreditCard) {
+      listeners.push(listenToIpcMessage('sidebar-open-credit-card', callbacks.onSidebarOpenCreditCard))
     }
 
     // 返回清理函数
