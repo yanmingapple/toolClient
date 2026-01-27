@@ -1,0 +1,25 @@
+<script lang="ts">
+  import _ from 'lodash';
+
+  import AppObjectList from '../appobj/AppObjectList.svelte';
+  import * as closedTabAppObject from '../appobj/ClosedTabAppObject.svelte';
+  import * as favoriteFileAppObject from '../appobj/FavoriteFileAppObject.svelte';
+  import { openedTabs } from '../stores';
+
+  import hasPermission from '../utility/hasPermission';
+  import { useFavorites } from '../utility/metadataLoaders';
+  import QueryHistoryList from './QueryHistoryList.svelte';
+
+  import WidgetColumnBar from './WidgetColumnBar.svelte';
+  import WidgetColumnBarItem from './WidgetColumnBarItem.svelte';
+  import WidgetsInnerContainer from './WidgetsInnerContainer.svelte';
+  import { _t } from '../translations';
+
+  $: favorites = useFavorites();
+</script>
+
+<WidgetColumnBar storageName="historyWidget">
+  <WidgetColumnBarItem title={_t('history.queryHistory', { defaultMessage: 'Query history' })} name="queryHistory">
+    <QueryHistoryList />
+  </WidgetColumnBarItem>
+</WidgetColumnBar>

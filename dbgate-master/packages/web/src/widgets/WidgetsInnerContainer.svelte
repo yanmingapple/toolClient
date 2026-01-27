@@ -1,0 +1,44 @@
+<script lang="ts">
+  let domDiv;
+
+  export let hideContent = false;
+  export let fixedWidth = 0;
+  export let skipDefineWidth = false;
+  export let flexContainer = false;
+
+  export function scrollTop() {
+    domDiv.scrollTop = 0;
+  }
+</script>
+
+<div
+  on:drop
+  bind:this={domDiv}
+  class:hideContent
+  class:flexContainer
+  class:leftFixedWidth={!fixedWidth && !skipDefineWidth}
+  data-testid={$$props['data-testid']}
+  style:width={fixedWidth ? `${fixedWidth}px` : undefined}
+>
+  <slot />
+</div>
+
+<style>
+  div {
+    flex: 1 1;
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  div.leftFixedWidth {
+    width: var(--dim-left-panel-width);
+  }
+
+  div.hideContent {
+    visibility: hidden;
+  }
+
+  div.flexContainer {
+    display: flex;
+  }
+</style>

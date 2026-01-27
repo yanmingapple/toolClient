@@ -1,0 +1,149 @@
+<script lang="ts" context="module">
+  function formatDuration(duration) {
+    if (duration == 0) return '0';
+    if (duration < 1000) {
+      return `${Math.round(duration)} ms`;
+    }
+    if (duration < 10000) {
+      return `${Math.round(duration / 100) / 10} s`;
+    }
+    return `${Math.round(duration / 1000)} s`;
+  }
+</script>
+
+<script lang="ts">
+  import moment from 'moment';
+  import JSONTree from '../jsontree/JSONTree.svelte';
+  import FontIcon from '../icons/FontIcon.svelte';
+  import { plusExpandIcon } from '../icons/expandIcons';
+  import InlineButton from '../buttons/InlineButton.svelte';
+  import SqlHighlighter from '../elements/SqlHighlighter.svelte';
+  import { showModal } from '../modals/modalTools';
+  import ShowSqlModal from '../modals/ShowSqlModal.svelte';
+  import openNewTab from '../utility/openNewTab';
+
+  export let row;
+  export let index;
+  export let showProcedure = false;
+  export let showLine = false;
+  export let showCaller = false;
+  export let time0;
+  export let startLine;
+
+  export let previousRow = null;
+  export let onMessageClick = null;
+  export let onExplainError = null;
+  export let engine = null;
+
+  let isExpanded = false;
+</script>
+
+<tr
+  class:isError={row.severity == 'error'}
+  class:isDebug={row.severity == 'debug'}
+  class:isActive={row.line}
+  on:click={() => onMessageClick?.(row)}
+>
+  <td>{index + 1}</td>
+  <td>
+    <span on:click={() => (isExpanded = !isExpanded)} class="expand-button">
+      <FontIcon icon={plusExpandIcon(isExpanded)} />
+    </span>
+    {row.message}
+    {#if row.severity == 'error' && onExplainError}
+      <InlineButton
+        title="Explain error"
+        inlineBlock
+        data-testid={`MessageViewRow-explainErrorButton-${index}`}
+        on:click={e => {
+          onExplainError(row);
+        }}><FontIcon icon="img ai" /> Explain</InlineButton
+      >
+    {/if}
+    {#if row.jslid}
+      <InlineButton
+        title="Show data"
+        inlineBlock
+        data-testid={`MessageViewRow-showDataButton-${index}`}
+        on:click={e => {
+          openNewTab({
+            title: 'Query data #',
+            icon: 'img query-data',
+            tabComponent: 'ArchiveFileTab',
+            props: {
+              jslid: row.jslid,
+            },
+          });
+        }}><FontIcon icon="img query-data" /> Show Data</InlineButton
+      >
+    {/if}
+    {#if row.sql}
+      <SqlHighlighter
+        code={row.sql.substring(0, 100) + (row.sql.length > 100 ? '...' : '')}
+        inline
+        onClick={() => {
+          showModal(ShowSqlModal, {
+            sql: row.sql,
+            engine,
+          });
+        }}
+      />
+    {/if}
+  </td>
+  <td>{moment(row.time).format('HH:mm:ss')}</td>
+  <td>{formatDuration(new Date(row.time).getTime() - time0)}</td>
+  <td>{previousRow ? formatDuration(new Date(row.time).getTime() - new Date(previousRow.time).getTime()) : 'n/a'}</td>
+  {#if showProcedure}
+    <td>{row.procedure || ''}</td>
+  {/if}
+  {#if showLine}
+    <td>{row.line == null ? '' : row.line + 1 + startLine}</td>
+  {/if}
+  {#if showCaller}
+    <td>{row.caller || ''}</td>
+  {/if}
+</tr>
+{#if isExpanded}
+  <tr>
+    <td colspan={5 + (showProcedure ? 1 : 0) + (showLine ? 1 : 0) + (showCaller ? 1 : 0)}>
+      <JSONTree
+        value={row}
+        expanded
+        onRootExpandedChanged={() => {
+          isExpanded = false;
+        }}
+      />
+    </td>
+  </tr>
+{/if}
+
+<style>
+  .expand-button {
+    cursor: pointer;
+  }
+
+  td.header {
+    text-align: left;
+    border-bottom: var(--theme-datagrid-border-horizontal);
+    background-color: var(--theme-datagrid-headercell-background);
+    padding: 5px;
+    font-weight: 500;
+  }
+  td {
+    border-bottom: var(--theme-datagrid-border-horizontal);
+    padding: 5px;
+    background-color: var(--theme-datagrid-cell-background);
+  }
+  tr.isActive {
+    cursor: pointer;
+  }
+  tr.isActive:hover {
+    background: var(--theme-datagrid-cell-background-alt);
+  }
+  tr.isError {
+    color: var(--theme-icon-red);
+  }
+  tr.isDebug {
+    color: var(--theme-datagrid-foreground-grayed);
+  }
+</style>

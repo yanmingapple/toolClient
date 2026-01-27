@@ -1,0 +1,106 @@
+<script lang="ts">
+  import { safeJsonParse } from 'dbgate-tools';
+
+  import _ from 'lodash';
+  import SelectField from '../forms/SelectField.svelte';
+  import JsonTree from '../jsontree/JSONTree.svelte';
+
+  import AceEditor from '../query/AceEditor.svelte';
+  import createRef from '../utility/createRef';
+
+  let display = 'text';
+
+  export let columnTitle;
+  export let value;
+  export let onChangeValue = null;
+  export let keyType = null;
+
+  const isFirstChangeRef = createRef(true);
+  const createdTime = Date.now();
+</script>
+
+<div class="colnamewrap">
+  <div class="colname">{columnTitle}</div>
+  <SelectField
+    isNative
+    value={display}
+    on:change={e => {
+      display = e.detail;
+    }}
+    options={[
+      { label: 'Text', value: 'text' },
+      { label: 'JSON view', value: 'json' },
+    ]}
+  />
+</div>
+<div class="colvalue">
+  {#if display == 'text'}
+    <div class="editor-wrapper">
+      <AceEditor
+        readOnly={!onChangeValue}
+        value={value != null ? String(value) : ''}
+        mode={keyType === 'JSON' ? 'json' : undefined}
+        on:input={e => {
+          if (e.detail == '' && isFirstChangeRef.get() && Date.now() - createdTime < 100) {
+            isFirstChangeRef.set(false);
+            return;
+          }
+          isFirstChangeRef.set(false);
+          // console.log('AceEditor input event', e, 'VALUE', value);
+          if (value != e.detail) {
+            onChangeValue?.(e.detail);
+          }
+        }}
+      />
+    </div>
+  {/if}
+  {#if display == 'json'}
+    <div class="outer">
+      <div class="inner">
+        <JsonTree value={safeJsonParse(value) || { error: 'Not valid JSON' }} expanded />
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .colname {
+    color: var(--theme-generic-font-grayed);
+  }
+
+  .colvalue {
+    position: relative;
+    flex: 1;
+    display: flex;
+  }
+
+  .colnamewrap {
+    display: flex;
+    margin: 20px 5px 5px 5px;
+    justify-content: space-between;
+  }
+
+  .colnamewrap :global(select) {
+    padding: 2px 4px;
+  }
+
+  .editor-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 60px;
+    max-height: 1000px;
+  }
+
+  .outer {
+    flex: 1;
+    position: relative;
+  }
+  .inner {
+    overflow: scroll;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+  }
+</style>

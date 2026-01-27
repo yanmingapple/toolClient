@@ -5,12 +5,26 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import './index.css'
+import tkCom from '@/components/index.ts';
+import useTable from "@/hooks/useTable";
+import useForm from "@/hooks/useForm";
+import useDlg from "@/hooks/useDlg";
 
 const app = createApp(App)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
+
+// 注册公共组件
+for (const key in tkCom) {
+    app.component(key, tkCom[key]);
+}
+
+window.useTable = useTable;
+window.useForm = useForm;
+window.useDlg = useDlg;
+
 
 app.use(createPinia())
 app.use(ElementPlus)

@@ -1,0 +1,49 @@
+.color-icon-blue {
+  color: var(--theme-icon-blue);
+}
+
+.color-icon-green {
+  color: var(--theme-icon-green);
+}
+
+.color-icon-red {
+  color: var(--theme-icon-red);
+}
+
+.color-icon-gold {
+  color: var(--theme-icon-gold);
+}
+
+.color-icon-yellow {
+  color: var(--theme-icon-yellow);
+}
+
+.color-icon-magenta {
+  color: var(--theme-icon-magenta);
+}
+
+
+.color-icon-statusbar-red {
+  color: var(--theme-statusbar-icon-error);
+}
+
+.color-icon-statusbar-green {
+  color: var(--theme-statusbar-icon-ok);
+}
+
+.premium-background-gradient {
+  background: linear-gradient(135deg, #1686c8, #8a25b1);
+}
+
+.premium-gradient {
+  background: linear-gradient(135deg, #1686c8, #8a25b1);
+  color: white;
+}
+
+.web-color-primary {
+  background:  #1686c8;
+}
+
+.web-color-secondary {
+  background:  #8a25b1;
+}

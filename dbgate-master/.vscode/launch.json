@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug App",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/packages/api/src/index.js",
+      "envFile": "${workspaceFolder}/packages/api/.env",
+      "args": ["--listen-api"],
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeExecutable": "node",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug App (Break on Start)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/packages/api/src/index.js",
+      "args": ["--listen-api"],
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "restart": true,
+      "runtimeExecutable": "node",
+      "skipFiles": ["<node_internals>/**"],
+      "stopOnEntry": true
+    },
+    {
+      "name": "Attach to Process",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "${workspaceFolder}",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}
+
