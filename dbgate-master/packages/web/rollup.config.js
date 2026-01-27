@@ -61,6 +61,7 @@ export default [
       commonjs(),
       resolve({
         browser: true,
+        exportConditions: ['svelte', 'browser', 'default'],
       }),
 
       // If we're building for production (npm run build
@@ -72,7 +73,7 @@ export default [
   {
     input: 'src/main.ts',
     output: {
-      sourcemap: !production,
+      sourcemap: !production ? 'inline' : false,
       format: 'iife',
       name: 'app',
       file: 'public/build/bundle.js',
@@ -97,6 +98,7 @@ export default [
 
       replace({
         'process.env.API_URL': JSON.stringify(process.env.API_URL),
+        preventAssignment: true,
       }),
 
       svelte({
@@ -132,11 +134,13 @@ export default [
       resolve({
         browser: true,
         dedupe: ['svelte'],
+        exportConditions: ['svelte', 'browser', 'default'],
       }),
       commonjs(),
       typescript({
         sourceMap: !production,
         inlineSources: !production,
+        inlineSourceMap: false, // 使用外部源映射文件
       }),
       json(),
 

@@ -36,6 +36,7 @@ import runCommand from './runCommand';
 import { getSettings } from '../utility/metadataLoaders';
 import { isMac, switchCurrentDatabase } from '../utility/common';
 import { doLogout } from '../clientAuth';
+// @ts-ignore - Svelte file export
 import { disconnectServerConnection } from '../appobj/ConnectionAppObject.svelte';
 import NewCollectionModal from '../modals/NewCollectionModal.svelte';
 import ConfirmModal from '../modals/ConfirmModal.svelte';

@@ -5,7 +5,7 @@ import type { EngineDriver } from 'dbgate-types';
 import type { DesignerInfo, DesignerTableInfo, DesignerReferenceInfo, DesignerJoinType } from './types';
 import { DesignerComponentCreator } from './DesignerComponentCreator';
 import { DesignerQueryDumper } from './DesignerQueryDumper';
-import { detectSqlFilterBehaviour } from 'dbgate-tools';
+import { detectSqlFilterBehaviour, stringFilterBehaviour } from 'dbgate-tools';
 
 export function referenceIsConnecting(
   reference: DesignerReferenceInfo,
@@ -142,5 +142,6 @@ export function findDesignerFilterBehaviour({ designerId, columnName }, designer
       return detectSqlFilterBehaviour(dataType);
     }
   }
-  return 'string';
+  // 返回默认的 FilterBehaviour 对象而不是字符串
+  return stringFilterBehaviour;
 }
