@@ -31,7 +31,7 @@ const supportedLanguages = Object.keys(translations);
 
 const compiledMessages: Partial<Record<string, Record<string, MessageFunction<'string'>>>> = {};
 
-const defaultLanguage = 'en';
+const defaultLanguage = 'zh';
 
 let selectedLanguageCache: string | null = null;
 
