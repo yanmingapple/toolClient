@@ -410,6 +410,8 @@ function createWindow() {
   // mainMenu = buildMenu();
   // mainWindow.setMenu(mainMenu);
 
+  mainWindow.webContents.openDevTools()
+
   function loadMainWindow() {
     const startUrl =
       process.env.ELECTRON_START_URL ||

@@ -83,9 +83,7 @@ export class DesignerQueryDumper {
       }
 
       try {
-        const filterBehaviour = findDesignerFilterBehaviour(column, this.designer);
-        // findDesignerFilterBehaviour 可能返回字符串 'string' 或 FilterBehaviour 对象
-        const condition = parseFilter(column[filterField], filterBehaviour as any);
+        const condition = parseFilter(column[filterField], findDesignerFilterBehaviour(column, this.designer));
         if (condition) {
           conditions.push(
             _.cloneDeepWith(condition, expr => {

@@ -5,11 +5,35 @@
   "author": "Jan Prochazka <jenasoft.database@gmail.com>",
   "description": "Opensource database administration tool",
   "dependencies": {
+    "@aws-sdk/rds-signer": "^3.665.0",
+    "@azure/cosmos": "*",
+    "@clickhouse/client": "*",
+    "@duckdb/node-api": "*",
+    "@mongosh/browser-runtime-electron": "*",
+    "@mongosh/service-provider-node-driver": "*",
+    "activedirectory2": "^2.1.0",
+    "axios": "^1.13.2",
+    "better-sqlite3": "*",
+    "bson": "*",
     "electron-log": "^4.4.1",
     "electron-updater": "^6.3.4",
-    "jsonwebtoken": "^9.0.2",
+    "ioredis": "*",
+    "jsonwebtoken": "^8.5.1",
+    "libsql": "*",
     "lodash.clonedeepwith": "^4.5.0",
-    "patch-package": "^6.4.7"
+    "mongodb": "*",
+    "mongodb-client-encryption": "*",
+    "mongodb-old": "*",
+    "msnodesqlv8": "*",
+    "mysql2": "*",
+    "node-redis-dump2": "*",
+    "oracledb": "*",
+    "patch-package": "^6.4.7",
+    "pg": "*",
+    "pg-copy-streams": "*",
+    "ssh2": "^1.16.0",
+    "tedious": "*",
+    "wkx": "*"
   },
   "repository": {
     "type": "git",
@@ -20,6 +44,10 @@
     "appId": "org.dbgate",
     "productName": "DbGate",
     "asarUnpack": "**/*.node",
+    "directories": {
+      "output": "dist",
+      "app": "."
+    },
     "mac": {
       "category": "database",
       "icon": "icon512-mac.png",
@@ -108,8 +136,27 @@
       "packages",
       "src",
       "icon.png",
+      "node_modules/**/*",
+      "!node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/**/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/**/*.d.ts",
+      "!node_modules/**/*.map",
+      "!node_modules/**/*.config.js",
+      "!node_modules/**/jest.config.js",
+      "!node_modules/**/webpack.config.js",
+      "!node_modules/**/rollup.config.js",
+      "!node_modules/**/vite.config.js",
+      "!node_modules/**/tsconfig.json",
+      "!node_modules/**/.eslintrc*",
+      "!node_modules/**/.prettierrc*",
+      "!node_modules/dbgate-*/**/*.config.js",
+      "!node_modules/dbgate-*/**/jest.config.js",
+      "!node_modules/dbgate-*/**/tsconfig.json",
+      "!node_modules/dbgate-*/**/src/**",
       "!node_modules/cpu-features/build/**"
-    ]
+    ],
+    "beforePack": "./clean-configs.js",
+    "asar": true
   },
   "homepage": "./",
   "scripts": {
@@ -120,7 +167,8 @@
     "build:local": "cd ../packages/api && yarn build && cd ../web && yarn build && cd ../../app && yarn predist",
     "postinstall": "yarn rebuild && patch-package",
     "rebuild": "electron-builder install-app-deps",
-    "predist": "copyfiles ../packages/api/dist/* packages && copyfiles \"../packages/web/public/*\" packages && copyfiles \"../packages/web/public/**/*\" packages && copyfiles --up 3 \"../plugins/dist/**/*\" packages/plugins"
+    "clean:configs": "node clean-configs.js",
+    "predist": "copyfiles ../packages/api/dist/* packages && copyfiles \"../packages/web/public/*\" packages && copyfiles \"../packages/web/public/**/*\" packages && copyfiles --up 3 \"../plugins/dist/**/*\" packages/plugins && yarn clean:configs"
   },
   "main": "src/electron.js",
   "devDependencies": {

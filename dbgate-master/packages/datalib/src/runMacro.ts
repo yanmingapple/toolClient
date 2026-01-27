@@ -108,3 +108,63 @@ export function runMacroOnChangeSet(
     return res;
   }
 }
+
+import type { FreeTableModel } from './FreeTableModel';
+import { FreeTableGridDisplay } from './FreeTableGridDisplay';
+import { createChangeSet } from './ChangeSet';
+import { createGridConfig, createGridCache } from './GridConfig';
+
+export function runMacro(
+  macro: MacroDefinition,
+  macroArgs: {},
+  model: FreeTableModel,
+  useRowIndexInsteaOfCondition: boolean,
+  selectedCells: MacroSelectedCell[],
+  errors: string[] = []
+): FreeTableModel {
+  if (!macro || !model) return model;
+
+  const compiledMacroFunc = compileMacroFunction(macro, errors);
+  if (!compiledMacroFunc) return model;
+
+  // 创建新的 model 副本
+  const result: FreeTableModel = {
+    structure: model.structure,
+    rows: model.rows.map(row => ({ ...row })),
+  };
+
+  if (macro.type == 'transformValue') {
+    // 对选中的单元格应用宏
+    for (const cell of selectedCells) {
+      if (cell.row >= 0 && cell.row < result.rows.length) {
+        const row = result.rows[cell.row];
+        if (row && cell.column) {
+          const originalValue = row[cell.column];
+          const macroResult = runMacroOnValue(
+            compiledMacroFunc,
+            macroArgs,
+            originalValue,
+            cell.row,
+            row,
+            cell.column,
+            errors
+          );
+          row[cell.column] = macroResult;
+        }
+      }
+    }
+  } else if (macro.type == 'transformRow') {
+    // 对选中的行应用宏
+    const rowIndexes = _.uniq(selectedCells.map(x => x.row));
+    for (const index of rowIndexes) {
+      if (index >= 0 && index < result.rows.length) {
+        const row = result.rows[index];
+        const columns = _.uniq(selectedCells.map(x => x.column));
+        const newRow = runMacroOnRow(compiledMacroFunc, macroArgs, index, row, columns, errors);
+        result.rows[index] = newRow;
+      }
+    }
+  }
+
+  return result;
+}
