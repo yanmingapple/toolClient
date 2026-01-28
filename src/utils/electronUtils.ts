@@ -37,6 +37,18 @@ interface ElectronAPI {
     restartApp: () => void
     switchMenuType: (menuType: string) => Promise<boolean>
   }
+  window: {
+    create: (options: {
+      page: string
+      title?: string
+      width?: number
+      height?: number
+      engine?: string
+      ocrTitle?: string
+    }) => Promise<string>
+    close: (windowId: string) => Promise<void>
+    getAll: () => Promise<string[]>
+  }
   file: {
     selectFile: (filters: string[]) => Promise<string>
     selectFolder: () => Promise<string>
@@ -466,23 +478,120 @@ export const getSystemResources = async (): Promise<ServiceResult<any>> => {
 }
 
 /**
- * 打开日历提醒
+ * 打开日历提醒 - 直接打开对话框窗口
  */
-export const openCalendarReminder = (): void => {
-  const electronAPI = getSafeIpcRenderer()
-  if (!electronAPI) {
-    return
-  }
-  electronAPI.sidebar.openCalendar()
+export const openCalendarReminder = async (): Promise<void> => {
+  await openEventReminderDialog()
 }
 
 /**
- * 打开信用卡提醒工具
+ * 打开信用卡提醒工具 - 直接打开对话框窗口
  */
-export const openCreditCardReminder = (): void => {
+export const openCreditCardReminder = async (): Promise<void> => {
+  await openCreditCardDialog()
+}
+
+/**
+ * 创建新窗口
+ * @param options 窗口选项
+ * @returns Promise<string> 窗口ID
+ */
+export const createWindow = async (options: {
+  page: 'toolpanel' | 'workspace' | 'ocr' | 'sidebar' | 'dialog-connection' | 'dialog-command-result' | 'dialog-terminal' | 'dialog-event-reminder' | 'dialog-credit-card'
+  title?: string
+  width?: number
+  height?: number
+  engine?: string
+  ocrTitle?: string
+  params?: Record<string, any>
+}): Promise<string | null> => {
+  const electronAPI = getSafeIpcRenderer()
+  if (!electronAPI) {
+    console.warn('Electron API not available')
+    return null
+  }
+  try {
+    return await electronAPI.window.create(options)
+  } catch (error) {
+    console.error('Failed to create window:', error)
+    return null
+  }
+}
+
+/**
+ * 打开连接对话框窗口
+ */
+export const openConnectionDialog = async (connection?: any): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-connection',
+    title: connection ? '编辑数据库连接' : '新建数据库连接',
+    width: 700,
+    height: 600,
+    params: {
+      connection
+    }
+  })
+}
+
+/**
+ * 打开命令结果对话框窗口
+ */
+export const openCommandResultDialog = async (title: string, result: any): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-command-result',
+    title: title || '命令执行结果',
+    width: 900,
+    height: 700,
+    params: {
+      title,
+      result
+    }
+  })
+}
+
+/**
+ * 打开终端控制台窗口
+ */
+export const openTerminalDialog = async (): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-terminal',
+    title: '终端控制台',
+    width: 1000,
+    height: 700
+  })
+}
+
+/**
+ * 打开日历提醒窗口
+ */
+export const openEventReminderDialog = async (): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-event-reminder',
+    title: '日历提醒',
+    width: 800,
+    height: 600
+  })
+}
+
+/**
+ * 打开信用卡提醒窗口
+ */
+export const openCreditCardDialog = async (): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-credit-card',
+    title: '信用卡提醒',
+    width: 800,
+    height: 600
+  })
+}
+
+/**
+ * 关闭当前窗口
+ */
+export const closeCurrentWindow = (): void => {
   const electronAPI = getSafeIpcRenderer()
   if (!electronAPI) {
     return
   }
-  electronAPI.sidebar.openCreditCard()
+  electronAPI.app.closeWindow()
 }

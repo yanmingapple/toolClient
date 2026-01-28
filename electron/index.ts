@@ -47,7 +47,7 @@ function createWindow() {
   })
 
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:3000')
+    mainWindow.loadURL('http://localhost:3000#toolpanel')
     // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadURL(
@@ -55,6 +55,7 @@ function createWindow() {
         pathname: path.join(__dirname, '../renderer/index.html'),
         protocol: 'file:',
         slashes: true,
+        hash: '#toolpanel'
       })
     )
   }

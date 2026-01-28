@@ -6,6 +6,9 @@ const { ipcMain } = electron;
 // 引入操作系统模块，用于获取系统资源信息
 const os = require('os');
 
+// 引入窗口管理服务
+import { WindowService } from './windowService';
+
 /**
  * 侧边栏服务类
  * 负责处理侧边栏相关的所有IPC通信
@@ -53,20 +56,24 @@ export class SidebarService {
       }
     });
 
-    // 处理打开日历提醒请求
-    ipcMain.on('sidebar:open-calendar', () => {
-      if (this.mainWindow) {
-        this.mainWindow.show();
-        this.mainWindow.webContents.send('sidebar-open-calendar');
-      }
+    // 处理打开日历提醒请求 - 直接打开对话框窗口
+    ipcMain.on('sidebar:open-calendar', async () => {
+      await WindowService.createWindow({
+        page: 'dialog-event-reminder',
+        title: '日历提醒',
+        width: 800,
+        height: 600
+      });
     });
 
-    // 处理打开信用卡提醒工具请求
-    ipcMain.on('sidebar:open-credit-card', () => {
-      if (this.mainWindow) {
-        this.mainWindow.show();
-        this.mainWindow.webContents.send('sidebar-open-credit-card');
-      }
+    // 处理打开信用卡提醒工具请求 - 直接打开对话框窗口
+    ipcMain.on('sidebar:open-credit-card', async () => {
+      await WindowService.createWindow({
+        page: 'dialog-credit-card',
+        title: '信用卡提醒',
+        width: 800,
+        height: 600
+      });
     });
 
     // 处理切换侧边栏请求

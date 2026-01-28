@@ -189,6 +189,48 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
+  // 窗口管理相关
+  window: {
+    /**
+     * 创建新窗口
+     * @param {Object} options 窗口选项
+     * @param {string} options.page 页面类型: 'toolpanel' | 'workspace' | 'ocr' | 'sidebar'
+     * @param {string} [options.title] 窗口标题
+     * @param {number} [options.width] 窗口宽度，默认1200
+     * @param {number} [options.height] 窗口高度，默认800
+     * @param {string} [options.engine] OCR引擎（仅当page为ocr时使用）
+     * @param {string} [options.ocrTitle] OCR页面标题（仅当page为ocr时使用）
+     * @returns {Promise<string>} 窗口ID
+     */
+    create: (options: {
+      page: string;
+      title?: string;
+      width?: number;
+      height?: number;
+      engine?: string;
+      ocrTitle?: string;
+      params?: Record<string, any>;
+    }): Promise<string> => {
+      return ipcRenderer.invoke('window:create', options);
+    },
+
+    /**
+     * 关闭指定窗口
+     * @param {string} windowId 窗口ID
+     */
+    close: (windowId: string): Promise<void> => {
+      return ipcRenderer.invoke('window:close-by-id', windowId);
+    },
+
+    /**
+     * 获取所有窗口ID
+     * @returns {Promise<string[]>} 窗口ID数组
+     */
+    getAll: (): Promise<string[]> => {
+      return ipcRenderer.invoke('window:get-all');
+    }
+  },
+
   // 文件操作相关
   file: {
     /**

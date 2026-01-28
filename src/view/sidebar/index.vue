@@ -73,18 +73,18 @@ const updateSystemInfo = async () => {
   }
 }
 
-const handleOpenCalendar = () => {
+const handleOpenCalendar = async () => {
   try {
-    openCalendarReminder()
+    await openCalendarReminder()
     handleToggleExpand()
   } catch (error) {
     console.error('Failed to open calendar:', error)
   }
 }
 
-const handleOpenCreditCard = () => {
+const handleOpenCreditCard = async () => {
   try {
-    openCreditCardReminder()
+    await openCreditCardReminder()
     handleToggleExpand()
   } catch (error) {
     console.error('Failed to open credit card reminder:', error)

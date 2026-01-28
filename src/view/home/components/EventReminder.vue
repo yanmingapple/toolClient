@@ -1,33 +1,23 @@
 <template>
   <div class="event-reminder">
-    <el-drawer
-      v-model="visible"
-      direction="rtl"
-      size="100vw"
-      :close-on-click-modal="false"
-      class="event-reminder-drawer"
-      :fullscreen="true"
-      :show-close="false"
-    >
-      <template #header>
-        <div class="dialog-title">
-          <div class="title-wrapper">
-            <el-icon class="title-icon"><Calendar /></el-icon>
-            <span class="title-text">日历事件提醒</span>
+    <!-- 顶部标题栏 -->
+    <div class="dialog-title">
+      <div class="title-wrapper">
+        <el-icon class="title-icon"><Calendar /></el-icon>
+        <span class="title-text">日历事件提醒</span>
+      </div>
+      <div class="calendar-nav">
+        <el-button type="primary" size="small" @click="prevMonth">
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+        <div class="calendar-title-wrapper">
+          <div class="calendar-title">
+            {{ currentYear }}年{{ currentMonth }}月
           </div>
-          <div class="calendar-nav">
-            <el-button type="primary" size="small" @click="prevMonth">
-              <el-icon><ArrowLeft /></el-icon>
-            </el-button>
-            <div class="calendar-title-wrapper">
-              <div class="calendar-title">
-                {{ currentYear }}年{{ currentMonth }}月
-              </div>
-
-            </div>
-            <el-button type="primary" size="small" @click="nextMonth">
-              <el-icon><ArrowRight /></el-icon>
-            </el-button>
+        </div>
+        <el-button type="primary" size="small" @click="nextMonth">
+          <el-icon><ArrowRight /></el-icon>
+        </el-button>
             <el-button type="success" size="small" @click="today">
               <el-icon><Clock /></el-icon>
               今天
@@ -40,14 +30,10 @@
               <el-icon><Bell /></el-icon>
               <span class="unread-count" v-if="unreadReminders > 0">{{ unreadReminders }}</span>
             </el-button>
-            <el-button type="danger" size="small" @click="visible = false" class="close-btn">
-              <el-icon><Close /></el-icon>
-              关闭
-            </el-button>
-          </div>
-        </div>
-      </template>
-      <div class="event-reminder-content">
+      </div>
+    </div>
+    
+    <div class="event-reminder-content">
         <!-- 日历视图 -->
         <div class="calendar-view">
           <!-- 日历头部 -->
@@ -209,14 +195,13 @@
           <el-button type="primary" @click="submitEvent">保存</el-button>
         </template>
       </el-drawer>
-    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
-import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell, Document, CircleClose, CircleCheck, Close } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell } from '@element-plus/icons-vue'
 import { Solar } from 'lunar-javascript'
 
 interface Event {
@@ -249,18 +234,7 @@ interface FormData {
   remindBefore: number
 }
 
-const props = defineProps<{
-  modelValue: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-}>()
-
-const visible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
+// 移除 props 和 emit，因为现在是在独立窗口中显示
 
 // 日历状态
 const currentYear = ref(new Date().getFullYear())
@@ -693,10 +667,9 @@ onUnmounted(() => {
   stopReminderCheck()
 })
 
-watch(visible, (newVal) => {
-  if (newVal) {
-    loadEvents()
-  }
+// 组件挂载时加载事件
+onMounted(() => {
+  loadEvents()
 })
 
 defineExpose({
@@ -726,8 +699,9 @@ defineExpose({
   width: 100%;
   padding: 12px 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px 12px 0 0;
-  margin: -12px -12px 0 -12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  flex-shrink: 0;
 }
 
 .title-wrapper {
@@ -1641,22 +1615,7 @@ defineExpose({
   color: #ef4444;
 }
 
-/* 抽屉样式 */
-  .event-reminder-drawer {
-    .el-drawer__header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 16px 20px;
-      border-bottom: none;
-    }
-    
-    .close-btn {
-      margin-left: 10px;
-      
-      &:hover {
-        transform: scale(1.05);
-      }
-    }
-  }
+/* 移除抽屉样式，因为现在是在独立窗口中显示 */
 
 /* 响应式设计 */
 @media (max-width: 768px) {

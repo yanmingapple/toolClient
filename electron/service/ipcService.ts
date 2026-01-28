@@ -11,6 +11,7 @@ import { DatabaseManager } from '../manager/ClientManager';   // 数据库管理
 import { TerminalService } from './terminalService';  // 终端命令服务
 import { MenuService } from './menuService';  // 菜单服务
 import { SidebarService } from './sidebarService';  // 侧边栏服务
+import { WindowService } from './windowService';  // 窗口管理服务
 
 /**
  * IPC服务类
@@ -72,6 +73,9 @@ export class IpcService {
     if (sidebarWindow) {
       SidebarService.registerIpcHandlers(mainWindow, sidebarWindow);
     }
+
+    // 10. 注册窗口管理相关的IPC处理程序
+    WindowService.registerIpcHandlers();
   }
 
   /**
@@ -100,9 +104,17 @@ export class IpcService {
       }
     });
 
-    // 处理窗口关闭请求
-    ipcMain.handle('window:close', () => {
-      this.mainWindow?.close();
+    // 处理窗口关闭请求（关闭发送请求的窗口）
+    ipcMain.handle('window:close', (event: any) => {
+      // 尝试从事件中获取发送消息的窗口
+      const { BrowserWindow } = require('electron');
+      const senderWindow = BrowserWindow.fromWebContents(event.sender);
+      if (senderWindow) {
+        senderWindow.close();
+      } else {
+        // 如果无法获取，则关闭主窗口
+        this.mainWindow?.close();
+      }
     });
 
     // 处理应用程序重启请求

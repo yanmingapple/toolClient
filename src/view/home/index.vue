@@ -29,8 +29,6 @@
       </div>
     </header>
     
-    <!-- 事件提醒组件 -->
-    <EventReminder v-model="showEventReminder" />
 
     <!-- 主内容区 -->
     <main class="dashboard-main">
@@ -169,7 +167,7 @@ import QuickActions from './components/QuickActions.vue'
 import ToolSets from './components/ToolSets.vue'
 import SystemInfo from './components/SystemInfo.vue'
 import DigitalClock from './components/DigitalClock.vue'
-import EventReminder from './components/EventReminder.vue'
+import { openEventReminderDialog } from '../../utils/electronUtils'
 import type { TreeNode } from '../../../electron/model/database'
 
 // Props
@@ -189,7 +187,6 @@ const emit = defineEmits<{
 const connectionStore = useConnectionStore()
 
 // State
-const showEventReminder = ref(false)
 const events = ref<any[]>([])
 
 // Computed
@@ -243,8 +240,8 @@ const handleOpenTerminal = () => {
   emit('openTerminal')
 }
 
-const handleOpenEventReminder = () => {
-  showEventReminder.value = true
+const handleOpenEventReminder = async () => {
+  await openEventReminderDialog()
 }
 
 const handleRefreshMonitor = () => {

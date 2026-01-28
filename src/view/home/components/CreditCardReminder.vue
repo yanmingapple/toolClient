@@ -1,36 +1,22 @@
 <template>
   <div class="credit-card-reminder">
-    <el-drawer
-      v-model="visible"
-      direction="rtl"
-      size="100vw"
-      :close-on-click-modal="false"
-      class="credit-card-reminder-drawer"
-      :fullscreen="true"
-      :show-close="false"
-    >
-      <template #header>
-        <div class="dialog-title">
-          <div class="title-wrapper">
-            <el-icon class="title-icon"><CreditCard /></el-icon>
-            <span class="title-text">信用卡管理</span>
-          </div>
-          <div class="calendar-nav">
-            <el-button type="success" size="small" @click="handleCheckAll">
-              <el-icon><Check /></el-icon>
-              检查所有账单
-            </el-button>
+    <!-- 顶部标题栏 -->
+    <div class="dialog-title">
+      <div class="title-wrapper">
+        <el-icon class="title-icon"><CreditCard /></el-icon>
+        <span class="title-text">信用卡管理</span>
+      </div>
+      <div class="calendar-nav">
+        <el-button type="success" size="small" @click="handleCheckAll">
+          <el-icon><Check /></el-icon>
+          检查所有账单
+        </el-button>
             <el-button type="primary" size="small" @click="handleAddCard">
               <el-icon><Plus /></el-icon>
               添加信用卡
             </el-button>
-            <el-button type="danger" size="small" @click="handleClose" class="close-btn">
-              <el-icon><Close /></el-icon>
-              关闭
-            </el-button>
-          </div>
-        </div>
-      </template>
+      </div>
+    </div>
 
     <!-- 统计信息区域 -->
     <div class="stats-section">
@@ -204,14 +190,13 @@
         <el-button type="primary" @click="handleSaveCard">保存</el-button>
       </template>
     </el-drawer>
-    </el-drawer>
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Check, Warning, Clock, CreditCard, Edit, Delete, Close, Money } from '@element-plus/icons-vue'
+import { Plus, Check, Warning, Clock, CreditCard, Edit, Delete, Money } from '@element-plus/icons-vue'
 
 interface CreditCard {
   id: string
@@ -234,19 +219,6 @@ interface FormData {
   creditLimit: number
   currentBalance: number
 }
-
-const props = defineProps<{
-  modelValue: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-}>()
-
-const visible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
 
 const creditCards = ref<CreditCard[]>([])
 const addCardVisible = ref(false)
@@ -300,12 +272,6 @@ const getCardTypeText = (cardType: string): string => {
 const getUsageRate = (card: CreditCard): string => {
   if (card.creditLimit === 0) return '0'
   return Math.round((card.currentBalance / card.creditLimit) * 100).toString()
-}
-
-const handleClose = () => {
-  visible.value = false
-  // 发送事件通知父组件切换回工具面板
-  emit('close')
 }
 
 const formatAmount = (amount: number): string => {
@@ -398,7 +364,13 @@ const handleSaveCard = async () => {
       if (index !== -1) {
         creditCards.value[index] = {
           ...editingCard.value,
-          ...formData.value
+          bankName: formData.value.bankName,
+          cardType: formData.value.cardType as 'unionpay' | 'visa' | 'mastercard' | 'jcb',
+          lastFourDigits: formData.value.lastFourDigits,
+          billingDay: formData.value.billingDay,
+          dueDay: formData.value.dueDay,
+          creditLimit: formData.value.creditLimit,
+          currentBalance: formData.value.currentBalance
         }
         ElMessage.success('信用卡信息已更新')
       }
@@ -406,7 +378,13 @@ const handleSaveCard = async () => {
       // 添加模式
       const newCard: CreditCard = {
         id: Date.now().toString(),
-        ...formData.value,
+        bankName: formData.value.bankName,
+        cardType: formData.value.cardType as 'unionpay' | 'visa' | 'mastercard' | 'jcb',
+        lastFourDigits: formData.value.lastFourDigits,
+        billingDay: formData.value.billingDay,
+        dueDay: formData.value.dueDay,
+        creditLimit: formData.value.creditLimit,
+        currentBalance: formData.value.currentBalance,
         createdAt: Date.now()
       }
       creditCards.value.push(newCard)
@@ -476,22 +454,20 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* 抽屉样式 */
-.credit-card-reminder-drawer {
-  .el-drawer__header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 16px 20px;
-    border-bottom: none;
-  }
-  
-  .close-btn {
-    margin-left: 10px;
-    
-    &:hover {
-      transform: scale(1.05);
-    }
-  }
+/* Dialog Title */
+.dialog-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  flex-shrink: 0;
 }
+
+/* 移除抽屉样式，因为现在是在独立窗口中显示 */
 
 /* Dialog Title */
 .dialog-title {
@@ -531,13 +507,14 @@ onMounted(() => {
   gap: 8px;
 }
 
-// 统计信息区域
-.stats-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  padding: 32px;
-  padding-bottom: 20px;
+  // 统计信息区域
+  .stats-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 32px;
+    padding-bottom: 20px;
+    flex-shrink: 0;
 
   .stat-card {
     background: rgba(255, 255, 255, 0.95);

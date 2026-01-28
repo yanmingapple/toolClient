@@ -168,12 +168,22 @@ export class DatabaseManager {
 
     /**
      * 确保数据库管理器已初始化
-     * @throws 如果未初始化则抛出错误
+     * 如果未初始化，则自动初始化
+     * @throws 如果初始化失败则抛出错误
      */
-    private ensureInitialized(): void {
-        if (!this.isInitialized || !this.databaseClient) {
-            throw new Error('DatabaseManager is not initialized. Call initialize() first.');
+    private async ensureInitialized(): Promise<void> {
+        if (this.isInitialized && this.databaseClient) {
+            return;
         }
+        
+        // 如果正在初始化，等待初始化完成
+        if (this.initializationPromise) {
+            await this.initializationPromise;
+            return;
+        }
+        
+        // 如果未初始化，自动初始化
+        await this.initialize();
     }
 
     /**
@@ -182,7 +192,7 @@ export class DatabaseManager {
      * @returns 数据库客户端实例
      */
     public async getConnection(config: ConnectionConfig): Promise<DatabaseClient> {
-        this.ensureInitialized(); // 确保已初始化
+        await this.ensureInitialized(); // 确保已初始化
 
         const connectionKey = this.generateConnectionKey(config);
         let connectionInfo = this.connections.get(connectionKey);
@@ -384,7 +394,7 @@ export class DatabaseManager {
      * @returns TreeNode 数组
      */
     public async handleGetAllConnections(): Promise<ServiceResult<TreeNode[]>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             const connections = await this.databaseClient!.execute(SQLStatements.SELECT_ALL_CONNECTIONS);
 
@@ -457,7 +467,7 @@ export class DatabaseManager {
      * @param connections 连接列表
      */
     public async handleSaveConnectionList(connections: ConnectionConfig[]): Promise<ServiceResult<void>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             // 由于没有批量插入的SQL语句，我们需要逐个插入
             for (const connection of connections) {
@@ -482,7 +492,7 @@ export class DatabaseManager {
      * @param connectionId 连接ID
      */
     public async handleDeleteConnection(connectionId: string): Promise<ServiceResult<void>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             await this.databaseClient!.execute(SQLStatements.DELETE_CONNECTION_BY_ID, [connectionId]);
             //删除ClientMananger中的连接
@@ -513,7 +523,7 @@ export class DatabaseManager {
      * 查询所有服务监控
      */
     public async handleGetAllServiceMonitors(): Promise<ServiceResult<ServiceMonitor[]>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             const monitors = await this.databaseClient!.execute(SQLStatements.SELECT_ALL_SERVICE_MONITORS);
             return ServiceResultFactory.success(monitors);
@@ -528,7 +538,7 @@ export class DatabaseManager {
      * @param monitors 服务监控列表
      */
     public async handleSaveServiceMonitors(monitors: ServiceMonitor[]): Promise<ServiceResult<void>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             // 根据id判断是插入还是更新
             for (const monitor of monitors) {
@@ -572,7 +582,7 @@ export class DatabaseManager {
      * @param ids 服务监控ID数组
      */
     public async handleDeleteServiceMonitors(ids: number[]): Promise<ServiceResult<void>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             // 由于没有批量删除的SQL语句，我们需要逐个删除
             for (const id of ids) {
@@ -589,7 +599,7 @@ export class DatabaseManager {
      * 删除所有服务监控
      */
     public async handleDeleteAllServiceMonitors(): Promise<ServiceResult<void>> {
-        this.ensureInitialized();
+        await this.ensureInitialized();
         try {
             await this.databaseClient!.execute(SQLStatements.DELETE_ALL_SERVICE_MONITORS);
             return ServiceResultFactory.success<void>();
