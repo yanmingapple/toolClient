@@ -19,14 +19,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Connection, Setting, Upload } from '@element-plus/icons-vue'
+import { Connection, Setting, Upload, DataBoard } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
 
 // 图标组件映射
 const iconMap = {
   Connection,
   Setting,
-  Upload
+  Upload,
+  Database: DataBoard  // 使用 DataBoard 替代不存在的 Database 图标
 }
 
 // 快速操作数据配置
@@ -38,6 +39,14 @@ const quickActions = ref([
     icon: 'Connection',
     iconBgClass: 'icon-bg-blue',
     handler: 'handleEnterDatabase'
+  },
+  {
+    id: 'open-dbgate',
+    title: 'DbGate',
+    description: '专业数据库管理工具',
+    icon: 'Database',
+    iconBgClass: 'icon-bg-dbgate',
+    handler: 'handleOpenDbgate'
   },
   {
     id: 'open-terminal',
@@ -61,6 +70,7 @@ const quickActions = ref([
 const handleQuickAction = (handler: string) => {
   const handlerMap: Record<string, () => void> = {
     handleEnterDatabase,
+    handleOpenDbgate,
     handleOpenTerminal,
     handleImportData
   }
@@ -74,10 +84,15 @@ const handleQuickAction = (handler: string) => {
 const emit = defineEmits<{
   createPanel: [type: string, title: string, content: any]
   openTerminal: []
+  openDbgate: []
 }>()
 
 const handleEnterDatabase = () => {
   emit('createPanel', 'database', '数据库管理', null)
+}
+
+const handleOpenDbgate = () => {
+  emit('openDbgate')
 }
 
 const handleOpenTerminal = () => {
@@ -142,6 +157,10 @@ const handleImportData = () => {
 
 .icon-bg-purple {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.icon-bg-dbgate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .action-icon {

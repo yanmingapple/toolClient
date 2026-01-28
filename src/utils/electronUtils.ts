@@ -85,6 +85,11 @@ interface ElectronAPI {
     openCalendar: () => void
     openCreditCard: () => void
   }
+  dbgate: {
+    open: () => Promise<{success: boolean, windowId?: number, error?: string}>
+    close: () => Promise<{success: boolean}>
+    isOpen: () => Promise<boolean>
+  }
 }
 
 // 扩展 Window 接口

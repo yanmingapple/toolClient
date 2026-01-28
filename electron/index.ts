@@ -8,6 +8,7 @@ import { clientManager } from './manager/ClientManager'
 import { MenuService } from './service/menuService'
 import { IpcService } from './service/ipcService'
 import { SidebarService } from './service/sidebarService'
+import { DbgateWindowService } from './service/dbgateWindowService'
 import { join } from 'path'
 
 let mainWindow: typeof BrowserWindow | null
@@ -189,6 +190,9 @@ function collapseSidebar() {
 
 app.on('ready', async () => {
   try {
+    // 初始化 dbgate API 服务（在数据库管理器之前）
+    await DbgateWindowService.initialize()
+    
     // 初始化数据库管理器
     await initializeDatabase()
 
@@ -221,6 +225,9 @@ app.on('activate', () => {
 app.on('before-quit', async () => {
   tray?.destroy()
   sidebarWindow?.close()
+  
+  // 关闭 dbgate 窗口
+  DbgateWindowService.closeDbgateWindow()
 
   // 关闭数据库连接并清理资源
   if (clientManager) {

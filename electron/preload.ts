@@ -423,6 +423,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
+  // Dbgate 相关
+  dbgate: {
+    /**
+     * 打开 dbgate 窗口
+     * @returns Promise<{success: boolean, windowId?: number, error?: string}>
+     */
+    open: (): Promise<{success: boolean, windowId?: number, error?: string}> => {
+      return ipcRenderer.invoke('dbgate:open');
+    },
+
+    /**
+     * 关闭 dbgate 窗口
+     * @returns Promise<{success: boolean}>
+     */
+    close: (): Promise<{success: boolean}> => {
+      return ipcRenderer.invoke('dbgate:close');
+    },
+
+    /**
+     * 检查 dbgate 窗口是否打开
+     * @returns Promise<boolean>
+     */
+    isOpen: (): Promise<boolean> => {
+      return ipcRenderer.invoke('dbgate:is-open');
+    }
+  },
+
 });
 
 // 控制台输出预加载脚本加载成功的消息

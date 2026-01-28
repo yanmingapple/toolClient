@@ -3,8 +3,6 @@ import store from "../store";
 // import router from "@/router";
 import tkPageParams from "@/global/tkPageParams";
 import { fetchEventSource } from "./fetchEventSource/index";
-import { useRouter } from "vue-router";
-const $router = useRouter();
 
 let netWorkErr;
 let tkInterface = {};
@@ -501,7 +499,8 @@ export class TkReq {
               ? JSON.parse(localStorage.getItem("sessionLoginData"))
               : {};
             !isRememberPassword && localStorage.removeItem("sessionLoginData");
-            $router.replace({ name: "login" });
+            // 使用 window.location 进行导航，避免在模块顶层调用 useRouter()
+            window.location.href = "#/login";
             return;
           }
 

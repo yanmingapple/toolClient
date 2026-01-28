@@ -76,6 +76,13 @@ export class IpcService {
 
     // 10. 注册窗口管理相关的IPC处理程序
     WindowService.registerIpcHandlers();
+
+    // 11. 注册 dbgate 相关的 IPC 处理程序
+    this.registerDbgateHandlers();
+    
+    // 12. 注册 dbgate 窗口服务的 IPC 处理程序
+    const { DbgateWindowService } = require('./dbgate');
+    DbgateWindowService.registerIpcHandlers();
   }
 
   /**
@@ -137,6 +144,35 @@ export class IpcService {
         return true;
       }
       return false;
+    });
+  }
+
+  /**
+   * 注册 dbgate 相关的 IPC 处理程序
+   */
+  private static registerDbgateHandlers() {
+    const { DbgateWindowService } = require('./dbgate');
+    
+    // 打开 dbgate 窗口
+    ipcMain.handle('dbgate:open', async () => {
+      try {
+        const window = await DbgateWindowService.createDbgateWindow();
+        return { success: true, windowId: window.id };
+      } catch (error: any) {
+        console.error('Failed to open dbgate window:', error);
+        return { success: false, error: error.message };
+      }
+    });
+    
+    // 关闭 dbgate 窗口
+    ipcMain.handle('dbgate:close', () => {
+      DbgateWindowService.closeDbgateWindow();
+      return { success: true };
+    });
+    
+    // 检查 dbgate 窗口是否存在
+    ipcMain.handle('dbgate:is-open', () => {
+      return DbgateWindowService.hasDbgateWindow();
     });
   }
 }

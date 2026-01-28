@@ -42,7 +42,11 @@
             </div>
             <h2 class="panel-title">工具集合</h2>
           </div>
-          <QuickActions @create-panel="handleCreatePanel" @open-terminal="handleOpenTerminal" />
+          <QuickActions 
+            @create-panel="handleCreatePanel" 
+            @open-terminal="handleOpenTerminal"
+            @open-dbgate="handleOpenDbgate"
+          />
         </section>
 
         <!-- AI识别工具面板 -->
@@ -183,6 +187,9 @@ const emit = defineEmits<{
   createPanel: [type: any, title: string, content: any]
 }>()
 
+// 导入 ElMessage
+import { ElMessage } from 'element-plus'
+
 // Store
 const connectionStore = useConnectionStore()
 
@@ -238,6 +245,28 @@ const handleCreatePanel = (type: string, title: string, content: any) => {
 
 const handleOpenTerminal = () => {
   emit('openTerminal')
+}
+
+const handleOpenDbgate = async () => {
+  try {
+    // 使用 electronUtils 中的安全方法
+    const { getSafeIpcRenderer } = await import('../../utils/electronUtils')
+    const electronAPI = getSafeIpcRenderer()
+    
+    if (electronAPI?.dbgate) {
+      const result = await electronAPI.dbgate.open()
+      if (!result.success) {
+        ElMessage.error(result.error || '打开 DbGate 失败')
+      } else {
+        ElMessage.success('DbGate 已打开')
+      }
+    } else {
+      ElMessage.warning('DbGate 功能在当前环境中不可用')
+    }
+  } catch (error) {
+    console.error('Failed to open dbgate:', error)
+    ElMessage.error('打开 DbGate 时发生错误')
+  }
 }
 
 const handleOpenEventReminder = async () => {
