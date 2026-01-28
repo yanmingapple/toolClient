@@ -10,6 +10,7 @@ import { WebContentsService } from '../service/webContentsService';
 import { ServiceMonitor } from '../model/database/ServiceMonitor';
 import { TreeNode, TreeNodeFactory } from '../model/database/TreeNode';
 import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
+import { EventService, Event, Todo } from '../service/eventService';
 const { ipcMain } = require('electron');
 
 /**
@@ -141,6 +142,14 @@ export class DatabaseManager {
             await sqliteClient.execute(SQLStatements.CREATE_SERVICE_MONITOR_TABLE);
             console.log('创建service_monitor表成功');
 
+            // 创建events表
+            await sqliteClient.execute(SQLStatements.CREATE_EVENTS_TABLE);
+            console.log('创建events表成功');
+
+            // 创建todos表
+            await sqliteClient.execute(SQLStatements.CREATE_TODOS_TABLE);
+            console.log('创建todos表成功');
+
             // 检查serverName列是否存在
             try {
                 const result = await sqliteClient.execute('PRAGMA table_info(service_monitor)');
@@ -161,6 +170,11 @@ export class DatabaseManager {
             await sqliteClient.disconnect();
             throw error;
         }
+
+        // 初始化 EventService
+        const eventService = EventService.getInstance();
+        eventService.setDatabaseClient(sqliteClient);
+        console.log('EventService 初始化成功');
 
         // 返回数据库客户端实例
         return sqliteClient;
@@ -676,6 +690,42 @@ export class DatabaseManager {
                     message: error instanceof Error ? error.message : '健康检查执行失败' 
                 };
             }
+        });
+
+        // 事件相关
+        const eventService = EventService.getInstance();
+        
+        ipcMain.handle('event:get-all', async () => {
+            return await eventService.getAllEvents();
+        });
+
+        ipcMain.handle('event:get-by-date', async (_: any, date: string) => {
+            return await eventService.getEventsByDate(date);
+        });
+
+        ipcMain.handle('event:save', async (_: any, event: Event) => {
+            return await eventService.saveEvent(event);
+        });
+
+        ipcMain.handle('event:delete', async (_: any, eventId: string) => {
+            return await eventService.deleteEvent(eventId);
+        });
+
+        // 代办事项相关
+        ipcMain.handle('todo:get-all', async () => {
+            return await eventService.getAllTodos();
+        });
+
+        ipcMain.handle('todo:get-by-date', async (_: any, date: string) => {
+            return await eventService.getTodosByDate(date);
+        });
+
+        ipcMain.handle('todo:save', async (_: any, todo: Todo) => {
+            return await eventService.saveTodo(todo);
+        });
+
+        ipcMain.handle('todo:delete', async (_: any, todoId: string) => {
+            return await eventService.deleteTodo(todoId);
         });
     }
 

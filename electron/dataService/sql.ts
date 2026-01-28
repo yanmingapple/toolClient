@@ -62,5 +62,49 @@ export const SQLStatements = {
   INSERT_OR_REPLACE_SERVICE_MONITOR: 'INSERT OR REPLACE INTO service_monitor (id, name, serverName, type, port, status, workspace, url, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   UPDATE_SERVICE_MONITOR: 'UPDATE service_monitor SET name = ?, serverName = ?, type = ?, port = ?, status = ?, workspace = ?, url = ?, updateTime = ? WHERE id = ?',
   DELETE_SERVICE_MONITOR_BY_ID: 'DELETE FROM service_monitor WHERE id = ?',
-  DELETE_ALL_SERVICE_MONITORS: 'DELETE FROM service_monitor'
+  DELETE_ALL_SERVICE_MONITORS: 'DELETE FROM service_monitor',
+
+  // 创建事件表
+  CREATE_EVENTS_TABLE: `
+    CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      type TEXT NOT NULL,
+      date TEXT NOT NULL,
+      time TEXT NOT NULL,
+      reminder INTEGER DEFAULT 0,
+      createTime TEXT,
+      updateTime TEXT
+    )
+  `,
+
+  // 事件相关操作
+  SELECT_ALL_EVENTS: 'SELECT * FROM events',
+  SELECT_EVENT_BY_ID: 'SELECT * FROM events WHERE id = ?',
+  SELECT_EVENTS_BY_DATE: 'SELECT * FROM events WHERE date = ?',
+  INSERT_OR_REPLACE_EVENT: 'INSERT OR REPLACE INTO events (id, title, type, date, time, reminder, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  UPDATE_EVENT: 'UPDATE events SET title = ?, type = ?, date = ?, time = ?, reminder = ?, updateTime = ? WHERE id = ?',
+  DELETE_EVENT_BY_ID: 'DELETE FROM events WHERE id = ?',
+  DELETE_ALL_EVENTS: 'DELETE FROM events',
+
+  // 创建代办事项表
+  CREATE_TODOS_TABLE: `
+    CREATE TABLE IF NOT EXISTS todos (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      date TEXT NOT NULL,
+      done INTEGER DEFAULT 0,
+      createTime TEXT,
+      updateTime TEXT
+    )
+  `,
+
+  // 代办事项相关操作
+  SELECT_ALL_TODOS: 'SELECT * FROM todos',
+  SELECT_TODO_BY_ID: 'SELECT * FROM todos WHERE id = ?',
+  SELECT_TODOS_BY_DATE: 'SELECT * FROM todos WHERE date = ?',
+  INSERT_OR_REPLACE_TODO: 'INSERT OR REPLACE INTO todos (id, text, date, done, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?)',
+  UPDATE_TODO: 'UPDATE todos SET text = ?, date = ?, done = ?, updateTime = ? WHERE id = ?',
+  DELETE_TODO_BY_ID: 'DELETE FROM todos WHERE id = ?',
+  DELETE_ALL_TODOS: 'DELETE FROM todos'
 };

@@ -169,9 +169,31 @@ export class WindowService {
     // 存储窗口实例
     this.windows.set(windowId, newWindow);
 
+    // 获取窗口标题
+    const windowTitle = title || this.getDefaultTitle(page);
+
+    // 日历提醒和信用卡提醒窗口默认最大化
+    if (page === 'dialog-event-reminder' || page === 'dialog-credit-card') {
+      newWindow.maximize();
+    }
+
+    // 窗口加载完成后重新设置标题（防止被 HTML title 标签覆盖）
+    newWindow.webContents.once('did-finish-load', () => {
+      newWindow.setTitle(windowTitle);
+    });
+
+    // 监听页面标题变化，保持窗口标题不变
+    newWindow.webContents.on('page-title-updated', (event) => {
+      event.preventDefault();
+      newWindow.setTitle(windowTitle);
+    });
+
     // 只为非对话框窗口设置菜单栏
     if (!isDialog) {
       this.setWindowMenu(newWindow, page);
+    } else {
+      // 对话框窗口明确禁用菜单
+      newWindow.setMenu(null);
     }
 
     return windowId;
@@ -251,8 +273,8 @@ export class WindowService {
       'dialog-connection': '数据库连接',
       'dialog-command-result': '命令执行结果',
       'dialog-terminal': '终端控制台',
-      'dialog-event-reminder': '日历提醒',
-      'dialog-credit-card': '信用卡提醒'
+      'dialog-event-reminder': '代办事项',
+      'dialog-credit-card': '信用卡'
     };
     return titles[page] || '应用';
   }

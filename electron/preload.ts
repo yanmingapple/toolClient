@@ -450,6 +450,82 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
+  // 事件相关 API
+  event: {
+    /**
+     * 获取所有事件
+     * @returns {Promise<ServiceResult<Event[]>>}
+     */
+    getAll: (): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('event:get-all');
+    },
+
+    /**
+     * 根据日期获取事件
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<Event[]>>}
+     */
+    getByDate: (date: string): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('event:get-by-date', date);
+    },
+
+    /**
+     * 保存事件
+     * @param {Event} event 事件对象
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    save: (event: any): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('event:save', event);
+    },
+
+    /**
+     * 删除事件
+     * @param {string} eventId 事件ID
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    delete: (eventId: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('event:delete', eventId);
+    }
+  },
+
+  // 代办事项相关 API
+  todo: {
+    /**
+     * 获取所有代办事项
+     * @returns {Promise<ServiceResult<Todo[]>>}
+     */
+    getAll: (): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('todo:get-all');
+    },
+
+    /**
+     * 根据日期获取代办事项
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<Todo[]>>}
+     */
+    getByDate: (date: string): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('todo:get-by-date', date);
+    },
+
+    /**
+     * 保存代办事项
+     * @param {Todo} todo 代办事项对象
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    save: (todo: any): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('todo:save', todo);
+    },
+
+    /**
+     * 删除代办事项
+     * @param {string} todoId 代办事项ID
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    delete: (todoId: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('todo:delete', todoId);
+    }
+  }
+
 });
 
 // 控制台输出预加载脚本加载成功的消息

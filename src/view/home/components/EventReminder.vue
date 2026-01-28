@@ -2,90 +2,130 @@
   <div class="event-reminder">
     <!-- 顶部标题栏 -->
     <div class="dialog-title">
-      <div class="title-wrapper">
-        <el-icon class="title-icon"><Calendar /></el-icon>
-        <span class="title-text">日历事件提醒</span>
-      </div>
       <div class="calendar-nav">
-        <el-button type="primary" size="small" @click="prevMonth">
-          <el-icon><ArrowLeft /></el-icon>
-        </el-button>
-        <div class="calendar-title-wrapper">
-          <div class="calendar-title">
-            {{ currentYear }}年{{ currentMonth }}月
+        <!-- 左侧：日期切换按钮 -->
+        <div class="date-nav-left">
+          <el-button type="primary" size="small" @click="prevPeriod">
+            <el-icon><ArrowLeft /></el-icon>
+          </el-button>
+          <div class="calendar-title-wrapper">
+            <div class="calendar-title">
+              {{ calendarTitle }}
+            </div>
           </div>
+          <el-button type="primary" size="small" @click="nextPeriod">
+            <el-icon><ArrowRight /></el-icon>
+          </el-button>
+          <el-button type="success" size="small" @click="today">
+            <el-icon><Clock /></el-icon>
+            今天
+          </el-button>
         </div>
-        <el-button type="primary" size="small" @click="nextMonth">
-          <el-icon><ArrowRight /></el-icon>
-        </el-button>
-            <el-button type="success" size="small" @click="today">
-              <el-icon><Clock /></el-icon>
-              今天
-            </el-button>
-            <el-button 
-              type="warning" 
-              size="small" 
-              :class="{ 'has-unread': unreadReminders > 0 }"
-            >
-              <el-icon><Bell /></el-icon>
-              <span class="unread-count" v-if="unreadReminders > 0">{{ unreadReminders }}</span>
-            </el-button>
+        
+        <!-- 右侧：视图切换和提醒按钮 -->
+        <div class="nav-right">
+          <!-- 视图切换按钮 -->
+          <div class="view-switcher">
+            <el-button-group>
+              <el-button 
+                size="small" 
+                :type="currentView === 'dayGridMonth' ? 'primary' : 'default'"
+                @click="switchView('dayGridMonth')"
+              >
+                月历
+              </el-button>
+              <el-button 
+                size="small" 
+                :type="currentView === 'timeGridWeek' ? 'primary' : 'default'"
+                @click="switchView('timeGridWeek')"
+              >
+                周历
+              </el-button>
+              <el-button 
+                size="small" 
+                :type="currentView === 'timeGridDay' ? 'primary' : 'default'"
+                @click="switchView('timeGridDay')"
+              >
+                日历
+              </el-button>
+              <el-button 
+                size="small" 
+                :type="currentView === 'listWeek' ? 'primary' : 'default'"
+                @click="switchView('listWeek')"
+              >
+                日程列表
+              </el-button>
+            </el-button-group>
+          </div>
+          <el-button 
+            type="warning" 
+            size="small" 
+            :class="{ 'has-unread': unreadReminders > 0 }"
+          >
+            <el-icon><Bell /></el-icon>
+            <span class="unread-count" v-if="unreadReminders > 0">{{ unreadReminders }}</span>
+          </el-button>
+        </div>
       </div>
     </div>
     
     <div class="event-reminder-content">
-        <!-- 日历视图 -->
-        <div class="calendar-view">
-          <!-- 日历头部 -->
-          <div class="calendar-header">
-            <!-- 星期标题 -->
-            <div class="calendar-weekdays">
-              <div class="weekday" v-for="day in weekdays" :key="day">
-                {{ day }}
-              </div>
-            </div>
+        <!-- FullCalendar 日历视图 -->
+        <div class="calendar-view" v-if="currentView !== 'listWeek'">
+          <FullCalendar
+            ref="fullCalendarRef"
+            :options="calendarOptions"
+            class="fullcalendar-container"
+          />
+        </div>
+        
+        <!-- 日程列表视图 -->
+        <div class="list-view" v-if="currentView === 'listWeek'">
+          <div class="list-view-header">
+            <div class="list-header-title">日程列表</div>
+            <div class="list-header-date">{{ calendarTitle }}</div>
           </div>
-          
-          <!-- 日历格子 -->
-          <div class="calendar-grid">
-            <div
-              v-for="day in calendarDays"
-              :key="day.date"
-              class="calendar-day"
-              :class="{
-                'other-month': day.isOtherMonth,
-                'today': day.isToday,
-                'selected': day.date === selectedDate,
-                'has-events': day.events.length > 0
-              }"
-              @click="selectDay(day)"
+          <div class="list-view-content">
+            <div 
+              v-for="event in sortedEvents" 
+              :key="event.id"
+              class="list-event-item"
+              :class="{ 'event-past': isEventPast(event) }"
             >
-              <div class="day-number" :class="{ 'today-number': day.isToday }">
-                {{ day.day }}
+              <div class="list-event-date">
+                <div class="list-event-day">{{ formatEventDate(event.date) }}</div>
+                <div class="list-event-time">{{ event.time }}</div>
               </div>
-              <div class="day-events" v-if="day.events.length > 0">
-                <div
-                  v-for="(event, index) in day.events.slice(0, 2)"
-                  :key="index"
-                  class="event-dot"
-                  :class="event.type"
-                  :title="event.title"
-                ></div>
-                <div class="event-more" v-if="day.events.length > 2">
-                  {{ getEventTypesSummary(day.events) }}
+              <div class="list-event-content">
+                <div class="list-event-title">{{ event.title }}</div>
+                <div class="list-event-type" :class="event.type">{{ event.type }}</div>
+                <div class="list-event-description" v-if="event.description">
+                  {{ event.description }}
                 </div>
               </div>
+              <div class="list-event-actions">
+                <el-button type="text" size="small" @click="editEvent(event)">
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+                <el-button type="text" size="small" @click="deleteEvent(event.id)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
+            <div v-if="sortedEvents.length === 0" class="no-events-list">
+              <el-icon><Calendar /></el-icon>
+              <p>暂无日程安排</p>
             </div>
           </div>
         </div>
         
         <!-- 右侧事件面板 -->
-        <div class="events-panel">
+        <div class="events-panel" v-if="currentView !== 'listWeek'">
           <div class="panel-header">
             <div class="header-content">
               <div class="header-date">{{ selectedDateText }}</div>
               <div class="header-subline">
-                <div class="header-weekday">{{ getWeekdayText(selectedDate.value) }}</div>
+                <div class="header-weekday">{{ getWeekdayText(selectedDate) }}</div>
                 <div class="header-lunar">{{ selectedLunarDate }}</div>
               </div>
             </div>
@@ -128,9 +168,56 @@
               <p>当天暂无事件</p>
             </div>
           </div>
-          
-          <!-- 即将到来的事件 -->
 
+          <!-- 代办事项 -->
+          <div class="todo-section">
+            <div class="todo-header">
+              <div class="todo-title">代办事项</div>
+              <div class="todo-input">
+                <el-input
+                  v-model="newTodoText"
+                  placeholder="添加一条代办，例如：下午 3 点给客户回电"
+                  @keyup.enter="addTodo"
+                />
+                <el-button
+                  type="primary"
+                  @click="addTodo"
+                  :disabled="!newTodoText.trim()"
+                >
+                  添加代办
+                </el-button>
+              </div>
+            </div>
+
+            <div class="todo-list" v-if="selectedDateTodos.length > 0">
+              <div
+                v-for="todo in selectedDateTodos"
+                :key="todo.id"
+                class="todo-item"
+              >
+                <el-checkbox
+                  :model-value="todo.done"
+                  @change="toggleTodo(todo.id, $event)"
+                />
+                <div
+                  class="todo-text"
+                  :class="{ 'todo-done': todo.done }"
+                >
+                  {{ todo.title }}
+                </div>
+                <el-button
+                  type="text"
+                  size="small"
+                  @click="deleteTodo(todo.id)"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
+            <div v-else class="todo-empty">
+              <p>当前日期暂无代办事项</p>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -139,7 +226,9 @@
         v-model="addEventVisible"
         :title="editingEvent ? '编辑事件' : '添加事件'"
         size="600px"
-        :close-on-click-modal="false"
+        :close-on-click-modal="true"
+        :modal="false"
+        modal-penetrable
       >
         <el-form :model="formData" :rules="rules" ref="formRef" label-width="100px" class="event-form">
           <el-form-item label="事件标题" prop="title">
@@ -199,10 +288,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
 import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell } from '@element-plus/icons-vue'
 import { Solar } from 'lunar-javascript'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import listPlugin from '@fullcalendar/list'
+import interactionPlugin from '@fullcalendar/interaction'
+import type {
+  CalendarOptions,
+  EventClickArg,
+  EventContentArg,
+  DayCellContentArg,
+  SlotLabelContentArg,
+  DayHeaderContentArg,
+} from '@fullcalendar/core'
+import type { DateClickArg } from '@fullcalendar/interaction'
 
 interface Event {
   id: string
@@ -215,15 +318,7 @@ interface Event {
   createdAt: number
 }
 
-interface CalendarDay {
-  date: string
-  day: number
-  month: number
-  year: number
-  isToday: boolean
-  isOtherMonth: boolean
-  events: Event[]
-}
+// CalendarDay 接口已移除，因为使用 FullCalendar
 
 interface FormData {
   title: string
@@ -234,15 +329,140 @@ interface FormData {
   remindBefore: number
 }
 
+interface TodoItem {
+  id: string
+  title: string
+  date: string // YYYY-MM-DD，对应 selectedDate
+  done: boolean
+  createdAt: number
+}
+
 // 移除 props 和 emit，因为现在是在独立窗口中显示
 
+// FullCalendar 引用
+const fullCalendarRef = ref<any>(null)
+
 // 日历状态
-const currentYear = ref(new Date().getFullYear())
-const currentMonth = ref(new Date().getMonth() + 1)
 const selectedDate = ref('')
 const events = ref<Event[]>([])
+const currentView = ref<string>('dayGridMonth')
 
-const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+// 代办事项
+const todos = ref<TodoItem[]>([])
+const newTodoText = ref('')
+
+// FullCalendar 事件数据（转换后的格式）
+const fullCalendarEvents = computed(() => {
+  const calendarEvents = events.value.map((event: Event) => {
+    // 将日期和时间组合成完整的 ISO 日期时间字符串
+    // event.date 格式: "2024-01-01"
+    // event.time 格式: "09:00"
+    const startDateTime = `${event.date}T${event.time}:00`
+    
+    return {
+      id: event.id,
+      title: event.title,
+      start: startDateTime,
+      allDay: false,
+      extendedProps: {
+        type: event.type,
+        time: event.time,
+        description: event.description,
+        remindBefore: event.remindBefore
+      },
+      classNames: [`event-type-${event.type}`],
+      backgroundColor: getEventColor(event.type),
+      borderColor: getEventColor(event.type)
+    }
+  })
+
+  // 将代办事项作为全天事件显示在日历上
+  const todoEvents = todos.value.map((todo: TodoItem) => ({
+    id: `todo-${todo.id}`,
+    title: todo.title,
+    start: todo.date, // 全天事件，只需要日期
+    allDay: true,
+    extendedProps: {
+      isTodo: true,
+      done: todo.done,
+    },
+    classNames: ['todo-event'],
+  }))
+
+  return [...calendarEvents, ...todoEvents]
+})
+
+// 获取事件颜色
+const getEventColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    '工作': '#3b82f6',
+    '会议': '#f59e0b',
+    '生日': '#10b981',
+    '纪念日': '#6b7280',
+    '其他': '#ef4444'
+  }
+  return colorMap[type] || '#6b7280'
+}
+
+// FullCalendar 配置
+const calendarOptions = computed<CalendarOptions>(() => ({
+  plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+  initialView: currentView.value,
+  locale: 'zh-cn',
+  headerToolbar: false, // 使用自定义头部
+  height: '100%',
+  events: fullCalendarEvents.value,
+  editable: false,
+  selectable: true,
+  selectMirror: true,
+  dayMaxEvents: 2,
+  moreLinkClick: 'popover',
+  dateClick: handleDateClick,
+  eventClick: handleEventClick,
+  datesSet: handleDatesSet,
+  eventContent: renderEventContent,
+  slotLabelContent: renderSlotLabelContent,
+  views: {
+    dayGridMonth: {
+      dayMaxEvents: 3,
+      moreLinkClick: 'popover',
+      // 只在月历使用自定义 dayCellContent（避免污染周历/日历的时间网格）
+      dayCellContent: renderDayCellContent,
+    },
+    timeGridWeek: {
+      slotMinTime: '00:00:00',
+      slotMaxTime: '24:00:00',
+      allDaySlot: false,
+      height: '100%',
+      slotLabelFormat: {
+        hour: 'numeric',
+        minute: '2-digit',
+        omitZeroMinute: false,
+        meridiem: false
+      },
+      // 周历列头：显示日期 + 农历（不影响时间网格）
+      dayHeaderContent: renderDayHeaderContent,
+    },
+    timeGridDay: {
+      slotMinTime: '00:00:00',
+      slotMaxTime: '24:00:00',
+      allDaySlot: false,
+      height: '100%',
+      slotLabelFormat: {
+        hour: 'numeric',
+        minute: '2-digit',
+        omitZeroMinute: false,
+        meridiem: false
+      },
+      // 日历列头：显示日期 + 农历（不影响时间网格）
+      dayHeaderContent: renderDayHeaderContent,
+    },
+    listWeek: {
+      listDayFormat: { weekday: 'long', month: 'long', day: 'numeric' },
+      listDaySideFormat: false
+    }
+  }
+}))
 
 // 表单状态
 const addEventVisible = ref(false)
@@ -250,7 +470,7 @@ const editingEvent = ref<Event | null>(null)
 const formRef = ref<FormInstance>()
 const formData = ref<FormData>({
   title: '',
-  type: '其他',
+  type: '工作',
   date: '',
   time: '09:00',
   description: '',
@@ -276,73 +496,25 @@ const rules = ref<FormRules>({
   ]
 })
 
-// 计算日历日期
-const calendarDays = computed<CalendarDay[]>(() => {
-  const days: CalendarDay[] = []
-  const firstDay = new Date(currentYear.value, currentMonth.value - 1, 1)
-  const lastDay = new Date(currentYear.value, currentMonth.value, 0)
-  const prevLastDay = new Date(currentYear.value, currentMonth.value - 1, 0)
-  
-  const firstDayOfWeek = firstDay.getDay()
-  const lastDayDate = lastDay.getDate()
-  const prevLastDayDate = prevLastDay.getDate()
-  
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
-  
-  // 添加上个月的日期
-  for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-    const day = prevLastDayDate - i
-    const date = `${currentYear.value}-${String(currentMonth.value - 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    days.push({
-      date,
-      day,
-      month: currentMonth.value - 1,
-      year: currentYear.value,
-      isToday: false,
-      isOtherMonth: true,
-      events: getEventsForDate(date)
-    })
-  }
-  
-  // 添加当月的日期
-  for (let day = 1; day <= lastDayDate; day++) {
-    const date = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    days.push({
-      date,
-      day,
-      month: currentMonth.value,
-      year: currentYear.value,
-      isToday: date === todayStr,
-      isOtherMonth: false,
-      events: getEventsForDate(date)
-    })
-  }
-  
-  // 添加下个月的日期
-  const remainingDays = 42 - days.length
-  for (let day = 1; day <= remainingDays; day++) {
-    const date = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    days.push({
-      date,
-      day,
-      month: currentMonth.value + 1,
-      year: currentYear.value,
-      isToday: false,
-      isOtherMonth: true,
-      events: getEventsForDate(date)
-    })
-  }
-  
-  return days
-})
+// 日历标题（从 FullCalendar 获取）
+const calendarTitle = ref('')
 
 const selectedDateText = computed(() => {
   if (!selectedDate.value) {
     const today = new Date()
     return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`
   }
-  const [year, month, day] = selectedDate.value.split('-').map(Number)
+  // 确保日期格式正确
+  const dateParts = selectedDate.value.split('-')
+  if (dateParts.length !== 3) {
+    const today = new Date()
+    return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`
+  }
+  const [year, month, day] = dateParts.map(Number)
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    const today = new Date()
+    return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`
+  }
   return `${year}年${month}月${day}日`
 })
 
@@ -353,8 +525,29 @@ const selectedLunarDate = computed(() => {
     const lunar = solar.getLunar()
     return `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
   }
-  const [year, month, day] = selectedDate.value.split('-').map(Number)
+  // 确保日期格式正确
+  const dateParts = selectedDate.value.split('-')
+  if (dateParts.length !== 3) {
+    const today = new Date()
+    const solar = Solar.fromDate(today)
+    const lunar = solar.getLunar()
+    return `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
+  }
+  const [year, month, day] = dateParts.map(Number)
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    const today = new Date()
+    const solar = Solar.fromDate(today)
+    const lunar = solar.getLunar()
+    return `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
+  }
   const date = new Date(year, month - 1, day)
+  // 验证日期是否有效
+  if (isNaN(date.getTime())) {
+    const today = new Date()
+    const solar = Solar.fromDate(today)
+    const lunar = solar.getLunar()
+    return `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
+  }
   const solar = Solar.fromDate(date)
   const lunar = solar.getLunar()
   return `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
@@ -362,7 +555,7 @@ const selectedLunarDate = computed(() => {
 
 const unreadReminders = computed(() => {
   const now = Date.now()
-  return events.value.filter(event => {
+  return events.value.filter((event: Event) => {
     const eventTime = new Date(`${event.date} ${event.time}`).getTime()
     const remindTime = eventTime - event.remindBefore * 60 * 1000
     const reminded = localStorage.getItem(`reminded_${event.id}`)
@@ -372,79 +565,330 @@ const unreadReminders = computed(() => {
 
 const selectedDayEvents = computed(() => {
   if (!selectedDate.value) return []
-  return events.value.filter(e => e.date === selectedDate.value)
+  return events.value.filter((e: Event) => e.date === selectedDate.value)
 })
 
-const upcomingEvents = computed(() => {
-  return events.value
-    .filter(event => {
-      const eventTime = new Date(`${event.date} ${event.time}`).getTime()
-      return eventTime > Date.now()
-    })
-    .sort((a, b) => {
-      const timeA = new Date(`${a.date} ${a.time}`).getTime()
-      const timeB = new Date(`${b.date} ${b.time}`).getTime()
-      return timeA - timeB
-    })
-    .slice(0, 5)
+// 当前日期对应的代办事项列表
+const selectedDateTodos = computed(() => {
+  if (!selectedDate.value) {
+    return []
+  }
+  return todos.value
+    .filter((t) => t.date === selectedDate.value)
+    .sort((a, b) => a.createdAt - b.createdAt)
 })
 
-const getEventsForDate = (date: string): Event[] => {
-  return events.value.filter(e => e.date === date)
+// 移除未使用的 upcomingEvents，保留以备将来使用
+
+// 移除未使用的 getEventsForDate，FullCalendar 会自动处理
+// const getEventsForDate = (date: string): Event[] => {
+//   return events.value.filter((e: Event) => e.date === date)
+// }
+
+// FullCalendar 事件处理
+const handleDateClick = (arg: DateClickArg) => {
+  // 确保日期格式正确 (YYYY-MM-DD)
+  let dateStr = arg.dateStr
+  
+  // 如果 dateStr 包含时间部分，只取日期部分
+  if (dateStr.includes('T')) {
+    dateStr = dateStr.split('T')[0]
+  }
+  
+  // 如果 dateStr 格式不正确，使用 arg.date 对象格式化
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const date = arg.date
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    dateStr = `${year}-${month}-${day}`
+  }
+  
+  selectedDate.value = dateStr
+  // 如果点击日期，可以打开添加事件对话框
+  // showAddEventDialog()
 }
 
-// 日历操作
-const prevMonth = () => {
-  if (currentMonth.value === 1) {
-    currentMonth.value = 12
-    currentYear.value--
-  } else {
-    currentMonth.value--
+const handleEventClick = (arg: EventClickArg) => {
+  const eventId = arg.event.id
+  const event = events.value.find((e: Event) => e.id === eventId) as Event | undefined
+  if (event) {
+    editEvent(event)
   }
 }
 
-const nextMonth = () => {
-  if (currentMonth.value === 12) {
-    currentMonth.value = 1
-    currentYear.value++
-  } else {
-    currentMonth.value++
+const handleDatesSet = (arg: { start: Date; end: Date; view: any }) => {
+  // 更新日历标题
+  const view = arg.view
+  const start = arg.start
+  const end = arg.end
+  
+  // 格式化日期为 YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
-}
-
-const today = () => {
-  const now = new Date()
-  currentYear.value = now.getFullYear()
-  currentMonth.value = now.getMonth() + 1
-  selectedDate.value = now.toISOString().split('T')[0]
-}
-
-const selectDay = (day: CalendarDay) => {
-  selectedDate.value = day.date
-}
-
-const selectDate = (date: string) => {
-  selectedDate.value = date
-  const [year, month] = date.split('-').map(Number)
-  currentYear.value = year
-  currentMonth.value = month
-}
-
-// 事件操作
-const loadEvents = () => {
-  const stored = localStorage.getItem('calendar_events')
-  if (stored) {
-    try {
-      events.value = JSON.parse(stored)
-    } catch (e) {
-      console.error('Failed to load events:', e)
-      events.value = []
+  
+  if (view.type === 'dayGridMonth') {
+    const year = start.getFullYear()
+    const month = start.getMonth() + 1
+    calendarTitle.value = `${year}年${month}月`
+    // 月历视图：如果当前选中的日期不在显示的月份内，则更新为今天或月份第一天
+    const today = new Date()
+    const todayStr = formatDate(today)
+    if (start <= today && today <= new Date(start.getFullYear(), start.getMonth() + 1, 0)) {
+      // 今天在显示的月份内，更新为今天
+      if (!selectedDate.value || !isDateInMonth(selectedDate.value, start)) {
+        selectedDate.value = todayStr
+      }
+    } else {
+      // 今天不在显示的月份内，更新为月份第一天
+      if (!selectedDate.value || !isDateInMonth(selectedDate.value, start)) {
+        selectedDate.value = formatDate(start)
+      }
+    }
+  } else if (view.type === 'timeGridWeek') {
+    const year = start.getFullYear()
+    const month = start.getMonth() + 1
+    const day = start.getDate()
+    const endMonth = end.getMonth() + 1
+    const endDay = end.getDate()
+    if (month === endMonth) {
+      calendarTitle.value = `${year}年${month}月${day}日 - ${endDay}日`
+    } else {
+      calendarTitle.value = `${year}年${month}月${day}日 - ${endMonth}月${endDay}日`
+    }
+    // 周历视图：更新为周的第一天（确保日期格式正确）
+    const formattedDate = formatDate(start)
+    if (!selectedDate.value || !isDateInWeek(selectedDate.value, start, end)) {
+      selectedDate.value = formattedDate
+    }
+  } else if (view.type === 'timeGridDay') {
+    const year = start.getFullYear()
+    const month = start.getMonth() + 1
+    const day = start.getDate()
+    calendarTitle.value = `${year}年${month}月${day}日`
+    // 日历视图：更新为当前显示的日期
+    selectedDate.value = formatDate(start)
+  } else if (view.type === 'listWeek') {
+    const year = start.getFullYear()
+    const month = start.getMonth() + 1
+    const day = start.getDate()
+    const endMonth = end.getMonth() + 1
+    const endDay = end.getDate()
+    if (month === endMonth) {
+      calendarTitle.value = `${year}年${month}月${day}日 - ${endDay}日`
+    } else {
+      calendarTitle.value = `${year}年${month}月${day}日 - ${endMonth}月${endDay}日`
     }
   }
 }
 
-const saveEvents = () => {
-  localStorage.setItem('calendar_events', JSON.stringify(events.value))
+// 辅助函数：检查日期是否在指定月份内
+const isDateInMonth = (dateStr: string, monthStart: Date): boolean => {
+  const date = new Date(dateStr)
+  return date.getFullYear() === monthStart.getFullYear() && 
+         date.getMonth() === monthStart.getMonth()
+}
+
+// 辅助函数：检查日期是否在指定周内
+const isDateInWeek = (dateStr: string, weekStart: Date, weekEnd: Date): boolean => {
+  const date = new Date(dateStr)
+  return date >= weekStart && date <= weekEnd
+}
+
+// 自定义事件内容渲染
+const renderEventContent = (arg: EventContentArg) => {
+  const event = arg.event
+  const ext = event.extendedProps as any
+
+  // 如果是代办事项，在日历上以简洁样式显示
+  if (ext && ext.isTodo) {
+    const done = !!ext.done
+    const title = event.title || ''
+    return {
+      html: `
+        <div class="fc-todo-event ${done ? 'fc-todo-done' : ''}">
+          <span class="fc-todo-dot"></span>
+          <span class="fc-todo-text">${title}</span>
+        </div>
+      `,
+    }
+  }
+
+  const time = ext?.time || ''
+  
+  return {
+    html: `
+      <div class="fc-event-main-frame">
+        <div class="fc-event-time">${time}</div>
+        <div class="fc-event-title-container">
+          <div class="fc-event-title">${event.title}</div>
+        </div>
+      </div>
+    `
+  }
+}
+
+// 自定义日期单元格内容（添加农历显示）
+const renderDayCellContent = (arg: DayCellContentArg) => {
+  const date = arg.date
+  const solar = Solar.fromDate(date)
+  const lunar = solar.getLunar()
+  const lunarText = `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
+  
+  return {
+    html: `
+      <div class="fc-daygrid-day-number">${date.getDate()}</div>
+      <div class="fc-daygrid-lunar">${lunarText}</div>
+    `
+  }
+}
+
+// 自定义周历/日历列头（日期 + 农历）
+const renderDayHeaderContent = (arg: DayHeaderContentArg) => {
+  const date = arg.date
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekday = weekdays[date.getDay()]
+
+  const solar = Solar.fromDate(date)
+  const lunar = solar.getLunar()
+  const lunarText = `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`
+
+  return {
+    html: `
+      <div class="fc-col-header-main">
+        <div class="fc-col-header-date">${month}/${day}${weekday}</div>
+        <div class="fc-col-header-lunar">${lunarText}</div>
+      </div>
+    `,
+  }
+}
+
+// 自定义时间轴标签内容（只显示时间，不显示日期和农历）
+const renderSlotLabelContent = (arg: SlotLabelContentArg) => {
+  const date = arg.date
+  const hour = date.getHours()
+  // 只返回时间，格式为 "X时"
+  return {
+    html: `${hour}时`
+  }
+}
+
+// 视图切换
+const switchView = (view: string) => {
+  currentView.value = view
+  if (fullCalendarRef.value) {
+    const calendarApi = fullCalendarRef.value.getApi()
+    calendarApi.changeView(view)
+  }
+}
+
+// 日历操作
+const prevPeriod = () => {
+  if (fullCalendarRef.value) {
+    const calendarApi = fullCalendarRef.value.getApi()
+    calendarApi.prev()
+  }
+}
+
+const nextPeriod = () => {
+  if (fullCalendarRef.value) {
+    const calendarApi = fullCalendarRef.value.getApi()
+    calendarApi.next()
+  }
+}
+
+const today = () => {
+  if (fullCalendarRef.value) {
+    const calendarApi = fullCalendarRef.value.getApi()
+    calendarApi.today()
+    const today = new Date()
+    // 使用 formatDate 函数统一格式化日期
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    selectedDate.value = formatDate(today)
+  }
+}
+
+// 日程列表相关
+const sortedEvents = computed(() => {
+  return [...events.value].sort((a, b) => {
+    const dateA = new Date(`${a.date} ${a.time}`).getTime()
+    const dateB = new Date(`${b.date} ${b.time}`).getTime()
+    return dateA - dateB
+  })
+})
+
+const formatEventDate = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekday = weekdays[date.getDay()]
+  return `${month}月${day}日 ${weekday}`
+}
+
+// 移除未使用的 selectDate，使用 handleDateClick 代替
+// const selectDate = (date: string) => {
+//   selectedDate.value = date
+//   if (fullCalendarRef.value) {
+//     const calendarApi = fullCalendarRef.value.getApi()
+//     calendarApi.gotoDate(date)
+//   }
+// }
+
+// 事件操作
+const loadEvents = async () => {
+  try {
+    const result = await (window as any).electronAPI.event.getAll()
+    if (result.success && result.data) {
+      // 将数据库中的 Event 转换为组件中的 Event
+      events.value = result.data.map((dbEvent: any) => ({
+        id: dbEvent.id,
+        title: dbEvent.title,
+        type: dbEvent.type,
+        date: dbEvent.date,
+        time: dbEvent.time,
+        description: '', // 数据库中没有 description 字段，设为空
+        remindBefore: dbEvent.reminder || 0, // reminder 转换为 remindBefore
+        createdAt: dbEvent.createTime ? new Date(dbEvent.createTime).getTime() : Date.now()
+      }))
+    } else {
+      events.value = []
+    }
+  } catch (e) {
+    console.error('Failed to load events:', e)
+    events.value = []
+  }
+}
+
+const saveEvents = async () => {
+  // 保存所有事件到数据库
+  try {
+    for (const event of events.value) {
+      const dbEvent = {
+        id: event.id,
+        title: event.title,
+        type: event.type,
+        date: event.date,
+        time: event.time,
+        reminder: event.remindBefore || 0,
+        createTime: event.createdAt ? new Date(event.createdAt).toISOString() : undefined
+      }
+      await (window as any).electronAPI.event.save(dbEvent)
+    }
+  } catch (e) {
+    console.error('Failed to save events:', e)
+  }
 }
 
 const generateId = () => {
@@ -462,6 +906,14 @@ const showAddEventDialog = () => {
     remindBefore: 15
   }
   addEventVisible.value = true
+}
+
+// 刷新 FullCalendar 事件
+const refreshCalendarEvents = () => {
+  if (fullCalendarRef.value) {
+    const calendarApi = fullCalendarRef.value.getApi()
+    calendarApi.refetchEvents()
+  }
 }
 
 const editEvent = (event: Event) => {
@@ -484,22 +936,29 @@ const deleteEvent = async (id: string) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    events.value = events.value.filter(e => e.id !== id)
-    saveEvents()
-    ElMessage.success('删除成功')
-  } catch {
-    // 用户取消删除
+    const result = await (window as any).electronAPI.event.delete(id)
+    if (result.success) {
+      events.value = events.value.filter((e: Event) => e.id !== id)
+      refreshCalendarEvents()
+      ElMessage.success('删除成功')
+    } else {
+      ElMessage.error(result.error || '删除失败')
+    }
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      console.error('Failed to delete event:', e)
+      ElMessage.error('删除失败')
+    }
   }
 }
 
 const submitEvent = () => {
-  formRef.value?.validate(async (valid) => {
+  formRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      if (editingEvent.value) {
-        // 编辑事件
-        const index = events.value.findIndex(e => e.id === editingEvent.value!.id)
-        if (index !== -1) {
-          events.value[index] = {
+      try {
+        if (editingEvent.value) {
+          // 编辑事件
+          const updatedEvent: Event = {
             ...editingEvent.value,
             title: formData.value.title,
             type: formData.value.type,
@@ -508,27 +967,190 @@ const submitEvent = () => {
             description: formData.value.description,
             remindBefore: formData.value.remindBefore
           }
+          
+          const dbEvent = {
+            id: updatedEvent.id,
+            title: updatedEvent.title,
+            type: updatedEvent.type,
+            date: updatedEvent.date,
+            time: updatedEvent.time,
+            reminder: updatedEvent.remindBefore || 0,
+            createTime: updatedEvent.createdAt ? new Date(updatedEvent.createdAt).toISOString() : undefined
+          }
+          
+          const result = await (window as any).electronAPI.event.save(dbEvent)
+          if (result.success) {
+            const index = events.value.findIndex((e: Event) => e.id === editingEvent.value!.id)
+            if (index !== -1) {
+              events.value[index] = updatedEvent
+            }
+            ElMessage.success('更新成功')
+          } else {
+            ElMessage.error(result.error || '更新失败')
+            return
+          }
+        } else {
+          // 添加新事件
+          const newEvent: Event = {
+            id: generateId(),
+            title: formData.value.title,
+            type: formData.value.type,
+            date: formData.value.date,
+            time: formData.value.time,
+            description: formData.value.description,
+            remindBefore: formData.value.remindBefore,
+            createdAt: Date.now()
+          }
+          
+          const dbEvent = {
+            id: newEvent.id,
+            title: newEvent.title,
+            type: newEvent.type,
+            date: newEvent.date,
+            time: newEvent.time,
+            reminder: newEvent.remindBefore || 0,
+            createTime: new Date(newEvent.createdAt).toISOString()
+          }
+          
+          const result = await (window as any).electronAPI.event.save(dbEvent)
+          if (result.success) {
+            events.value.push(newEvent)
+            ElMessage.success('添加成功')
+          } else {
+            ElMessage.error(result.error || '添加失败')
+            return
+          }
         }
-        ElMessage.success('更新成功')
-      } else {
-        // 添加新事件
-        const newEvent: Event = {
-          id: generateId(),
-          title: formData.value.title,
-          type: formData.value.type,
-          date: formData.value.date,
-          time: formData.value.time,
-          description: formData.value.description,
-          remindBefore: formData.value.remindBefore,
-          createdAt: Date.now()
-        }
-        events.value.push(newEvent)
-        ElMessage.success('添加成功')
+        addEventVisible.value = false
+        refreshCalendarEvents()
+      } catch (e) {
+        console.error('Failed to save event:', e)
+        ElMessage.error('保存失败')
       }
-      saveEvents()
-      addEventVisible.value = false
     }
   })
+}
+
+// ==================== 代办事项操作 ====================
+
+const TODO_STORAGE_KEY = 'calendar_todos'
+
+const loadTodos = async () => {
+  try {
+    const result = await (window as any).electronAPI.todo.getAll()
+    if (result.success && result.data) {
+      // 将数据库中的 Todo 转换为组件中的 TodoItem
+      todos.value = result.data.map((dbTodo: any) => ({
+        id: dbTodo.id,
+        title: dbTodo.text, // 数据库中是 text，组件中是 title
+        date: dbTodo.date,
+        done: dbTodo.done,
+        createdAt: dbTodo.createTime ? new Date(dbTodo.createTime).getTime() : Date.now()
+      }))
+    } else {
+      todos.value = []
+    }
+  } catch (e) {
+    console.error('Failed to load todos:', e)
+    todos.value = []
+  }
+}
+
+const saveTodos = async () => {
+  // 保存所有代办事项到数据库
+  try {
+    for (const todo of todos.value) {
+      const dbTodo = {
+        id: todo.id,
+        text: todo.title, // 组件中是 title，数据库中是 text
+        date: todo.date,
+        done: todo.done,
+        createTime: todo.createdAt ? new Date(todo.createdAt).toISOString() : undefined
+      }
+      await (window as any).electronAPI.todo.save(dbTodo)
+    }
+  } catch (e) {
+    console.error('Failed to save todos:', e)
+  }
+}
+
+const addTodo = async () => {
+  const title = newTodoText.value.trim()
+  if (!title) return
+  // 如果还没有选中日期，默认使用今天
+  const dateStr =
+    selectedDate.value ||
+    new Date().toISOString().split('T')[0]
+
+  const todo: TodoItem = {
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+    title,
+    date: dateStr,
+    done: false,
+    createdAt: Date.now(),
+  }
+
+  try {
+    const dbTodo = {
+      id: todo.id,
+      text: todo.title,
+      date: todo.date,
+      done: todo.done,
+      createTime: new Date(todo.createdAt).toISOString()
+    }
+    
+    const result = await (window as any).electronAPI.todo.save(dbTodo)
+    if (result.success) {
+      todos.value.push(todo)
+      newTodoText.value = ''
+      refreshCalendarEvents()
+    } else {
+      ElMessage.error(result.error || '添加失败')
+    }
+  } catch (e) {
+    console.error('Failed to add todo:', e)
+    ElMessage.error('添加失败')
+  }
+}
+
+const toggleTodo = async (todoId: string, done: boolean) => {
+  const idx = todos.value.findIndex((t) => t.id === todoId)
+  if (idx !== -1) {
+    try {
+      const todo = todos.value[idx]
+      todos.value[idx] = { ...todo, done }
+      
+      const dbTodo = {
+        id: todo.id,
+        text: todo.title,
+        date: todo.date,
+        done: done,
+        createTime: todo.createdAt ? new Date(todo.createdAt).toISOString() : undefined
+      }
+      
+      await (window as any).electronAPI.todo.save(dbTodo)
+      refreshCalendarEvents()
+    } catch (e) {
+      console.error('Failed to toggle todo:', e)
+      // 回滚状态
+      todos.value[idx] = { ...todos.value[idx], done: !done }
+    }
+  }
+}
+
+const deleteTodo = async (todoId: string) => {
+  try {
+    const result = await (window as any).electronAPI.todo.delete(todoId)
+    if (result.success) {
+      todos.value = todos.value.filter((t) => t.id !== todoId)
+      refreshCalendarEvents()
+    } else {
+      ElMessage.error(result.error || '删除失败')
+    }
+  } catch (e) {
+    console.error('Failed to delete todo:', e)
+    ElMessage.error('删除失败')
+  }
 }
 
 const isEventPast = (event: Event) => {
@@ -536,60 +1158,11 @@ const isEventPast = (event: Event) => {
   return eventTime < Date.now()
 }
 
-const formatUpcomingDate = (event: Event) => {
-  const date = new Date(event.date)
-  const today = new Date()
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  
-  if (date.toDateString() === today.toDateString()) {
-    return '今天'
-  } else if (date.toDateString() === tomorrow.toDateString()) {
-    return '明天'
-  } else {
-    return `${date.getMonth() + 1}月${date.getDate()}日`
-  }
-}
+// 移除未使用的辅助函数，保留以备将来使用
+// const formatUpcomingDate = (event: Event) => { ... }
+// const getCountdown = (event: Event) => { ... }
 
-const getCountdown = (event: Event) => {
-  const eventTime = new Date(`${event.date} ${event.time}`).getTime()
-  const now = Date.now()
-  const diff = eventTime - now
-  
-  if (diff <= 0) {
-    return '已过期'
-  }
-  
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000))
-  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000))
-  
-  if (days > 0) {
-    return `${days}天${hours}小时后`
-  } else if (hours > 0) {
-    return `${hours}小时${minutes}分钟后`
-  } else {
-    return `${minutes}分钟后`
-  }
-}
-
-const getEventTypesSummary = (events: Event[]) => {
-  const typeCount: Record<string, number> = {}
-  events.forEach(event => {
-    typeCount[event.type] = (typeCount[event.type] || 0) + 1
-  })
-  
-  const types = Object.keys(typeCount)
-  if (types.length === 1) {
-    return `${types[0]}(${typeCount[types[0]]})`
-  } else if (types.length === 2) {
-    return `${types[0]}(${typeCount[types[0]]}) ${types[1]}(${typeCount[types[1]]})`
-  } else {
-    const firstType = types[0]
-    const otherCount = events.length - typeCount[firstType]
-    return `${firstType}(${typeCount[firstType]}) 其他(${otherCount})`
-  }
-}
+const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 const getWeekdayText = (dateStr: string) => {
   if (!dateStr) {
@@ -601,30 +1174,9 @@ const getWeekdayText = (dateStr: string) => {
   return weekdays[dayOfWeek === 0 ? 6 : dayOfWeek - 1]
 }
 
-const handleTypeChange = (type: string) => {
-  // 类型改变时的回调
-}
-
-const setMorningTime = () => {
-  formData.value.time = '09:00'
-}
-
-const setAfternoonTime = () => {
-  formData.value.time = '14:00'
-}
-
-const setEveningTime = () => {
-  formData.value.time = '19:00'
-}
-
-const setAllDay = () => {
-  formData.value.time = '00:00'
-  formData.value.remindBefore = 1440
-}
-
 const checkReminders = () => {
   const now = Date.now()
-  events.value.forEach(event => {
+  events.value.forEach((event: Event) => {
     const eventTime = new Date(`${event.date} ${event.time}`).getTime()
     const remindTime = eventTime - event.remindBefore * 60 * 1000
     
@@ -657,19 +1209,16 @@ const stopReminderCheck = () => {
   }
 }
 
-onMounted(() => {
-  loadEvents()
+onMounted(async () => {
+  await loadEvents()
   today()
+  await loadTodos()
   startReminderCheck()
+  refreshCalendarEvents()
 })
 
 onUnmounted(() => {
   stopReminderCheck()
-})
-
-// 组件挂载时加载事件
-onMounted(() => {
-  loadEvents()
 })
 
 defineExpose({
@@ -677,18 +1226,176 @@ defineExpose({
 })
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+
 .event-reminder {
   font-family: 'Microsoft YaHei', sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .event-reminder-content {
   display: flex;
-  height: calc(84vh - 20px);
+  flex: 1;
   gap: 20px;
   padding: 20px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   overflow: hidden;
+  min-height: 0;
+}
+
+/* 日程列表视图 */
+.list-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.list-view-header {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.list-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.list-header-date {
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.list-view-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.list-event-item {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.list-event-item:hover {
+  background: #f8fafc;
+  transform: translateX(8px);
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+}
+
+.list-event-item.event-past {
+  opacity: 0.7;
+  filter: grayscale(30%);
+}
+
+.list-event-date {
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.list-event-day {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.list-event-time {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.list-event-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-event-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.list-event-type {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: white;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.list-event-description {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.list-event-actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.list-event-actions .el-button {
+  padding: 4px 6px;
+}
+
+.no-events-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #9ca3af;
+}
+
+.no-events-list .el-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.no-events-list p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
 }
 
 /* Dialog Title */
@@ -727,7 +1434,54 @@ defineExpose({
 .calendar-nav {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 12px;
+}
+
+.date-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-switcher {
+  margin-right: 0;
+}
+
+.view-switcher .el-button-group {
+  display: flex;
+}
+
+.view-switcher .el-button {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.view-switcher .el-button--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: white;
+}
+
+.view-switcher .el-button--default {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.view-switcher .el-button--default:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
 }
 
 .calendar-nav .el-button {
@@ -864,7 +1618,7 @@ defineExpose({
   font-weight: 500;
 }
 
-/* 日历视图 */
+/* FullCalendar 日历视图 */
 .calendar-view {
   flex: 1;
   display: flex;
@@ -875,206 +1629,124 @@ defineExpose({
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
-}
-
-.calendar-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  padding: 16px 20px;
-  border-bottom: 2px solid #e2e8f0;
-  color: #374151;
-}
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  background: #e5e7eb;
-  margin-top: 16px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.weekday {
-  text-align: center;
-  padding: 12px 8px;
-  font-weight: 600;
-  font-size: 14px;
-  background: white;
-  color: #6b7280;
-  transition: all 0.3s ease;
-}
-
-.weekday:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  padding: 12px;
-  flex: 1;
-  overflow: hidden;
-  background: #e5e7eb;
+  padding: 16px;
   min-height: 0;
 }
 
-.calendar-day {
-  min-height: 0;
+.fullcalendar-container {
   height: 100%;
-  padding: 8px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  border-radius: 8px;
-  border: 1px solid transparent;
-}
-
-.calendar-day:hover {
-  z-index: 1;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-  background: #f8fafc;
-}
-
-.calendar-day:not(.today):hover {
-  background: #f8fafc;
-}
-
-.calendar-day.other-month {
-  background: #f9fafb;
-  opacity: 0.6;
-}
-
-.calendar-day.today {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.calendar-day.selected {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 16px rgba(245, 87, 108, 0.3);
-}
-
-.calendar-day.has-events {
-  border: 2px solid #10b981;
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-}
-
-.day-number {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  padding: 4px 8px;
-  align-self: flex-start;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  color: #374151;
-}
-
-.calendar-day.today .day-number {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-weight: 700;
-}
-
-.calendar-day.selected .day-number {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.calendar-day:hover .day-number {
-  background: rgba(0, 0, 0, 0.15);
-  transform: scale(1.1);
-}
-
-.calendar-day.today:hover .day-number {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
-}
-
-.day-events {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 6px;
-  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  align-items: flex-start;
 }
 
-.event-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  font-size: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+/* FullCalendar 自定义样式 */
+:deep(.fc) {
+  font-family: 'Microsoft YaHei', sans-serif;
+  height: 100%;
 }
 
-.event-dot:hover {
-  transform: scale(1.3);
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+/* 确保周历和日历视图可以滚动 */
+:deep(.fc-timegrid-body) {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.event-dot.工作 {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+:deep(.fc-scroller) {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
-.event-dot.会议 {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+:deep(.fc-header-toolbar) {
+  display: none;
 }
 
-.event-dot.生日 {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+/* 隐藏 all-day 文字，保留列布局 */
+:deep(.fc-all-day-cell .fc-col-header-cell-cushion) {
+  font-size: 0;
+  line-height: 0;
+  visibility: hidden;
 }
 
-.event-dot.纪念日 {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+:deep(.fc-all-day-cell .fc-col-header-cell-cushion::after) {
+  content: '';
+  display: none;
 }
 
-.event-dot.其他 {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+:deep(.fc-daygrid-day) {
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.event-more {
+:deep(.fc-daygrid-day:hover) {
+  background-color: #f8fafc;
+}
+
+:deep(.fc-day-today) {
+  background-color: rgba(102, 126, 234, 0.1) !important;
+}
+
+:deep(.fc-daygrid-day-number) {
+  font-weight: 700;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+:deep(.fc-daygrid-lunar) {
   font-size: 10px;
   color: #6b7280;
+  margin-top: 2px;
+}
+
+:deep(.fc-event) {
+  border-radius: 6px;
   padding: 2px 6px;
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
-  flex-shrink: 0;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+}
+
+:deep(.fc-event-main-frame) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:deep(.fc-event-time) {
   font-weight: 600;
-  margin-left: 4px;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 11px;
 }
 
-.calendar-day.today .event-more {
-  background: rgba(255, 255, 255, 0.3);
-  color: white;
-  border-color: rgba(255, 255, 255, 0.4);
+:deep(.fc-event-title) {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.calendar-day:hover .event-more {
-  background: rgba(0, 0, 0, 0.15);
-  transform: scale(1.1);
+/* 事件类型颜色 */
+:deep(.event-type-工作) {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+:deep(.event-type-会议) {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+}
+
+:deep(.event-type-生日) {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+:deep(.event-type-纪念日) {
+  background-color: #6b7280 !important;
+  border-color: #6b7280 !important;
+}
+
+:deep(.event-type-其他) {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
 }
 
 /* 右侧事件面板 */
@@ -1136,27 +1808,103 @@ defineExpose({
 .panel-events {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 16px 20px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+/* 代办事项区域 */
+.todo-section {
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 20px 16px;
+  background: #f9fafb;
+}
+
+.todo-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.todo-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.todo-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.todo-input .el-input {
+  flex: 1;
+}
+
+.todo-input :deep(.el-input__wrapper) {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.todo-input :deep(.el-button) {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.todo-text {
+  flex: 1;
+  font-size: 13px;
+  color: #374151;
+}
+
+.todo-text.todo-done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.todo-empty {
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .panel-event-item {
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px 12px;
   background: white;
-  border-radius: 12px;
-  margin-bottom: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid transparent;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .panel-event-item:hover {
   background: #f8fafc;
-  transform: translateX(8px);
+  transform: translateX(4px);
   border-color: #667eea;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .panel-event-item.event-past {
@@ -1167,12 +1915,12 @@ defineExpose({
 .event-time-badge {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
   transition: all 0.3s ease;
 }
 
@@ -1187,10 +1935,10 @@ defineExpose({
 }
 
 .event-content .event-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: #111827;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   line-height: 1.5;
   transition: all 0.3s ease;
 }
@@ -1201,13 +1949,40 @@ defineExpose({
 
 .event-content .event-type {
   display: inline-block;
-  padding: 4px 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
   color: white;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: 600;
   transition: all 0.3s ease;
+}
+
+/* 日历中代办事项事件样式 */
+:deep(.todo-event) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+:deep(.fc-todo-event) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+:deep(.fc-todo-dot) {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+:deep(.fc-todo-event.fc-todo-done .fc-todo-text) {
+  text-decoration: line-through;
+  color: #9ca3af;
 }
 
 .event-type.工作 {
@@ -1616,6 +2391,61 @@ defineExpose({
 }
 
 /* 移除抽屉样式，因为现在是在独立窗口中显示 */
+
+/* ==================== FullCalendar「更多」弹出框样式 ==================== */
+
+/* 弹层整体：白色背景、圆角、阴影，与背景区分开 */
+:deep(.fc-theme-standard .fc-popover) {
+  background: #ffffff !important;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+/* 弹层头部 */
+:deep(.fc-popover-header) {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+/* 弹层内容区：增加内边距与滚动 */
+:deep(.fc-popover-body) {
+  padding: 6px 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+/* 弹层内容中，隐藏重复的日期与农历，只保留代办和事件列表 */
+:deep(.fc-popover-body .fc-daygrid-day-number),
+:deep(.fc-popover-body .fc-daygrid-lunar),
+:deep(.fc-popover-body .fc-daygrid-day-top) {
+  display: none;
+}
+
+/* 弹层中的事件卡片更紧凑，增加间距与阴影 */
+:deep(.fc-popover .fc-daygrid-event) {
+  margin-bottom: 4px;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+/* 弹层中的代办事项：保持小点 + 文本样式 */
+:deep(.fc-popover .todo-event) {
+  background: transparent !important;
+}
+
+/* 弹层中的普通事件时间与标题字号略微缩小，避免视觉拥挤 */
+:deep(.fc-popover .fc-event-time),
+:deep(.fc-popover .fc-event-title) {
+  font-size: 12px;
+}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
