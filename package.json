@@ -14,6 +14,7 @@
     "build:main": "tsc -p tsconfig.electron.json",
     "build:renderer": "vite build --config vite.config.ts",
     "copy:dbgate": "node scripts/copy-dbgate-files.js",
+    "postinstall": "electron-builder install-app-deps",
     "build:app": "npm run build && electron-builder",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
@@ -146,13 +147,15 @@
       "dbgate-master/app/packages/**/*",
       "dbgate-master/plugins/**/*"
     ],
+    "beforeBuild": null,
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
     "win": {
       "target": [
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         "zip"
