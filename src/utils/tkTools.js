@@ -1,5 +1,5 @@
 import FileSaver from "file-saver";
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import _, { max } from "lodash";
 import { getAcitivityRolesList, getCurrRole } from "@/store/tkStore";
 

@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONNX Runtime Web 测试 - PaddleOCR 图片识别</title>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+
+        .left-panel {
+            width: 320px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .image-container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .image-panel {
+            flex: 1;
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-panel-title {
+            color: #f1f5f9;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .image-wrapper {
+            position: relative;
+            max-width: 100%;
+            max-height: calc(100vh - 250px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .text-overlay {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .text-box {
+            position: absolute;
+            border: 2px solid #10b981;
+            background: rgba(16, 185, 129, 0.2);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .upload-list {
+            margin-top: 15px;
+        }
+
+        .upload-list-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .upload-item {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .upload-item:hover {
+            background: #f1f5f9;
+            border-color: #667eea;
+        }
+
+        .upload-item.active {
+            background: #e0e7ff;
+            border-color: #667eea;
+        }
+
+        .upload-item-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            margin-bottom: 3px;
+        }
+
+        .upload-item-size {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1a202c;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        #status {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .upload-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 15px;
+            text-align: center;
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+        }
+
+        .upload-section.dragover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #c7d2fe 0%, #ddd6fe 100%);
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+        }
+
+        .image-info {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .start-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+
+        .start-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+        }
+
+        .processing-section {
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .processing-section.show {
+            display: block;
+        }
+
+        .processing-state {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+        }
+
+        .processing-icon {
+            font-size: 36px;
+            color: #667eea;
+            margin-bottom: 15px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .processing-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .processing-message {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .result-section {
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .result-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .result-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .result-text {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .result-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        #log {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-radius: 12px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        #log p {
+            margin: 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        #log p:last-child {
+            border-bottom: none;
+        }
+
+        .log-success {
+            color: #10b981;
+        }
+
+        .log-error {
+            color: #ef4444;
+        }
+
+        .log-info {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>ONNX Runtime Web 测试 - PaddleOCR 图片识别</h1>
+        <div id="status">准备就绪</div>
+
+        <div class="main-layout">
+            <!-- 左侧面板 -->
+            <div class="left-panel">
+                <!-- 上传区域 -->
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-icon">📷</div>
+                    <div class="upload-text">拖拽图片到此处或点击选择文件</div>
+                    <div class="upload-hint">支持 JPG、PNG、BMP 等格式</div>
+                    <input type="file" id="fileInput" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                </div>
+
+                <!-- 预览区域 -->
+                <div class="preview-section" id="previewSection">
+                    <div class="preview-container">
+                        <img id="previewImage" class="preview-image" alt="预览">
+                        <div class="image-info">
+                            <div class="info-item">
+                                <div class="info-label">文件名</div>
+                                <div class="info-value" id="fileName"></div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">文件大小</div>
+                                <div class="info-value" id="fileSize"></div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">图片尺寸</div>
+                                <div class="info-value" id="imageSize"></div>
+                            </div>
+                            <div class="action-buttons">
+                                <button class="start-btn" id="startBtn" onclick="startRecognition()">开始识别</button>
+                                <button class="clear-btn" onclick="clearImage()">清除图片</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 处理中区域 -->
+                <div class="processing-section" id="processingSection">
+                    <div class="processing-state">
+                        <div class="processing-icon">🔄</div>
+                        <div class="processing-text">正在识别中，请稍候...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="processing-message" id="processingMessage">正在初始化...</div>
+                    </div>
+                </div>
+
+                <!-- 结果区域 -->
+                <div class="result-section" id="resultSection">
+                    <div class="result-container">
+                        <div class="result-header">
+                            <div class="result-title">识别结果</div>
+                            <div class="result-actions">
+                                <button class="result-btn" onclick="copyResult()">复制</button>
+                                <button class="result-btn" onclick="exportResult()">导出TXT</button>
+                            </div>
+                        </div>
+                        <div class="result-text" id="resultText"></div>
+                        <div class="result-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">处理时间</span>
+                                <span class="stat-value" id="processTime">0ms</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">置信度</span>
+                                <span class="stat-value" id="confidence">0.00%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">字符数</span>
+                                <span class="stat-value" id="charCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 上传列表 -->
+                <div class="upload-list">
+                    <div class="upload-list-title">已上传图片</div>
+                    <div id="uploadList"></div>
+                </div>
+
+                <!-- 日志区域 -->
+                <div id="log"></div>
+            </div>
+
+            <!-- 右侧面板 -->
+            <div class="right-panel">
+                <!-- 图片容器 -->
+                <div class="image-container">
+                    <!-- 原始图片 -->
+                    <div class="image-panel">
+                        <div class="image-panel-title">原始图片</div>
+                        <div class="image-wrapper" id="originalImageWrapper">
+                            <canvas id="originalCanvas" class="image-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 处理后的图片 -->
+                    <div class="image-panel">
+                        <div class="image-panel-title">处理后的图片</div>
+                        <div class="image-wrapper" id="processedImageWrapper">
+                            <canvas id="processedCanvas" class="image-canvas"></canvas>
+                            <div id="textOverlays"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const uploadSection = document.getElementById('uploadSection');
+        const previewSection = document.getElementById('previewSection');
+        const processingSection = document.getElementById('processingSection');
+        const resultSection = document.getElementById('resultSection');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const imageSize = document.getElementById('imageSize');
+        const startBtn = document.getElementById('startBtn');
+        const progressFill = document.getElementById('progressFill');
+        const processingMessage = document.getElementById('processingMessage');
+        const resultText = document.getElementById('resultText');
+        const processTime = document.getElementById('processTime');
+        const confidence = document.getElementById('confidence');
+        const charCount = document.getElementById('charCount');
+        const uploadList = document.getElementById('uploadList');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const textOverlays = document.getElementById('textOverlays');
+
+        let selectedFile = null;
+        let recognitionResult = null;
+        let uploadedImages = [];
+        let detectSession, recSession, clsSession;
+
+        function log(message, type = 'info') {
+            const p = document.createElement('p');
+            p.textContent = message;
+            switch (type) {
+                case 'success':
+                    p.className = 'log-success';
+                    break;
+                case 'error':
+                    p.className = 'log-error';
+                    break;
+                case 'warning':
+                    p.style.color = '#f59e0b';
+                    break;
+                default:
+                    p.className = 'log-info';
+            }
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateProgress(percent, message) {
+            progressFill.style.width = percent + '%';
+            processingMessage.textContent = message;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                log('请选择有效的图片文件', 'error');
+                return;
+            }
+
+            selectedFile = file;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImage.src = e.target.result;
+                previewSection.classList.add('show');
+                uploadSection.style.display = 'none';
+
+                const img = new Image();
+                img.onload = function () {
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatFileSize(file.size);
+                    imageSize.textContent = img.width + ' × ' + img.height;
+
+                    // 绘制到原始图片 canvas
+                    drawImageToCanvas(img, originalCanvas);
+
+                    // 添加到上传列表
+                    addToUploadList(file, img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function addToUploadList(file, img) {
+            const item = {
+                id: Date.now(),
+                name: file.name,
+                size: file.size,
+                url: img.src,
+                width: img.width,
+                height: img.height
+            };
+            uploadedImages.push(item);
+            renderUploadList();
+        }
+
+        function renderUploadList() {
+            uploadList.innerHTML = '';
+            uploadedImages.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'upload-item';
+                if (index === uploadedImages.length - 1) {
+                    div.classList.add('active');
+                }
+                div.innerHTML = `
+                    <div class="upload-item-name">${item.name}</div>
+                    <div class="upload-item-size">${formatFileSize(item.size)} | ${item.width}×${item.height}</div>
+                `;
+                div.onclick = () => selectUploadedItem(index);
+                uploadList.appendChild(div);
+            });
+        }
+
+        function selectUploadedItem(index) {
+            const item = uploadedImages[index];
+            if (!item) return;
+
+            selectedFile = {
+                name: item.name,
+                size: item.size,
+                type: 'image/jpeg'
+            };
+
+            previewImage.src = item.url;
+            fileName.textContent = item.name;
+            fileSize.textContent = formatFileSize(item.size);
+            imageSize.textContent = item.width + ' × ' + item.height;
+
+            // 绘制到原始图片 canvas
+            const img = new Image();
+            img.onload = function () {
+                drawImageToCanvas(img, originalCanvas);
+            };
+            img.src = item.url;
+
+            // 更新激活状态
+            const items = uploadList.querySelectorAll('.upload-item');
+            items.forEach((el, i) => {
+                el.classList.toggle('active', i === index);
+            });
+        }
+
+        function drawImageToCanvas(img, canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+        }
+
+        function clearImage() {
+            selectedFile = null;
+            previewImage.src = '';
+            previewSection.classList.remove('show');
+            uploadSection.style.display = 'block';
+            resultSection.classList.remove('show');
+            recognitionResult = null;
+
+            // 清空 canvas
+            const ctx1 = originalCanvas.getContext('2d');
+            const ctx2 = processedCanvas.getContext('2d');
+            ctx1.clearRect(0, 0, originalCanvas.width, originalCanvas.height);
+            ctx2.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+
+            // 清空文本覆盖层
+            textOverlays.innerHTML = '';
+        }
+
+        async function startRecognition() {
+            if (!selectedFile) {
+                log('请先选择图片', 'error');
+                return;
+            }
+
+            previewSection.classList.remove('show');
+            processingSection.classList.add('show');
+            resultSection.classList.remove('show');
+
+            const startTime = Date.now();
+
+            try {
+                log('=== 开始 PaddleOCR 识别 ===', 'info');
+                log(`图片: ${selectedFile.name}`, 'info');
+
+                // 加载 ONNX 模型
+                updateProgress(10, '正在加载检测模型...');
+                const detectSession = await loadModel('/model/ocr/PP-OCRv5_mobile_det_infer/PP-OCRv5_mobile_det_infer.onnx', '检测');
+
+                updateProgress(40, '正在加载识别模型...');
+                const recSession = await loadModel('/model/ocr/PP-OCRv5_mobile_rec_infer/PP-OCRv5_mobile_rec_infer.onnx', '识别');
+
+                updateProgress(70, '正在加载分类模型...');
+                const clsSession = await loadModel('/model/ocr/ch_ppocr_mobile_v2.0_cls/ch_ppocr_mobile_v2.0_cls.onnx', '分类');
+
+                // 加载图片
+                updateProgress(80, '正在预处理图片...');
+                const imageData = await loadImageData(previewImage.src);
+
+                // 文本检测
+                updateProgress(85, '正在进行文字检测...');
+                const boxes = await detectText(detectSession, imageData);
+                log(`检测到 ${boxes.length} 个文本框`, 'success');
+
+                // 绘制文本框到处理后的图片
+                drawTextBoxes(imageData, boxes);
+
+                // 文本识别
+                updateProgress(95, '正在进行文字识别...');
+                const results = await recognizeTexts(recSession, clsSession, imageData, boxes);
+
+                // 绘制识别结果
+                drawRecognitionResults(boxes, results);
+
+                // 显示结果
+                const endTime = Date.now();
+                const processTimeMs = endTime - startTime;
+                const avgConfidence = results.length > 0
+                    ? results.reduce((sum, r) => sum + r.confidence, 0) / results.length
+                    : 0;
+
+                const text = results.map(r => r.text).join('\n');
+
+                resultText.textContent = text;
+                processTime.textContent = processTimeMs + 'ms';
+                confidence.textContent = (avgConfidence * 100).toFixed(2) + '%';
+                charCount.textContent = text.length;
+
+                recognitionResult = text;
+
+                log(`=== 识别完成，耗时 ${processTimeMs}ms ===`, 'success');
+
+                processingSection.classList.remove('show');
+                resultSection.classList.add('show');
+            } catch (error) {
+                log(`识别失败: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`, 'error');
+                processingSection.classList.remove('show');
+                previewSection.classList.add('show');
+            }
+        }
+
+        function drawTextBoxes(imageData, boxes) {
+            const canvas = processedCanvas;
+            const ctx = canvas.getContext('2d');
+
+            // 绘制原始图片
+            const img = new Image();
+            img.onload = function () {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                // 绘制文本框
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+
+                boxes.forEach(box => {
+                    if (box.length >= 4) {
+                        ctx.beginPath();
+                        ctx.moveTo(box[0][0], box[0][1]);
+                        for (let i = 1; i < box.length; i++) {
+                            ctx.lineTo(box[i][0], box[i][1]);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                });
+            };
+            img.src = imageData;
+        }
+
+        function drawRecognitionResults(boxes, results) {
+            textOverlays.innerHTML = '';
+
+            boxes.forEach((box, index) => {
+                if (index >= results.length) return;
+
+                const result = results[index];
+                if (!result.text || result.text.trim() === '') return;
+
+                // 计算文本框的中心点
+                const x = box.reduce((sum, point) => sum + point[0], 0) / box.length;
+                const y = box.reduce((sum, point) => sum + point[1], 0) / box.length;
+
+                // 创建文本覆盖层
+                const overlay = document.createElement('div');
+                overlay.className = 'text-overlay';
+                overlay.textContent = result.text;
+                overlay.style.left = x + 'px';
+                overlay.style.top = y + 'px';
+
+                textOverlays.appendChild(overlay);
+            });
+        }
+
+        async function loadModel(path, name) {
+            log(`正在加载 ${name} 模型: ${path}`, 'info');
+
+            const backends = ['webgl', 'wasm', 'cpu'];
+
+            for (const backend of backends) {
+                try {
+                    log(`尝试使用 ${backend} 后端...`, 'info');
+
+                    const session = await ort.InferenceSession.create(path, {
+                        executionProviders: [backend],
+                        graphOptimizationLevel: 'all',
+                        executionMode: 'sequential',
+                    });
+
+                    log(`✅ 成功使用 ${backend} 后端加载 ${name} 模型`, 'success');
+                    log(`输入: ${session.inputNames}`, 'info');
+                    log(`输出: ${session.outputNames}`, 'info');
+                    return session;
+                } catch (error) {
+                    log(`❌ ${backend} 后端失败: ${error.message}`, 'warning');
+                    continue;
+                }
+            }
+
+            throw new Error('所有后端都失败，无法加载模型');
+        }
+
+        async function loadImageData(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        async function detectText(session, imageData) {
+            log('正在运行文本检测模型...', 'info');
+
+            const img = new Image();
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.src = imageData;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const inputImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // 预处理 - 使用原始图片尺寸，模型支持动态输入
+            const input = preprocessDetect(inputImageData, canvas.width, canvas.height);
+
+            // 运行模型
+            const feeds = { x: input };
+            const results = await session.run(feeds);
+
+            // 后处理
+            const pred = results['fetch_name_0'];
+            return postprocessDetect(pred);
+        }
+
+        async function recognizeTexts(session, clsSession, imageData, boxes) {
+            const results = [];
+
+            for (let i = 0; i < boxes.length; i++) {
+                const box = boxes[i];
+                log(`正在识别第 ${i + 1}/${boxes.length} 个文本框...`, 'info');
+
+                // 裁剪文本区域
+                const croppedImageData = await cropImage(imageData, box);
+
+                // 方向分类
+                const clsResult = await classify(clsSession, croppedImageData);
+                if (clsResult.label === 1 && clsResult.score > 0.5) {
+                    log(`文本框 ${i + 1} 需要旋转 180 度 (置信度: ${clsResult.score.toFixed(4)})`, 'info');
+                    // 旋转 180 度
+
+                }
+
+                // 文本识别
+                const recResult = await recognizeText(session, croppedImageData);
+                results.push(recResult);
+            }
+
+            return results;
+        }
+
+        async function cropImage(imageData, box) {
+            const img = new Image();
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.src = imageData;
+            });
+
+            // 计算边界框
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            box.forEach(point => {
+                minX = Math.min(minX, point[0]);
+                minY = Math.min(minY, point[1]);
+                maxX = Math.max(maxX, point[0]);
+                maxY = Math.max(maxY, point[1]);
+            });
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, minX, minY, width, height, 0, 0, width, height);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        async function classify(session, imageData) {
+            log('正在运行方向分类模型...', 'info');
+
+            const img = new Image();
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.src = imageData;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const inputImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // 预处理
+            const input = preprocessDetect(inputImageData, canvas.width, canvas.height);
+
+            // 运行模型
+            const feeds = { x: input };
+            const results = await session.run(feeds);
+
+            // 后处理
+            const pred = results['softmax_0.tmp_0'];
+            return postprocessClassify(pred);
+        }
+
+        async function recognizeText(session, imageData) {
+            log('正在运行文本识别模型...', 'info');
+
+            const img = new Image();
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.src = imageData;
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const inputImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            // 预处理
+            const input = preprocessRecognize(inputImageData);
+
+            // 运行模型
+            const feeds = { x: input };
+            const results = await session.run(feeds);
+
+            // 后处理
+            const pred = results['fetch_name_0'];
+            return await postprocessRecognize(pred);
+        }
+
+        function preprocessDetect(imageData, targetWidth, targetHeight) {
+            return preprocessDetectPureJS(imageData, targetWidth, targetHeight);
+        }
+
+        function preprocessDetectPureJS(imageData, targetWidth, targetHeight) {
+            const { width, height, data } = imageData;
+
+            // 如果目标尺寸和原始尺寸相同，不需要调整大小
+            if (width === targetWidth && height === targetHeight) {
+                // 直接转换为 CHW 格式并归一化
+                const float32Data = new Float32Array(3 * height * width);
+                const channelSize = height * width;
+
+                // PaddleOCR 标准预处理：归一化到 [-1, 1]
+                const mean = [0.5, 0.5, 0.5];
+                const std = [0.5, 0.5, 0.5];
+
+                for (let i = 0; i < channelSize; i++) {
+                    float32Data[i] = (data[i * 4] / 255.0 - mean[0]) / std[0]; // R
+                    float32Data[i + channelSize] = (data[i * 4 + 1] / 255.0 - mean[1]) / std[1]; // G
+                    float32Data[i + 2 * channelSize] = (data[i * 4 + 2] / 255.0 - mean[2]) / std[2]; // B
+                }
+
+                log('✅ 使用纯 JS 完成预处理（无需调整大小）', 'success');
+                return new ort.Tensor('float32', float32Data, [1, 3, height, width]);
+            }
+
+            // 否则需要调整大小
+            const resizedData = resizeImage(data, width, height, targetWidth, targetHeight);
+
+            // 转换为 CHW 格式并归一化
+            const float32Data = new Float32Array(3 * targetHeight * targetWidth);
+            const channelSize = targetHeight * targetWidth;
+
+            // PaddleOCR 标准预处理：归一化到 [-1, 1]
+            const mean = [0.5, 0.5, 0.5];
+            const std = [0.5, 0.5, 0.5];
+
+            for (let i = 0; i < channelSize; i++) {
+                float32Data[i] = (resizedData[i * 4] / 255.0 - mean[0]) / std[0]; // R
+                float32Data[i + channelSize] = (resizedData[i * 4 + 1] / 255.0 - mean[1]) / std[1]; // G
+                float32Data[i + 2 * channelSize] = (resizedData[i * 4 + 2] / 255.0 - mean[2]) / std[2]; // B
+            }
+
+            log('✅ 使用纯 JS 完成预处理', 'success');
+
+            return new ort.Tensor('float32', float32Data, [1, 3, targetHeight, targetWidth]);
+        }
+
+        function resizeImage(data, width, height, targetWidth, targetHeight) {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext('2d');
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(new ImageData(data, width, height), 0, 0);
+
+            ctx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, targetWidth, targetHeight);
+
+            return ctx.getImageData(0, 0, targetWidth, targetHeight).data;
+        }
+
+        function postprocessDetect(pred) {
+            const boxes = [];
+            const [batch, channels, height, width] = pred.dims;
+            const data = pred.data;
+
+            const threshold = 0.5;
+            const boxThresh = 0.6;
+            const unClipRatio = 2;
+            const minArea = 100;
+
+            return postprocessDetectPureJS(pred, threshold, boxThresh, unClipRatio, minArea);
+        }
+
+        function postprocessDetectPureJS(pred, threshold, boxThresh, unClipRatio, minArea) {
+            const [batch, channels, height, width] = pred.dims;
+            const data = pred.data;
+            const boxes = [];
+
+            // 简单的阈值处理和连通域分析
+            // 这里实现一个简化版本
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = y * width + x;
+                    if (data[idx] > threshold) {
+                        // 检查是否已在某个框内
+                        let inBox = false;
+                        for (const box of boxes) {
+                            if (isPointInBox(x, y, box)) {
+                                inBox = true;
+                                break;
+                            }
+                        }
+                        if (!inBox) {
+                            // 尝试找到连通区域
+                            const box = findConnectedBox(data, x, y, width, height, threshold, boxThresh);
+                            if (box && box.length >= 4) {
+                                const area = calculateBoxArea(box);
+                                if (area >= minArea) {
+                                    // 应用 unclip_ratio 扩展文本框
+                                    const expandedBox = unclipBox(box, unClipRatio);
+                                    boxes.push(expandedBox);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            log(`检测到 ${boxes.length} 个文本框`, 'info');
+            return boxes;
+        }
+
+        function findConnectedBox(data, startX, startY, width, height, threshold, boxThresh) {
+            // 使用简单的区域生长算法
+            const visited = new Set();
+            const points = [];
+            const queue = [[startX, startY]];
+
+            while (queue.length > 0) {
+                const [x, y] = queue.shift();
+                const idx = y * width + x;
+
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                if (visited.has(idx)) continue;
+                if (data[idx] <= threshold) continue;
+
+                visited.add(idx);
+                points.push([x, y]);
+
+                // 8 邻域
+                queue.push([x - 1, y]);
+                queue.push([x + 1, y]);
+                queue.push([x, y - 1]);
+                queue.push([x, y + 1]);
+                queue.push([x - 1, y - 1]);
+                queue.push([x + 1, y - 1]);
+                queue.push([x - 1, y + 1]);
+                queue.push([x + 1, y + 1]);
+            }
+
+            if (points.length < 10) return null;
+
+            // 计算边界框
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            points.forEach(([x, y]) => {
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            });
+
+            // 计算框的平均置信度
+            let sumConfidence = 0;
+            let count = 0;
+            for (let y = minY; y <= maxY; y++) {
+                for (let x = minX; x <= maxX; x++) {
+                    const idx = y * width + x;
+                    if (idx >= 0 && idx < data.length) {
+                        sumConfidence += data[idx];
+                        count++;
+                    }
+                }
+            }
+            const avgConfidence = count > 0 ? sumConfidence / count : 0;
+
+            // 使用 boxThresh 过滤低置信度的框
+            if (avgConfidence < boxThresh) {
+                return null;
+            }
+
+            // 返回矩形框的四个角
+            return [
+                [minX, minY],
+                [maxX, minY],
+                [maxX, maxY],
+                [minX, maxY]
+            ];
+        }
+
+        function unclipBox(box, unClipRatio) {
+            // 计算框的中心点
+            let centerX = 0, centerY = 0;
+            for (const [x, y] of box) {
+                centerX += x;
+                centerY += y;
+            }
+            centerX /= box.length;
+            centerY /= box.length;
+
+            // 计算每个点到中心的距离
+            const expandedBox = [];
+            for (const [x, y] of box) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const newX = centerX + dx * unClipRatio;
+                const newY = centerY + dy * unClipRatio;
+                expandedBox.push([newX, newY]);
+            }
+
+            return expandedBox;
+        }
+
+        function isPointInBox(x, y, box) {
+            if (!box || box.length < 4) return false;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            box.forEach(([bx, by]) => {
+                minX = Math.min(minX, bx);
+                minY = Math.min(minY, by);
+                maxX = Math.max(maxX, bx);
+                maxY = Math.max(maxY, by);
+            });
+            return x >= minX && x <= maxX && y >= minY && y <= maxY;
+        }
+
+        function calculateBoxArea(box) {
+            if (!box || box.length < 4) return 0;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            box.forEach(([x, y]) => {
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            });
+            return (maxX - minX) * (maxY - minY);
+        }
+
+        function postprocessDetectWithOpenCV(pred, threshold, minArea) {
+            const [batch, channels, height, width] = pred.dims;
+            const data = pred.data;
+            const boxes = [];
+
+            try {
+                // 1. 创建二值图像
+                const src = new cv.Mat(height, width, cv.CV_8UC1);
+                for (let i = 0; i < height * width; i++) {
+                    src.data[i] = data[i] > threshold ? 255 : 0;
+                }
+
+                // 2. 寻找轮廓
+                const contours = new cv.MatVector();
+                const hierarchy = new cv.Mat();
+                cv.findContours(src, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+                debugger
+                log(`✅ 使用 OpenCV 找到 ${contours.size()} 个轮廓`, 'success');
+
+                // 3. 处理每个轮廓
+                for (let i = 0; i < contours.size(); i++) {
+                    const contour = contours.get(i);
+
+                    // 过滤小轮廓
+                    const area = cv.contourArea(contour);
+                    if (area < minArea) {
+                        contour.delete();
+                        continue;
+                    }
+
+                    // 4. 多边形逼近 (Douglas-Peucker 算法)
+                    const epsilon = 0.02 * cv.arcLength(contour, true);
+                    const approx = new cv.Mat();
+                    cv.approxPolyDP(contour, approx, epsilon, true);
+
+                    // 5. 转换为矩形框
+                    if (approx.rows >= 4) {
+                        const rect = cv.boundingRect(approx);
+                        if (rect.width >= 10 && rect.height >= 10) {
+                            boxes.push([
+                                [rect.x, rect.y],
+                                [rect.x + rect.width, rect.y],
+                                [rect.x + rect.width, rect.y + rect.height],
+                                [rect.x, rect.y + rect.height],
+                            ]);
+                        }
+                    }
+
+                    contour.delete();
+                    approx.delete();
+                }
+
+                // 释放资源
+                src.delete();
+                contours.delete();
+                hierarchy.delete();
+
+                log(`✅ OpenCV 检测到 ${boxes.length} 个文本框`, 'success');
+
+                debugger
+                // 绘制检测结果到原始图片 canvas
+                const ctx1 = originalCanvas.getContext('2d');
+                ctx1.strokeStyle = '#10b981';
+                ctx1.lineWidth = 2;
+                ctx1.fillStyle = 'rgba(16, 185, 129, 0.2)';
+
+                boxes.forEach(box => {
+                    if (box.length >= 4) {
+                        ctx1.beginPath();
+                        ctx1.moveTo(box[0][0], box[0][1]);
+                        for (let i = 1; i < box.length; i++) {
+                            ctx1.lineTo(box[i][0], box[i][1]);
+                        }
+                        ctx1.closePath();
+                        ctx1.fill();
+                        ctx1.stroke();
+                    }
+                });
+            } catch (error) {
+                log(`❌ OpenCV 后处理失败: ${error.message}`, 'error');
+                return postprocessDetectPureJS(pred, threshold, minArea);
+            }
+
+            return boxes;
+        }
+
+        function preprocessClassify(imageData) {
+            // 调整为 48x192
+            return preprocessDetectPureJS(imageData, 192, 48);
+        }
+
+        function postprocessClassify(pred) {
+            const dims = pred.dims;
+            const data = pred.data;
+
+            log(`分类模型输出维度: ${dims}`, 'info');
+
+            // 找到概率最大的类别
+            let maxVal = -Infinity;
+            let maxIdx = 0;
+
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] > maxVal) {
+                    maxVal = data[i];
+                    maxIdx = i;
+                }
+            }
+
+            log(`分类结果: 方向=${maxIdx}, 置信度=${maxVal.toFixed(4)}`, 'info');
+
+            return { label: maxIdx, score: maxVal };
+        }
+
+        function preprocessRecognize(imageData) {
+            return preprocessClassify(imageData);
+        }
+
+        async function postprocessRecognize(pred) {
+            const dims = pred.dims;
+            const data = pred.data;
+
+            log(`识别模型输出维度: ${dims}`, 'info');
+
+            let seqLen, vocabSize;
+
+            if (dims.length === 3) {
+                seqLen = dims[1];
+                vocabSize = dims[2];
+                log(`检测到 3D 输出: seqLen=${seqLen}, vocabSize=${vocabSize}`, 'info');
+            } else if (dims.length === 4) {
+                seqLen = dims[2];
+                vocabSize = dims[3];
+                log(`检测到 4D 输出: seqLen=${seqLen}, vocabSize=${vocabSize}`, 'info');
+            } else {
+                log(`未知的输出维度: ${dims}`, 'error');
+                return { text: '', confidence: 0 };
+            }
+
+            const dict = await loadDict();
+            log(`字典大小: ${dict.length}`, 'info');
+
+            let text1 = '';
+            let prevIndex1 = -1;
+            let maxConfidence1 = 0;
+
+            for (let i = 0; i < seqLen; i++) {
+                let maxVal = -Infinity;
+                let maxIdx = 0;
+
+                for (let j = 0; j < vocabSize && j < data.length; j++) {
+                    const val = data[i * vocabSize + j];
+                    if (val > maxVal) {
+                        maxVal = val;
+                        maxIdx = j;
+                    }
+                }
+
+                log(`时间步 ${i}: 索引=${maxIdx}, 概率=${maxVal.toFixed(4)}`, 'debug');
+
+                if (maxIdx !== 0 && maxIdx !== prevIndex1) {
+                    if (maxIdx < dict.length) {
+                        text1 += dict[maxIdx];
+                        log(`识别字符: ${dict[maxIdx]}`, 'debug');
+                    } else {
+                        log(`索引 ${maxIdx} 超出字典范围`, 'warning');
+                    }
+                    maxConfidence1 = Math.max(maxConfidence1, maxVal);
+                }
+                prevIndex1 = maxIdx;
+            }
+
+            log(`方法 1 识别结果: "${text1}", 置信度: ${maxConfidence1.toFixed(4)}`, 'info');
+
+            let text2 = '';
+            let prevIndex2 = -1;
+            let maxConfidence2 = 0;
+
+            for (let i = 0; i < seqLen; i++) {
+                let maxVal = -Infinity;
+                let maxIdx = 0;
+
+                for (let j = 0; j < vocabSize && j < data.length; j++) {
+                    const val = data[j * seqLen + i];
+                    if (val > maxVal) {
+                        maxVal = val;
+                        maxIdx = j;
+                    }
+                }
+
+                log(`时间步 ${i} (转置): 索引=${maxIdx}, 概率=${maxVal.toFixed(4)}`, 'debug');
+
+                if (maxIdx !== 0 && maxIdx !== prevIndex2) {
+                    if (maxIdx < dict.length) {
+                        text2 += dict[maxIdx];
+                        log(`识别字符 (转置): ${dict[maxIdx]}`, 'debug');
+                    }
+                    maxConfidence2 = Math.max(maxConfidence2, maxVal);
+                }
+                prevIndex2 = maxIdx;
+            }
+
+            log(`方法 2 识别结果: "${text2}", 置信度: ${maxConfidence2.toFixed(4)}`, 'info');
+
+            const finalText = maxConfidence1 > maxConfidence2 ? text1 : text2;
+            const finalConfidence = Math.max(maxConfidence1, maxConfidence2);
+
+            log(`最终识别结果: "${finalText}", 置信度: ${finalConfidence.toFixed(4)}`, 'info');
+            return { text: finalText, confidence: finalConfidence };
+        }
+
+        let dictCache = null;
+        let dictLoaded = false;
+
+        async function loadDict() {
+            if (dictLoaded && dictCache) {
+                return dictCache;
+            }
+
+            try {
+                log('正在加载字典文件...', 'info');
+
+                const dictPath = '/model/ocr/PP-OCRv5_mobile_rec_infer/dict.txt';
+                const response = await fetch(dictPath);
+
+                if (!response.ok) {
+                    throw new Error(`无法加载字典文件: ${response.status}`);
+                }
+
+                const text = await response.text();
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+                dictCache = ['', ...lines];
+                dictLoaded = true;
+
+                log(`✅ 字典加载完成，共 ${dictCache.length} 个字符`, 'success');
+                log(`字典前10个字符: ${dictCache.slice(1, 11).join(' ')}`, 'info');
+
+                return dictCache;
+            } catch (error) {
+                log(`❌ 字典加载失败: ${error.message}`, 'error');
+                return getDefaultDict();
+            }
+        }
+
+        function getDefaultDict() {
+            const defaultChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ你好世界中国';
+            return ['', ...defaultChars.split('')];
+        }
+
+        function copyResult() {
+            if (!recognitionResult) {
+                log('没有可复制的结果', 'error');
+                return;
+            }
+
+            navigator.clipboard.writeText(recognitionResult).then(() => {
+                log('✅ 结果已复制到剪贴板', 'success');
+            }).catch(err => {
+                log('❌ 复制失败: ' + err.message, 'error');
+            });
+        }
+
+        function exportResult() {
+            if (!recognitionResult) {
+                log('没有可导出的结果', 'error');
+                return;
+            }
+
+            const blob = new Blob([recognitionResult], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ocr_result_' + new Date().getTime() + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            log('✅ 结果已导出', 'success');
+        }
+
+
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            log('=== 页面加载完成 ===', 'info');
+            log('请上传图片进行 OCR 识别测试', 'info');
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.classList.add('dragover');
+            });
+
+            uploadSection.addEventListener('dragleave', () => {
+                uploadSection.classList.remove('dragover');
+            });
+
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

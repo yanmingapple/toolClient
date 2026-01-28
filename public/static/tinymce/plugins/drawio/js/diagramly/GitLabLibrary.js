@@ -1,0 +1,1 @@
+GitLabLibrary=function(i,t,a){GitLabFile.call(this,i,t,a)},mxUtils.extend(GitLabLibrary,GitLabFile),GitLabLibrary.prototype.doSave=function(i,t,a){this.saveFile(i,!1,t,a)},GitLabLibrary.prototype.open=function(){};

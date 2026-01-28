@@ -18,8 +18,13 @@ export default defineConfig({
     Components({
       resolvers: [ElementPlusResolver()],
       dts: 'src/components.d.ts'
-    })
+    }),
   ],
+  base: './',  // 使用相对路径，这样资源文件会相对于 HTML 文件位置
+  build: {
+    outDir: 'dist/renderer',
+    emptyOutDir: true
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
@@ -34,5 +39,12 @@ export default defineConfig({
   },
   server: {
     port: 3000
-  }
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  },
 })

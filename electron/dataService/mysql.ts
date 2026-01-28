@@ -1,4 +1,4 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
+import { ConnectionConfig, TreeNodeFactory, TreeNode } from '../model/database';
 import { DatabaseClient } from './database';
 import * as mysql from 'mysql2/promise';
 
@@ -8,7 +8,7 @@ import * as mysql from 'mysql2/promise';
 class MySQLManagementPool {
     private static instance: MySQLManagementPool;
     private pool: mysql.Pool | null = null;
-    private connectionConfig: mysql.ConnectionOptions | null = null;
+    private connectionConfig: ConnectionConfig | null = null;
     private lastRefreshTime: number = 0;
     private cacheTimeout: number = 5 * 60 * 1000; // 缓存5分钟
     private databaseCache: any[] | null = null;
@@ -22,14 +22,56 @@ class MySQLManagementPool {
         return MySQLManagementPool.instance;
     }
 
-    async initialize(config: mysql.ConnectionOptions): Promise<void> {
-        this.connectionConfig = config;
-        if (!this.pool) {
-            this.pool = mysql.createPool(config);
+    async initialize(config: ConnectionConfig): Promise<void> {
+        // 检查配置是否变化
+        const configChanged = !this._isConfigEqual(this.connectionConfig, config);
+
+        // 如果配置变化或连接池不存在，则重建连接池
+        if (configChanged || !this.pool) {
+            // 先关闭旧的连接池
+            if (this.pool) {
+                await this.close();
+            }
+
+            // 更新配置
+            this.connectionConfig = config;
+
+            // 创建新的连接池
+            const poolConfig: mysql.ConnectionOptions = {
+                host: config.host,
+                port: config.port,
+                user: config.username,
+                password: config.password,
+                database: config.database,
+                ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+                charset: config.charset,
+                connectionLimit: config.maxConnections || 10
+            };
+
+            this.pool = mysql.createPool(poolConfig);
+
+            // 清理缓存，因为配置可能已变化
+            await this.clearCache();
         }
     }
 
-    async getDatabaseList(): Promise<any[]> {
+    /**
+     * 比较两个配置是否相等
+     */
+    private _isConfigEqual(config1: ConnectionConfig | null, config2: ConnectionConfig | null): boolean {
+        if (!config1 || !config2) return false;
+
+        return config1.host === config2.host &&
+            config1.port === config2.port &&
+            config1.username === config2.username &&
+            config1.password === config2.password &&
+            config1.database === config2.database &&
+            config1.ssl === config2.ssl &&
+            config1.charset === config2.charset &&
+            config1.maxConnections === config2.maxConnections;
+    }
+
+    async getDatabaseList(): Promise<TreeNode[]> {
         // 检查缓存是否有效
         const now = Date.now();
         if (this.databaseCache && (now - this.lastRefreshTime) < this.cacheTimeout) {
@@ -46,13 +88,16 @@ class MySQLManagementPool {
                 const [rows] = await connection.query('SHOW DATABASES') as [Array<{ Database: string }>, any];
 
                 // 更新缓存
-                this.databaseCache = rows.map((db, index) => ({
-                    id: `db_${this.connectionConfig!.host}_${index}`,
-                    name: db.Database,
-                    type: 'database',
-                    parentId: this.connectionConfig!.host,
-                    metadata: {}
-                }));
+                this.databaseCache = rows.map((db, index) =>
+                    TreeNodeFactory.createDatabase(
+                        `db_${this.connectionConfig!.host}_${index}`,
+                        db.Database,
+                        this.connectionConfig!.host,
+                        {
+                            databaseType: 'mysql'
+                        }
+                    )
+                );
 
                 this.lastRefreshTime = now;
                 return this.databaseCache;
@@ -98,13 +143,16 @@ export class MySQLClient implements DatabaseClient {
      */
     async connect(): Promise<void> {
         try {
+            // 先关闭旧的主连接（如果存在）
+            if (this.connection) {
+                await this.connection.end();
+                this.connection = null;
+            }
+
             // 初始化管理连接池（连接到mysql系统数据库）
             await this.managementPool.initialize({
-                host: this.config.host,
-                port: this.config.port,
-                user: this.config.username,
-                password: this.config.password,
-                database: 'mysql',
+                ...this.config,
+                database: '',
             });
 
             // 只有当database不为空时才创建主连接
@@ -230,7 +278,7 @@ export class MySQLClient implements DatabaseClient {
     /**
      * 获取MySQL数据库列表
      */
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         try {
             // 使用管理连接池获取数据库列表（带缓存）
             const databaseList = await this.managementPool.getDatabaseList();
@@ -239,7 +287,9 @@ export class MySQLClient implements DatabaseClient {
             return databaseList.map((db, index) => ({
                 ...db,
                 id: `db_${this.config.id}_${index}`,
-                parentId: this.config.id
+                parentId: this.config.id,
+                // 确保 metadata 保持不变
+                metadata: db.metadata
             }));
         } catch (error) {
             throw new Error(`Failed to get database list: ${error}`);
@@ -250,7 +300,7 @@ export class MySQLClient implements DatabaseClient {
      * 获取MySQL表列表
      * @param database 数据库名称（当连接时未指定数据库时必须提供）
      */
-    async getTableList(): Promise<any[]> {
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.connection) {
             throw new Error('Not connected to MySQL database');
         }
@@ -264,20 +314,23 @@ export class MySQLClient implements DatabaseClient {
 
         try {
             const [tables] = await this.connection.query(`SHOW TABLE STATUS FROM \`${targetDatabase}\``) as [any[], any];
-            return tables.map((table: any, index: number) => ({
-                id: `table_${this.config.id}_${index}`,
-                name: table.Name,
-                type: 'table',
-                parentId: this.config.id,
-                metadata: {
-                    rows: table.Rows,
-                    dataLength: table.Data_length,
-                    engine: table.Engine,
-                    updateTime: table.Update_time,
-                    comment: table.Comment,
-                    database: targetDatabase
-                }
-            }));
+            return tables.map((table: any, index: number) =>
+                TreeNodeFactory.createTable(
+                    `table_${this.config.id}_${index}`,
+                    table.Name,
+                    this.config.id,
+                    {
+                        recordCount: table.Rows,
+                        size: table.Data_length,
+                        engine: table.Engine,
+                        info: {
+                            updateTime: table.Update_time,
+                            comment: table.Comment,
+                            database: targetDatabase
+                        }
+                    }
+                )
+            );
         } catch (error) {
             throw new Error(`Failed to get table list: ${error}`);
         }

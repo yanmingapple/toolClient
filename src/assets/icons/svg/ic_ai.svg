@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 40 40" class="design-iconfont">
+  <defs>
+    <linearGradient x1="47.3154604%" y1="100%" x2="47.3154604%" y2="6.15192159%" id="2puif6na7__5x4dtg4nld">
+      <stop stop-color="#FFF" stop-opacity=".9" offset="0%"/>
+      <stop stop-color="#FFF" offset="100%"/>
+    </linearGradient>
+    <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="2puif6na7__qo1z1i4kkf">
+      <stop stop-color="#FFF" stop-opacity=".1" offset="0%"/>
+      <stop stop-color="#EAF9FF" offset="100%"/>
+    </linearGradient>
+    <linearGradient x1="50%" y1="0%" x2="50%" y2="79.5256386%" id="2puif6na7__fvw3iqh6hg">
+      <stop stop-color="#0ACAF2" offset="0%"/>
+      <stop stop-color="#0092FF" offset="100%"/>
+    </linearGradient>
+    <filter x="-36.5%" y="-25%" width="173.1%" height="173.1%" filterUnits="objectBoundingBox" id="2puif6na7__cvalauoihb">
+      <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"/>
+      <feOffset dy="3" in="shadowSpreadOuter1" result="shadowOffsetOuter1"/>
+      <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"/>
+      <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"/>
+      <feColorMatrix values="0 0 0 0 0.0514016371 0 0 0 0 0.446694934 0 0 0 0 0.648607337 0 0 0 0.6 0" in="shadowBlurOuter1"/>
+    </filter>
+    <filter x="-34.6%" y="-23.1%" width="169.2%" height="169.2%" filterUnits="objectBoundingBox" id="2puif6na7__2wrckqjgoe">
+      <feMorphology radius="1" in="SourceAlpha" result="shadowSpreadInner1"/>
+      <feGaussianBlur stdDeviation="1.5" in="shadowSpreadInner1" result="shadowBlurInner1"/>
+      <feOffset dy="-3" in="shadowBlurInner1" result="shadowOffsetInner1"/>
+      <feComposite in="shadowOffsetInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"/>
+      <feColorMatrix values="0 0 0 0 0.879858994 0 0 0 0 0.955532225 0 0 0 0 1 0 0 0 1 0" in="shadowInnerInner1"/>
+    </filter>
+    <radialGradient cx="50%" cy="50%" fx="50%" fy="50%" r="50%" gradientTransform="matrix(0 1 -1.10953 0 1.0547635 0)" id="2puif6na7__8i5t4g399a">
+      <stop stop-color="#206AFF" offset="0%"/>
+      <stop stop-color="#2688F8" offset="100%"/>
+    </radialGradient>
+    <path id="2puif6na7__0kf0x7vmqc" d="M13 0A13 13 0 1 0 13 26A13 13 0 1 0 13 0Z"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <rect fill="url(#2puif6na7__8i5t4g399a)" width="40" height="40" rx="6"/>
+    <g transform="translate(7 7)">
+      <use fill="#000" filter="url(#2puif6na7__cvalauoihb)" xlink:href="#2puif6na7__0kf0x7vmqc"/>
+      <use fill="url(#2puif6na7__5x4dtg4nld)" xlink:href="#2puif6na7__0kf0x7vmqc"/>
+      <use fill="#000" filter="url(#2puif6na7__2wrckqjgoe)" xlink:href="#2puif6na7__0kf0x7vmqc"/>
+      <use stroke="url(#2puif6na7__qo1z1i4kkf)" xlink:href="#2puif6na7__0kf0x7vmqc"/>
+      <rect fill="url(#2puif6na7__fvw3iqh6hg)" x="7" y="10" width="3" height="6" rx="1.5"/>
+      <rect fill="url(#2puif6na7__fvw3iqh6hg)" x="17" y="10" width="3" height="6" rx="1.5"/>
+    </g>
+  </g>
+</svg>

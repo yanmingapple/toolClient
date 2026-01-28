@@ -61,7 +61,7 @@
               v-model.trim="searchFormObj.formData[item.prop]"
               :disabled="item.disabled"
               :style="{ width: item.width }"
-              :maxlength="item.maxlength || 50"
+              :maxlength="!item.appendIcon ? item.maxlength || 50 : undefined"
               :placeholder="
                 item.placeholder || `${item.label ? '请输入' + item.label : '请输入信息'}`
               "
@@ -82,6 +82,7 @@
                   style="cursor: pointer"
                   @click="item.appendFun"
                 ></svg-icon>
+                <el-button  @click="item.appendFun" :icon="item.appendIcon" />
               </template>
             </el-input>
 

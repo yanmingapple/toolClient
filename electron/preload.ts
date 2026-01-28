@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
-import {ConnectionConfig} from './model/database'
+import { ConnectionConfig } from './model/database'
+import { ServiceResult } from './model/result/ServiceResult'
+import { TreeNode } from './model/database/TreeNode'
+import type { ServiceMonitor } from './model/database/ServiceMonitor'
 /**
  * Preload 脚本
  * 使用 contextBridge 安全地向渲染进程暴露主进程 API
@@ -12,53 +15,53 @@ contextBridge.exposeInMainWorld('electronAPI', {
     /**
      * 测试数据库连接
      * @param {Object} config 连接配置
-     * @returns {Promise<boolean>} 连接是否成功
+     * @returns {Promise<ServiceResult<boolean>>} 连接是否成功
      */
-    testConnection: (config:ConnectionConfig): Promise<boolean> => {
+    testConnection: (config: ConnectionConfig): Promise<ServiceResult<boolean>> => {
       return ipcRenderer.invoke('database:test-connection', config);
     },
 
     /**
      * 保存连接配置
      * @param {Array} connections 连接配置数组
-     * @returns {Promise<void>}
+     * @returns {Promise<ServiceResult<void>>}
      */
-    saveConnections: (connections:ConnectionConfig[]): Promise<void> => {
+    saveConnections: (connections: ConnectionConfig[]): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('database:save-connections', connections);
     },
 
     /**
      * 获取所有连接配置
-     * @returns {Promise<Array>}
+     * @returns {Promise<ServiceResult<TreeNode[]>>}
      */
-    getAllConnections: (): Promise<Array<any>> => {
+    getAllConnections: (): Promise<ServiceResult<TreeNode[]>> => {
       return ipcRenderer.invoke('database:get-all-connections');
     },
 
     /**
      * 删除连接配置
      * @param {string} connectionId 连接ID
-     * @returns {Promise<void>}
+     * @returns {Promise<ServiceResult<void>>}
      */
-    deleteConnection: (connectionId:string): Promise<void> => {
+    deleteConnection: (connectionId: string): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('database:delete-connection', connectionId);
     },
 
     /**
      * 获取数据库列表
      * @param {Object} config 连接配置
-     * @returns {Promise<Array<string>>} 数据库名列表
+     * @returns {Promise<ServiceResult<string[]>>} 数据库名列表
      */
-    getDatabases: (config:ConnectionConfig) => {
+    getDatabases: (config: ConnectionConfig): Promise<ServiceResult<string[]>> => {
       return ipcRenderer.invoke('database:get-databases', config);
     },
 
     /**
      * 获取表列表
      * @param {Object} config 连接配置
-     * @returns {Promise<Array<string>>} 表名列表
+     * @returns {Promise<ServiceResult<string[]>>} 表名列表
      */
-    getTables: (config:ConnectionConfig): Promise<Array<string>> => {
+    getTables: (config: ConnectionConfig): Promise<ServiceResult<string[]>> => {
       return ipcRenderer.invoke('database:get-tables', config);
     },
 
@@ -67,37 +70,75 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Object} config 连接配置
      * @param {string} sql SQL 语句
      * @param {Array} params 参数
-     * @returns {Promise<any>} 查询结果
+     * @returns {Promise<ServiceResult<any>>} 查询结果
      */
-    executeQuery: (config:ConnectionConfig, sql:string, params:any[]): Promise<any> => {
+    executeQuery: (config: ConnectionConfig, sql: string, params: any[]): Promise<ServiceResult<any>> => {
       return ipcRenderer.invoke('database:execute-query', config, sql, params);
     },
 
     /**
      * 获取连接状态
      * @param {string} connectionId 连接ID
-     * @returns {Promise<any>} 连接状态信息
+     * @returns {Promise<ServiceResult<any>>} 连接状态信息
      */
-    getConnectionStatus: (connectionId:string): Promise<any> => {
+    getConnectionStatus: (connectionId: string): Promise<ServiceResult<any>> => {
       return ipcRenderer.invoke('database:get-connection-status', connectionId);
     },
 
     /**
      * 刷新连接
      * @param {string} connectionId 连接ID
-     * @returns {Promise<boolean>} 是否成功
+     * @returns {Promise<ServiceResult<boolean>>} 是否成功
      */
-    refreshConnection: (connectionId:string): Promise<boolean> => {
+    refreshConnection: (connectionId: string): Promise<ServiceResult<boolean>> => {
       return ipcRenderer.invoke('database:refresh-connection', connectionId);
     },
 
     /**
      * 断开连接
      * @param {string} connectionId 连接ID
-     * @returns {Promise<void>}
+     * @returns {Promise<ServiceResult<void>>}
      */
-    disconnect: (connectionId:string): Promise<void> => {
+    disconnect: (connectionId: string): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('database:disconnect', connectionId);
+    }
+  },
+
+  // 服务监控相关
+  serviceMonitor: {
+    /**
+     * 获取所有服务监控
+     */
+    getAll: (): Promise<ServiceResult<ServiceMonitor[]>> => {
+      return ipcRenderer.invoke('service-monitor:get-all');
+    },
+
+    /**
+     * 保存服务监控
+     */
+    save: (monitors: ServiceMonitor[]): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:save', monitors);
+    },
+
+    /**
+     * 删除所有服务监控
+     */
+    deleteAll: (): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:delete-all');
+    },
+
+    /**
+     * 执行健康检查
+     */
+    performHealthCheck: (): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:perform-health-check');
+    },
+
+    /**
+     * 删除一个服务监控
+     */
+    delete: (id: number): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('service-monitor:delete', id);
     }
   },
 
@@ -136,6 +177,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     restartApp: (): void => {
       ipcRenderer.send('app:restart');
+    },
+
+    /**
+     * 切换菜单类型
+     * @param {string} menuType 菜单类型 ('workspace' 或 'database')
+     * @returns {Promise<boolean>} 是否成功
+     */
+    switchMenuType: (menuType: string): Promise<boolean> => {
+      return ipcRenderer.invoke('menu:switch-type', menuType);
     }
   },
 
@@ -146,7 +196,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {Array} filters 文件过滤器
      * @returns {Promise<string>} 选择的文件路径
      */
-    selectFile: (filters:string[]): Promise<string> => {
+    selectFile: (filters: string[]): Promise<string> => {
       return ipcRenderer.invoke('file:select-file', filters);
     },
 
@@ -164,7 +214,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} content 文件内容
      * @returns {Promise<boolean>} 是否成功
      */
-    saveFile: (defaultPath:string, content:string): Promise<boolean> => {
+    saveFile: (defaultPath: string, content: string): Promise<boolean> => {
       return ipcRenderer.invoke('file:save-file', defaultPath, content);
     },
 
@@ -173,7 +223,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} filePath 文件路径
      * @returns {Promise<string>} 文件内容
      */
-    readFile: (filePath:string): Promise<string> => {
+    readFile: (filePath: string): Promise<string> => {
       return ipcRenderer.invoke('file:read-file', filePath);
     }
   },
@@ -190,56 +240,147 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-  // 事件监听
-  on: {
-    /**
-     * 监听连接状态变化
-     * @param callback 回调函数
-     */
-    connectionStatusChanged: (callback: (data: any) => void): void => {
-      ipcRenderer.on('connection:status-changed', (_: any, data: any) => callback(data));
-    },
+  // 通用事件监听器
+  /**
+   * 监听 IPC 事件
+   * @param channel 事件通道名称
+   * @param callback 回调函数
+   */
+  on: (channel: string, callback: (...args: any[]) => void): void => {
+    ipcRenderer.on(channel, (_event: any, ...args: any[]) => callback(...args));
+  },
 
-    /**
-     * 监听数据库列表更新
-     * @param callback 回调函数
-     */
-    databasesUpdated: (callback: (data: any) => void): void => {
-      ipcRenderer.on('database:databases-updated', (_: any, data: any) => callback(data));
-    },
-
-    /**
-     * 监听表列表更新
-     * @param callback 回调函数
-     */
-    tablesUpdated: (callback: (data: any) => void): void => {
-      ipcRenderer.on('database:tables-updated', (_: any, data: any) => callback(data));
+  /**
+   * 移除 IPC 事件监听器
+   * @param channel 事件通道名称
+   * @param callback 可选，指定要移除的回调函数。如果不提供，将移除该通道的所有监听器
+   */
+  off: (channel: string, callback?: (...args: any[]) => void): void => {
+    if (callback) {
+      ipcRenderer.removeListener(channel, callback);
+    } else {
+      ipcRenderer.removeAllListeners(channel);
     }
   },
 
-  // 移除监听器
-  off: {
-    /**
-     * 移除连接状态变化监听
-     */
-    connectionStatusChanged: (): void => {
-      ipcRenderer.removeAllListeners('connection:status-changed');
-    },
+  /**
+   * 一次性监听 IPC 事件（只触发一次后自动移除）
+   * @param channel 事件通道名称
+   * @param callback 回调函数
+   */
+  once: (channel: string, callback: (...args: any[]) => void): void => {
+    const validChannels = [
+      'connection:status-changed',
+      'database:databases-updated',
+      'database:tables-updated',
+      'open-new-connection-dialog',
+      'terminal:open-console',
+      'terminal:result',
+      'service-monitor:health-check-result',
+      'sidebar-open-calendar',
+    ];
 
-    /**
-     * 移除数据库列表更新监听
-     */
-    databasesUpdated: (): void => {
-      ipcRenderer.removeAllListeners('database:databases-updated');
-    },
-
-    /**
-     * 移除表列表更新监听
-     */
-    tablesUpdated: (): void => {
-      ipcRenderer.removeAllListeners('database:tables-updated');
+    if (validChannels.includes(channel)) {
+      ipcRenderer.once(channel, (_event: any, ...args: any[]) => callback(...args));
+    } else {
+      console.warn(`[IPC] Invalid channel: ${channel}`);
     }
-  }
+  },
+
+  // 终端命令相关
+  terminal: {
+    /**
+     * 执行单个终端命令
+     * @param command 命令字符串
+     * @param shell shell类型 ('cmd' 或 'powershell')
+     * @param cwd 工作目录
+     * @param timeout 超时时间（毫秒）
+     * @returns Promise<ServiceResult<CommandExecutionResult>> 执行结果
+     */
+    executeCommand: (command: string, shell: 'cmd' | 'powershell' = 'powershell', cwd?: string, timeout?: number): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('terminal-execute-command', { command, shell, cwd, timeout });
+    },
+
+    /**
+     * 批量执行终端命令
+     * @param commands 命令配置数组
+     * @param parallel 是否并行执行
+     * @returns Promise<ServiceResult<CommandExecutionResult[]>> 执行结果数组
+     */
+    executeCommands: (commands: any[], parallel: boolean = false): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('terminal-execute-commands', commands, parallel);
+    },
+
+    /**
+     * 获取系统信息
+     * @returns Promise<ServiceResult<any>> 系统信息
+     */
+    getSystemInfo: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('terminal-get-system-info');
+    }
+  },
+
+  // 侧边栏相关
+  sidebar: {
+    /**
+     * 打开OCR页面
+     * @param engine OCR引擎名称
+     */
+    openOCRPage: (engine: string): void => {
+      ipcRenderer.send('sidebar:open-ocr-page', engine);
+    },
+
+    /**
+     * 切换侧边栏显示/隐藏
+     */
+    toggle: (): void => {
+      ipcRenderer.send('sidebar:toggle');
+    },
+
+    /**
+     * 关闭侧边栏
+     */
+    close: (): void => {
+      ipcRenderer.send('sidebar:close');
+    },
+
+    /**
+     * 展开侧边栏
+     */
+    expand: (): void => {
+      ipcRenderer.send('sidebar:expand');
+    },
+
+    /**
+     * 收起侧边栏
+     */
+    collapse: (): void => {
+      ipcRenderer.send('sidebar:collapse');
+    },
+
+    /**
+     * 获取系统资源信息（CPU和内存使用率）
+     * @returns Promise<ServiceResult<any>> 系统资源信息
+     */
+    getSystemResources: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('sidebar:get-system-resources');
+    },
+
+    /**
+     * 打开日历提醒
+     */
+    openCalendar: (): void => {
+      ipcRenderer.send('sidebar:open-calendar');
+    },
+
+    /**
+     * 打开信用卡提醒工具
+     */
+    openCreditCard: (): void => {
+      ipcRenderer.send('sidebar:open-credit-card');
+    }
+  },
+
 });
 
 // 控制台输出预加载脚本加载成功的消息

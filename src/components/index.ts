@@ -35,7 +35,7 @@ import TkTableBtn from '@/components/TkTableBtn/index.vue'
 import TkFloatBox from '@/components/TkFloatBox/index.vue'
 import TKProgress from '@/components/TKProgress/index.vue'
 import TkContextMenu from '@/components/TkContextMenu/index.vue'
-
+import SvgIcon from '@/components/SvgIcon/index.vue'
 
 
 export default {
@@ -75,4 +75,5 @@ export default {
   'TkFloatBox': TkFloatBox,
   'TKProgress': TKProgress,
   'tk-context-menu': TkContextMenu,
+  'svg-icon': SvgIcon,
 }

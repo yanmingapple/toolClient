@@ -1,7 +1,7 @@
 /**
  * 连接管理相关工具函数
  */
-import { ConnectionType, ConnectionStatus } from '../../electron/model/database'
+import { ConnectionType as DatabaseType, ConnectionStatus } from '../../electron/model/database'
 import { Icon, IconName } from '../icons'
 
 /**
@@ -12,24 +12,6 @@ import { Icon, IconName } from '../icons'
  */
 export const getDatabaseIcon = (type: DatabaseType, isConnected: boolean) => {
   return <Icon name={type as unknown as IconName} size={16} color={isConnected ? '#52c41a' : '#d9d9d9'} style={{ marginRight: '8px' }} />
-}
-
-/**
- * 获取连接状态的中文显示和颜色
- * @param status 连接状态
- * @returns 包含文本和颜色的对象
- */
-export const getConnectionStatusInfo = (status: ConnectionStatus) => {
-  switch (status) {
-    case ConnectionStatus.CONNECTED:
-      return { text: '已连接', color: 'success' }
-    case ConnectionStatus.CONNECTING:
-      return { text: '连接中', color: 'processing' }
-    case ConnectionStatus.ERROR:
-      return { text: '错误', color: 'error' }
-    default:
-      return { text: '未连接', color: 'default' }
-  }
 }
 
 /**

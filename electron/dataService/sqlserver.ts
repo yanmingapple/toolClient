@@ -1,5 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
+import { TreeNodeFactory, TreeNode, ConnectionConfig } from '../model/database';
 import { Connection, Request } from 'tedious';
 
 /**
@@ -84,7 +84,7 @@ class SQLServerManagementPool {
         return this.initializingPromise;
     }
 
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         // 检查缓存是否有效
         const now = Date.now();
         if (this.databaseCache && (now - this.lastRefreshTime) < this.cacheTimeout) {
@@ -122,17 +122,19 @@ class SQLServerManagementPool {
 
                 request.on('requestCompleted', () => {
                     // 更新缓存
-                    this.databaseCache = results.map((db, index) => ({
-                        id: `db_${this.connectionConfig!.host}_${index}`,
-                        name: db.name,
-                        type: 'database',
-                        parentId: this.connectionConfig!.host,
-                        metadata: {
-                            databaseId: db.database_id,
-                            createDate: db.create_date,
-                            state: db.state_desc
-                        }
-                    }));
+                    this.databaseCache = results.map((db, index) =>
+                        TreeNodeFactory.createDatabase(
+                            `db_${this.connectionConfig!.host}_${index}`,
+                            db.name,
+                            this.connectionConfig!.host,
+                            {
+                                databaseType: 'sqlserver',
+                                databaseId: db.database_id,
+                                createDate: db.create_date,
+                                state: db.state_desc
+                            }
+                        )
+                    );
 
                     this.lastRefreshTime = now;
                     resolve(this.databaseCache);
@@ -324,7 +326,7 @@ export class SQLServerClient implements DatabaseClient {
     /**
      * 获取SQL Server数据库列表
      */
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         try {
             // 初始化管理连接池
             await this.managementPool.initialize(this.config);
@@ -336,7 +338,9 @@ export class SQLServerClient implements DatabaseClient {
             return databaseList.map((db, index) => ({
                 ...db,
                 id: `db_${this.config.id}_${index}`,
-                parentId: this.config.id
+                parentId: this.config.id,
+                // 确保 metadata 保持不变
+                metadata: db.metadata
             }));
         } catch (error) {
             throw new Error(`Failed to get database list: ${error}`);
@@ -347,7 +351,7 @@ export class SQLServerClient implements DatabaseClient {
      * 获取SQL Server表列表
      * @param database 数据库名称（对于SQL Server通常不需要，因为连接时已指定）
      */
-    async getTableList(): Promise<any[]> {
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.connection || !this.isConnected) {
             throw new Error('Not connected to SQL Server database');
         }

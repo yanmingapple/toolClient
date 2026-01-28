@@ -1,0 +1,339 @@
+
+
+.model-con {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(50, 50, 50, 0.9);
+  display: block;
+  font-size: 100px;
+  text-align: center;
+  line-height: 100vh;
+  color: white;
+  z-index: 10;
+}
+
+/* 试卷预览统一基础样式 */
+html,
+body,
+body p,
+body ol,
+body ul,
+body li,
+body dl,
+body dt,
+body dd,
+body blockquote,
+body figure,
+body fieldset,
+body legend,
+body textarea,
+body pre,
+body iframe,
+body hr,
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6 {
+  margin: 0;
+  padding: 0;
+  font-family: Times New Roman, simsun;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.pt-9 {
+  line-height: 9pt;
+}
+
+.pt-12 {
+  line-height: 12pt;
+}
+
+.paper-info {
+  font-size: 10.5pt;
+  font-family: Times New Roman, SimHei;
+}
+
+* {
+  line-height: 1.5;
+}
+
+.paperName,
+.gradeCon,
+.subjectCon {
+  text-align: center;
+  font-family: Times New Roman, simsun;
+}
+
+.paperName {
+  font-size: 16pt;
+  line-height: 36pt;
+}
+
+.gradeCon {
+  font-size: 22pt;
+  line-height: 36pt;
+  font-weight: 600 !important;
+}
+
+.subjectCon {
+  font-size: 14pt;
+  line-height: 36pt;
+}
+.specialTextCon {
+  text-align: center;
+}
+
+.specialTextCon, .specialTextCon * {
+  font-size: 12pt;
+  font-family: 仿宋;
+}
+
+.noticeTips>p{
+  font-size: 10.5pt;
+  font-family: Times New Roman, SimHei;
+}
+
+.part-con,
+.part-con * {
+  line-height: 36pt !important;
+  font-size: 16pt !important;
+  text-align: center;
+  font-family: Times New Roman, SimHei;
+}
+
+.structure-con {
+  text-indent: -2em;
+  margin-left: 2em;
+}
+
+.structure-con,
+.structure-con * {
+  font-size: 10.5pt !important;
+  font-family: Times New Roman, SimHei !important;
+}
+#tempOptionCon *,
+.item-con,
+.item-con * {
+  font-size: 10.5pt !important;
+  /* font-family: Times New Roman, simsun; */
+  line-height: 18pt;
+}
+
+/* 新加 */
+.item-con table * {
+  line-height: 18pt;
+}
+
+.item-con>.stem-con {
+  display: flex;
+  align-items: baseline;
+}
+
+/* 表格的 align-items 特殊，需要特殊处理 新加 */
+.item-con>.stem-con.tbl-first-con {
+  align-items: flex-start;
+}
+
+.item-con>.stem-con>div:last-of-type {
+  flex: 1;
+}
+
+.stem-prev-con {
+  white-space: nowrap;
+}
+
+.stem-prev-con>span {
+  display: inline-block;
+  width: 1em;
+  text-align: right;
+}
+
+.stem-prev-con>span:last-of-type {
+  text-align: left;
+}
+
+.item-con img {
+  vertical-align: middle;
+  line-height: 1.5;
+}
+.item-con img.img-vertical-top{
+  vertical-align: top !important;
+}
+img.img-vertical-middle {
+ vertical-align: middle !important;
+}
+.item-con img[data-formula-image],
+.item-con img.img-vertical-baseline,
+.item-con img.Wirisformula{
+  vertical-align: baseline;
+}
+.item-con img.img-vertical-bottom {
+  vertical-align: bottom !important;
+}
+.item-con img.img-vertical-textTop {
+  vertical-align: text-top !important;
+}
+.item-con.child-item-con {
+  margin-left: 2em;
+}
+
+/* 新加 子题题号连续（不带括号） 则和题型用语对齐 */
+.item-con.child-item-con.series-child-item-con {
+  margin-left: 0;
+}
+
+.options-con {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-left: 2em;
+}
+
+.option-con {
+  display: flex;
+  align-items: baseline;
+}
+
+.option-con>div:last-of-type {
+  flex: 1;
+}
+
+.options-con.spl-1>.option-con {
+  width: 100%;
+}
+
+.options-con.spl-2>.option-con {
+  width: 50%;
+}
+
+.options-con.spl-4>.option-con {
+  width: 25%;
+}
+
+.mce-emphatic {
+  position: relative;
+  display: inline-block;
+  text-indent: 0;
+}
+
+.mce-emphatic:before {
+  content: ".";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  font-family: initial;
+  text-indent: 0 !important;
+  font-size: 20px;
+}
+
+.calc-con {
+  display: block;
+}
+
+.page-num-simple {
+  font-size: 10.5pt !important;
+  font-family: Times New Roman, simsun;
+}
+
+/* 序号的 点 */
+.dot-con {
+  font-family: simsun !important;
+}
+
+/* 数字 英文字符 为 新罗马字体 */
+.e-char-con {
+  font-family: Times New Roman !important;
+}
+
+input.blank {
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid #000;
+  width: 60px;
+  text-align: center;
+  padding: 0 6px;
+  line-height: 0;
+  vertical-align: text-bottom !important;
+  width: 48px !important;
+  box-sizing: content-box;
+}
+
+/* 综合体题干没有内容 */
+.parent-papernum-of-childitem {
+  display: inline-block;
+  width: 2em;
+  text-indent: 0;
+}
+
+.parent-papernum-of-childitem>span {
+  display: inline-block;
+  width: 1em;
+  text-indent: 0;
+}
+
+.papernumofchilditem {
+  text-indent: -2em;
+}
+
+.cn-dot-con {
+  font-family: simsun !important;
+}
+
+.item-con sup,
+.item-con sup *,
+.item-con sub,
+.item-con sub * {
+  font-size: smaller !important;
+  line-height: 1;
+}
+/* tinymce 中content.css */
+figure {
+  display: table;
+  margin: 0 auto !important;
+}
+
+figure figcaption {
+  color: #333;
+  display: block;
+  margin-top: 0rem;
+  text-align: center;
+}
+table:not([cellpadding]) td,
+table:not([cellpadding]) th {
+    padding: 0 6px !important;
+}
+
+/* 提示框 */
+.js-positionTexTip-Wrap  {
+  display: inline-block;
+}
+
+.nop-page>.nop-page-content table {
+  word-break: normal;
+}
+
+#svgCon table:not([cellpadding]) td,
+#svgCon table:not([cellpadding]) th {
+  padding: 0 6px!important;
+}
+#svgCon foreignObject  {
+  overflow: visible;
+}
+
+@media print {
+  body svg {
+    margin: 0;
+  }
+}

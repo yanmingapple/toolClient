@@ -1,0 +1,501 @@
+@tk_public_BgColor: #209eff;
+@tk_public_light_blue: #288ff7;
+@tk_public_light_blue2: #e6f4ff;
+@tk_public_LinkColor: #3282dc;
+@tk_public_Color: #333;
+@tk_public_light_Green: #c5e3b2;
+@tk_public_green: #689d47;
+@tk_public_Gray: #efefef7a;
+@tk_public_light_red: #ffccc7;
+@tk_public_red: #ee3545;
+@tk_public_light_yellow: #fff7bc;
+@tk_public_yellow: #e4d089;
+@tk_public_light_orange: #ffd591;
+@tk_public_light_orange2: #fff7e6;
+@tk_public_BorderColor: #ccc; //#e4e7ed;
+@tk_public_dark_gray: #8c8c8c;
+
+.tk_public_font_red {
+  color: @tk_public_red;
+}
+
+.tk_public_bgc_gray {
+  background-color: @tk_public_Gray;
+}
+.tk_public_bgc_dark_gray {
+  background-color: @tk_public_dark_gray;
+}
+.tk_public_bgc_white {
+  background-color: #fff;
+}
+.tk_public_bgc_LinkColor {
+  background-color: @tk_public_LinkColor;
+}
+.tk_public_bgc_light_blue {
+  background-color: @tk_public_light_blue2;
+}
+.tk_public_bgc_light_red {
+  background-color: @tk_public_light_red;
+}
+.tk_public_bgc_light_yellow {
+  background-color: @tk_public_light_yellow;
+}
+.tk_public_bgc_light_green {
+  background-color: @tk_public_light_Green;
+}
+
+.tk_public_border {
+  border: 1px solid @tk_public_BorderColor;
+}
+.tk_public_border_bottom {
+  border-bottom: 1px solid @tk_public_BorderColor;
+}
+.tk_public_border_top {
+  border-top: 1px solid @tk_public_BorderColor;
+}
+.tk_public_border_left {
+  border-left: 1px solid @tk_public_BorderColor;
+}
+.tk_public_border_right {
+  border-right: 1px solid @tk_public_BorderColor;
+}
+.tk_public_dashed_border_bottom {
+  border-bottom: 1px dashed @tk_public_BorderColor;
+}
+.tk_public_dashed_border_top {
+  border-top: 1px dashed @tk_public_BorderColor;
+}
+.tk_public_dashed_border_right {
+  border-right: 1px dashed @tk_public_BorderColor;
+}
+.tk_public_unborder {
+  border: none;
+}
+.tk_public_borderRadius4 {
+  border-radius: 4px;
+}
+
+.tk_public_size1 {
+  font-size: 48px;
+}
+.tk_public_size2 {
+  font-size: 24px;
+}
+.tk_public_size3 {
+  font-size: 18px;
+}
+.tk_public_size4 {
+  font-size: 16px;
+}
+.tk_public_size5 {
+  font-size: 14px;
+}
+.tk_public_size6 {
+  font-size: 12px;
+}
+// 试卷常用字号
+.tk_public_pt_size1 {
+  font-size: 10.5pt;
+}
+.tk_public_pt_size2 {
+  font-size: 14pt;
+}
+.tk_public_pt_size3 {
+  font-size: 16pt;
+}
+.tk_public_pt_size4 {
+  font-size: 22pt;
+}
+.tk_public_width_A4 {
+  width: 210mm;
+}
+.tk_public_paperText_con,
+.tk_public_paperText_con * {
+  font-family: 'Times New Roman', 'simsun' !important;
+  font-size: 10.5pt !important;
+}
+
+.tk_public_lineHeight1 {
+  line-height: 1;
+}
+.tk_public_lineHeight2 {
+  line-height: 1.5;
+}
+.tk_public_lineHeight3 {
+  line-height: 36pt;
+}
+.tk_public_lineHeight4 {
+  line-height: 2;
+}
+.tk_public_text_simsun {
+  font-family: simsun;
+}
+.tk_public_textIndent2 {
+  text-indent: 2em;
+}
+.tk_public_textIndent4 {
+  text-indent: 4em;
+}
+
+.tk_public_v_middle {
+  vertical-align: middle;
+}
+.tk_public_v_top {
+  vertical-align: top;
+}
+
+.tk_public_inline_dom {
+  display: inline;
+}
+.tk_public_inlineBlock_dom {
+  display: inline-block;
+}
+.tk_public_block_dom {
+  display: block;
+}
+
+.tk_public_row_flex {
+  display: flex;
+}
+
+.tk_public_row_center_start_flex {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.tk_public_row_center_flex {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tk_public_row_between_flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tk_public_row_start_flex {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+.tk_public_row_end_flex {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+.tk_public_row_start_stretch_flex {
+  display: flex;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.tk_public_row_start_baseline_flex {
+  display: flex;
+  justify-content: flex-start;
+  align-items: baseline;
+}
+
+.tk_public_row_between_start_flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.tk_public_row_between_baseline_flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.tk_public_col_flex {
+  display: flex;
+  flex-direction: column;
+}
+.tk_public_col_center_flex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tk_public_col_center2_flex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tk_public_col_start_flex {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.tk_public_col_between_stretch_flex {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.tk_public_flex_wrap {
+  flex-wrap: wrap;
+}
+
+.tk_public_itemflex1 {
+  flex: 1;
+  // flex: 1 1 auto;
+}
+.tk_public_itemflex2 {
+  flex: 2;
+}
+
+.tk_public_green_text {
+  color: @tk_public_green;
+}
+.tk_public_blue_text {
+  color: @tk_public_LinkColor;
+}
+.tk_public_light_blue_text {
+  color: @tk_public_light_blue;
+}
+.tk_public_red_text {
+  color: @tk_public_red;
+}
+.tk_public_gray_text {
+  color: @tk_public_dark_gray;
+}
+.tk_white_text {
+  color: #fff;
+}
+.tk_public_pointer_con {
+  cursor: pointer;
+}
+
+.tk_public_boxSizing_border {
+  box-sizing: border-box;
+}
+
+.tk_public_marginCenter {
+  margin: 0 auto;
+}
+
+.tk_public_textAlign_center {
+  text-align: center;
+}
+.tk_public_textAlign_right {
+  text-align: right;
+}
+.tk_public_textAlignLast_justify {
+  text-align-last: justify;
+}
+
+.tk_public_positionRelative {
+  position: relative;
+}
+.tk_public_width_perOf100 {
+  width: 100%;
+}
+.tk_public_width_perOf80 {
+  width: 80%;
+}
+.tk_public_width_perOf70 {
+  width: 70%;
+}
+.tk_public_width_perOf60 {
+  width: 60%;
+}
+.tk_public_width_perOf50 {
+  width: 50%;
+}
+.tk_public_width_perOf40 {
+  width: 40%;
+}
+.tk_public_width_perOf30 {
+  width: 30%;
+}
+.tk_public_width_perOf20 {
+  width: 20%;
+}
+.tk_public_width_30px {
+  width: 30px;
+}
+.tk_public_width_50px {
+  width: 50px;
+}
+.tk_public_width_100px {
+  width: 100px;
+}
+.tk_public_width_200px {
+  width: 200px;
+}
+.tk_public_overflow_auto {
+  overflow: auto;
+}
+.tk_public_nowrap_con {
+  white-space: nowrap;
+}
+.tk_publick_box_shadow {
+  box-shadow: 0 0 3px 0 #aaa;
+}
+.tk_publick_box_shadow_in {
+  box-shadow: 0 0 3px 0 #aaa inset;
+}
+
+// 覆盖element样式
+// link 按钮样式
+.el-button.is-link:hover,
+.el-button.is-link:active,
+.el-button.is-link:focus,
+.el-button.is-link:link,
+.el-button.el-button--primary.is-link:hover,
+.el-button.el-button--primary.is-link:active,
+.el-button.el-button--primary.is-link:focus,
+.el-button.el-button--primary.is-link:link .svg-icon,
+.el-button.el-button--primary.is-link:hover .svg-icon,
+.el-button.el-button--primary.is-link:active .svg-icon,
+.el-button.el-button--primary.is-link:focus .svg-icon,
+.el-button.el-button--primary.is-link:link .svg-icon {
+  background-color: #0380ff !important;
+  border-color: #0380ff !important;
+  color: #fff !important;
+}
+.el-button.el-button--danger.is-link,
+.el-button.el-button--danger.is-link:hover,
+.el-button.el-button--danger.is-link:active,
+.el-button.el-button--danger.is-link:focus,
+.el-button.el-button--danger.is-link:link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: @tk_public_red !important;
+}
+.uncontrol {
+  &.el-input-number {
+    .el-input-number__decrease,
+    .el-input-number__increase {
+      display: none;
+    }
+    .el-input__wrapper {
+      padding: 0 6px;
+      .el-input__inner {
+        text-align: left;
+      }
+    }
+  }
+  .el-input-number {
+    .el-input-number__decrease,
+    .el-input-number__increase {
+      display: none;
+    }
+    .el-input__wrapper {
+      padding: 0 6px;
+      .el-input__inner {
+        text-align: left;
+      }
+    }
+  }
+  &.alignCenter {
+    .el-input__inner {
+      text-align: center !important;
+    }
+  }
+}
+
+// 表格中input框统一设置
+.LatestStyle .table-auto {
+ .el-table__row  .cell {
+    .el-input-number {
+      .el-input-number__decrease,
+      .el-input-number__increase {
+        height: 24px;
+        line-height: 24px;
+        top: 3px;
+      }
+      .el-input-number__decrease {
+        left: 2px;
+      }
+      .el-input-number__increase{
+        right: 2px;
+      }
+      .el-input {
+        width: 100%;
+        height: 30px;
+        line-height: 30px;
+        border: 1px solid#dcdcdc;
+        .el-input__wrapper{
+          min-height: 0 !important;
+          height: 100%!important;
+          line-height: 100%!important;
+        }
+      }
+    }
+
+    .el-input {
+      height: 30px;
+      line-height: 30px;
+      width: 90%;
+      &:hover,
+      &:active {
+        .el-input__wrapper {
+          box-shadow: 0 0 0 1px @tk_public_light_blue inset;
+        }
+      }
+      .el-input__wrapper {
+        height: 100%!important;
+        line-height: 100%!important;
+        box-shadow: none;
+        &:hover,
+        &:active {
+          box-shadow: 0 0 0 1px @tk_public_light_blue inset;
+        }
+        .el-input__inner {
+          text-align: center;
+          height: 20px;
+        }
+      }
+    }
+  }
+}
+.tk-pagination.small {
+  padding: 4px 0 0 !important;
+  .el-input__inner,
+  .btn-prev,
+  .btn-next,
+  .el-pager .number,
+  .el-pager .more {
+    height: 24px;
+    line-height: 1;
+  }
+}
+
+.collapse-wrap .btn:active {
+  box-shadow: none;
+}
+
+// 三角标记样式
+.tk_public_flag_con {
+  background-color: @tk_public_light_yellow;
+  position: relative;
+  &:after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    border-left: 16px solid @tk_public_yellow;
+    border-bottom: 16px solid @tk_public_yellow;
+    border-right: 16px solid #fff;
+    border-top: 16px solid #fff;
+  }
+}
+
+// 画线线条样式
+.line-box {
+  .line {
+    // padding: 6px 0;
+    // border: 6px solid #ffffff;
+    // border-left: none;
+    // border-right: none;
+    &:hover {
+      background: #f00 !important;
+    }
+  }
+}

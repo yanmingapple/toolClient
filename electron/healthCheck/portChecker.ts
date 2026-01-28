@@ -68,7 +68,7 @@ export class PortCheckerImpl extends EventEmitter implements PortChecker {
             // 如果是 netstat 模式，调用 netstat 功能
             if (config.protocol === 'netstat') {
                 const timeout = config.timeout || 10000; // netstat 模式默认10秒超时
-                return await this.performNetstatCheck(config.host, timeout);
+                return await this.performNetstatCheck(config.host, config.port, timeout);
             }
 
             // 普通端口检测模式
@@ -274,7 +274,7 @@ export class PortCheckerImpl extends EventEmitter implements PortChecker {
      * @param timeout 超时时间
      * @returns Promise<number[]> 监听端口列表
      */
-    private async getLocalListeningPorts(timeout?: number): Promise<number[]> {
+    private async getLocalListeningPorts(timeout?: number, specificPort?: number): Promise<number[]> {
         const platform = os.platform();
         const timeoutMs = timeout || 10000;
 
@@ -284,23 +284,39 @@ export class PortCheckerImpl extends EventEmitter implements PortChecker {
             if (platform === 'win32') {
                 // Windows 使用 netstat 命令
                 command = 'netstat -an';
+                // 如果指定了端口，使用 findstr 过滤
+                if (specificPort) {
+                    command += ` | findstr :${specificPort}`;
+                }
             } else if (platform === 'darwin') {
                 // macOS 使用 netstat 命令
                 command = 'netstat -an';
+                // 如果指定了端口，使用 grep 过滤
+                if (specificPort) {
+                    command += ` | grep :${specificPort}`;
+                }
             } else {
                 // Linux 使用 ss 命令（更现代）或 netstat
                 command = 'ss -tuln || netstat -tuln';
+                // 如果指定了端口，使用 grep 过滤
+                if (specificPort) {
+                    command += ` | grep :${specificPort}`;
+                }
             }
 
             exec(command, { timeout: timeoutMs }, (error, stdout, _stderr) => {
                 if (error) {
+                    // 如果是过滤特定端口时没有找到匹配项，返回空数组而不是错误
+                    if (specificPort && error.code === 1) {
+                        resolve([]);
+                        return;
+                    }
                     reject(error);
                     return;
                 }
 
                 try {
                     const listeningPorts = this.parseNetstatOutput(stdout, platform);
-
                     resolve(listeningPorts);
                 } catch (parseError) {
                     reject(parseError);
@@ -315,36 +331,57 @@ export class PortCheckerImpl extends EventEmitter implements PortChecker {
      * @param timeout 超时时间
      * @returns Promise<CheckResult> 检测结果
      */
-    private async performNetstatCheck(host: string, timeout?: number): Promise<CheckResult> {
+    private async performNetstatCheck(host: string, port?: number, timeout?: number): Promise<CheckResult> {
         const startTime = Date.now();
         const timeoutMs = timeout || 10000; // 默认10秒超时
 
         try {
-            const listeningPorts = await this.getLocalListeningPorts(timeoutMs);
+            // 如果指定了端口，传递给getLocalListeningPorts以优化性能
+            const listeningPorts = await this.getLocalListeningPorts(timeoutMs, port);
             const responseTime = Date.now() - startTime;
 
+            let status: CheckStatus;
+            let error: string | undefined;
+
+            if (port) {
+                // 检查特定端口是否在监听列表中
+                const isPortListening = listeningPorts.includes(port);
+                status = isPortListening ? CheckStatus.HEALTHY : CheckStatus.UNHEALTHY;
+
+                if (!isPortListening) {
+                    error = `Port ${port} is not listening on ${host}`;
+                }
+            } else {
+                // 不指定端口时，只返回所有监听端口
+                status = CheckStatus.HEALTHY;
+            }
+
             return {
-                name: `Netstat on ${host}`,
-                status: CheckStatus.HEALTHY,
+                name: port ? `Netstat on ${host}:${port}` : `Netstat on ${host}`,
+                status,
                 responseTime,
+                error,
                 timestamp: new Date(),
                 details: {
                     host,
+                    port,
                     listeningPorts: listeningPorts.sort((a, b) => a - b),
-                    totalListeningPorts: listeningPorts.length
+                    totalListeningPorts: listeningPorts.length,
+                    isPortListening: port ? listeningPorts.includes(port) : undefined
                 }
             };
 
         } catch (error) {
             const responseTime = Date.now() - startTime;
             return {
-                name: `Netstat on ${host}`,
+                name: port ? `Netstat on ${host}:${port}` : `Netstat on ${host}`,
                 status: CheckStatus.UNHEALTHY,
                 responseTime,
                 error: error instanceof Error ? error.message : String(error),
                 timestamp: new Date(),
                 details: {
-                    host
+                    host,
+                    port
                 }
             };
         }

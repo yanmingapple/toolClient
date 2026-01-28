@@ -1,5 +1,5 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
 import { DatabaseClient } from './database';
+import { TreeNodeFactory, TreeNode, TreeNodeType, ConnectionConfig } from '../model/database';
 import Redis from 'ioredis';
 
 /**
@@ -132,7 +132,7 @@ export class RedisClient implements DatabaseClient {
      * 获取Redis数据库列表
      * Redis中的数据库通过 db 编号区分
      */
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         if (!this.redis) {
             throw new Error('Not connected to Redis database');
         }
@@ -147,17 +147,19 @@ export class RedisClient implements DatabaseClient {
                 try {
                     await this.redis.select(i);
                     const keyCount = await this.redis.dbsize();
-                    databases.push({
-                        id: `db_${this.config.id}_${i}`,
-                        name: `Database ${i}`,
-                        type: 'database',
-                        parentId: this.config.id,
-                        metadata: {
-                            dbNumber: i,
-                            keyCount: keyCount,
-                            isCurrent: i.toString() === currentDb
-                        }
-                    });
+                    databases.push(
+                        TreeNodeFactory.createDatabase(
+                            `db_${this.config.id}_${i}`,
+                            `Database ${i}`,
+                            this.config.id,
+                            {
+                                databaseType: 'redis',
+                                dbNumber: i,
+                                keyCount: keyCount,
+                                isCurrent: i.toString() === currentDb
+                            }
+                        )
+                    );
                 } catch (err) {
                     // 如果某个数据库不可访问，跳过
                     continue;
@@ -177,7 +179,7 @@ export class RedisClient implements DatabaseClient {
      * 获取Redis键列表（相当于表）
      * @param database 数据库名称（Redis需要指定数据库编号）
      */
-    async getTableList(): Promise<any[]> {
+    async getTableList(): Promise<TreeNode[]> {
         if (!this.redis) {
             throw new Error('Not connected to Redis database');
         }
@@ -214,17 +216,19 @@ export class RedisClient implements DatabaseClient {
                     }
                 }
 
-                return Array.from(groupedKeys.entries()).map(([type, data], index) => ({
-                    id: `table_${this.config.id}_${index}`,
-                    name: `${type.toUpperCase()} Keys`,
-                    type: 'key-group',
-                    parentId: this.config.id,
-                    metadata: {
-                        keyType: type,
-                        keyCount: data.count,
-                        sampleKeys: data.keys
-                    }
-                }));
+                return Array.from(groupedKeys.entries()).map(([type, data], index) =>
+                    TreeNodeFactory.createGeneric(
+                        `table_${this.config.id}_${index}`,
+                        `${type.toUpperCase()} Keys`,
+                        TreeNodeType.KEY_GROUP,
+                        this.config.id,
+                        {
+                            keyType: type,
+                            keyCount: data.count,
+                            sampleKeys: data.keys
+                        }
+                    )
+                );
             } finally {
                 // 恢复原来的数据库
                 await this.redis.select(parseInt(currentDb));

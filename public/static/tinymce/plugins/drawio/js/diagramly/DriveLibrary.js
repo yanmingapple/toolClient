@@ -1,0 +1,1 @@
+DriveLibrary=function(i,r,e){DriveFile.call(this,i,r,e)},mxUtils.extend(DriveLibrary,DriveFile),DriveLibrary.prototype.isAutosave=function(){return!0},DriveLibrary.prototype.save=function(i,r,e){this.ui.drive.saveFile(this,i,mxUtils.bind(this,function(i){this.desc=i,null!=r&&r(i)}),e)},DriveLibrary.prototype.open=function(){};

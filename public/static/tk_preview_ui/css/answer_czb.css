@@ -1,0 +1,303 @@
+.model-con {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(50, 50, 50, 0.9);
+  display: block;
+  font-size: 100px;
+  text-align: center;
+  line-height: 100vh;
+  color: white;
+  z-index: 10;
+}
+
+html,
+body,
+body p,
+body ol,
+body ul,
+body li,
+body dl,
+body dt,
+body dd,
+body blockquote,
+body figure,
+body fieldset,
+body legend,
+body textarea,
+body pre,
+body iframe,
+body hr,
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6 {
+    margin: 0;
+    padding: 0;
+    font-family: Times New Roman, simsun;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+.pt-9 {
+    line-height: 9pt;
+}
+
+.paper-info {
+    font-size: 10.5pt;
+    font-family: Times New Roman, SimHei;
+}
+
+* {
+    line-height: 1.5;
+}
+
+.paperName,
+.gradeCon,
+.subjectCon {
+    text-align: center;
+    font-family: Times New Roman, simsun;
+}
+
+.paperName {
+    font-size: 16pt;
+    line-height: 36pt;
+}
+
+.gradeCon {
+    font-size: 22pt;
+    line-height: 36pt;
+    font-weight: 600 !important;
+}
+
+.subjectCon {
+    font-size: 14pt;
+    line-height: 36pt;
+}
+
+.noticeTips>p {
+    font-size: 10.5pt;
+    font-family: Times New Roman, SimHei;
+}
+
+.part-con,
+.part-con * {
+    line-height: 36pt !important;
+    font-size: 16pt !important;
+    text-align: center;
+    font-family: Times New Roman, SimHei;
+}
+
+.structure-con {
+    text-indent: -2em;
+    margin-left: 2em;
+}
+
+.structure-con,
+.structure-con * {
+    font-size: 10.5pt !important;
+    font-family: Times New Roman, SimHei !important;
+}
+
+/* 题目部分 */
+.item-con,
+.item-con * {
+    font-size: 10.5pt !important;
+    /* font-family: Times New Roman, simsun; */
+    line-height: 18pt;
+}
+
+.item-con sup,
+.item-con sup *,
+.item-con sub,
+.item-con sub * {
+    font-size: smaller !important;
+    line-height: 1;
+}
+
+.item-con table * {
+    line-height: 18pt;
+}
+
+.item-con img {
+    vertical-align: middle;
+    line-height: 1.5;
+}
+.item-con img.img-vertical-top{
+    vertical-align: top !important;
+}
+img.img-vertical-middle {
+ vertical-align: middle !important;
+}
+.item-con img[data-formula-image],
+.item-con img.img-vertical-baseline,
+.item-con img.Wirisformula{
+    vertical-align: baseline;
+}
+.item-con img.img-vertical-bottom {
+    vertical-align: bottom !important;
+}
+.item-con img.img-vertical-textTop {
+    vertical-align: text-top !important;
+}
+.col-block-item {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+/* 不同题型对应得换行 .f-item-con */
+.f-item-con.item-con-of-type-1,
+.f-item-con.item-con-of-type-3,
+.f-item-con.item-con-of-type-12,
+.f-item-con.item-con-of-type-13 {
+    width: 10%;
+    display: inline-block;
+}
+
+.f-item-con.item-con-of-type-2,
+.f-item-con.item-con-of-type-4,
+.f-item-con.item-con-of-type-14 {
+    width: 20%;
+    display: inline-block;
+}
+
+.f-item-con.item-con-of-type-11 {
+    width: 50%;
+    display: inline-block;
+    vertical-align: top;
+}
+.f-item-con.item-con-of-type-11.whole-row {
+    width: 100%;
+}
+
+.item-con.item-con-of-type-8,
+.item-con.item-con-of-type-15 {
+    width: 100%;
+    display: flex;
+}
+
+.item-con.item-con-of-type-8 .stem-con-content,
+.item-con.item-con-of-type-15 .stem-con-content {
+    flex: 1;
+}
+
+.item-con>div {
+    display: inline-block;
+}
+
+.item-con>.stem-prev-con {
+    display: inline-block;
+    width: 2em;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+.item-con>.f-prev-con>span {
+    display: inline-block;
+    width: 1em;
+}
+
+.item-con>.f-prev-con>span:first-of-type {
+    text-align: right;
+}
+
+/* 判断改错题答案样式设置 */
+.item-con .judge-correct-ans-con * {
+    display: inline;
+}
+
+.s-item-con {
+    display: flex;
+}
+.s-item-con.item-con-of-type-1 {
+    width: 10%;
+    display: inline-block;
+}
+
+.parent-papernum-of-childitem>span {
+    display: inline-block;
+    width: 1em;
+}
+
+.parent-papernum-of-childitem>span:first-of-type {
+    text-align: right;
+}
+
+.next-child-ans-prev {
+    margin-left: 2em;
+}
+
+/* 着重号 */
+.mce-emphatic {
+    position: relative;
+    display: inline-block;
+    text-indent: 0;
+}
+
+.mce-emphatic:before {
+    content: ".";
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    -webkit-transform: translateX(-50%);
+    transform: translateX(-50%);
+    font-family: initial;
+    text-indent: 0 !important;
+    font-size: 20px;
+}
+
+.calc-con {
+    display: block;
+}
+
+.page-num-simple {
+    font-size: 10.5pt !important;
+    font-family: Times New Roman, simsun;
+}
+
+.dot-con {
+    font-family: simsun;
+}
+
+.cn-dot-con {
+    font-family: simsun !important;
+}
+
+/* tinymce 中content.css */
+figure {
+    display: table;
+    margin: 0 auto !important;
+}
+
+figure figcaption {
+    color: #333;
+    display: block;
+    margin-top: 0rem;
+    text-align: center;
+}
+
+table:not([cellpadding]) td,
+table:not([cellpadding]) th {
+    padding: 0 6px;
+}
+
+#svgCon table:not([cellpadding]) td,
+#svgCon table:not([cellpadding]) th {
+  padding: 0 6px!important;
+}
+#svgCon foreignObject  {
+  overflow: visible;
+}
+
+@media print {
+  body svg {
+    margin: 0;
+  }
+}

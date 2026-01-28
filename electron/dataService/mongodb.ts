@@ -1,6 +1,7 @@
-import { ConnectionConfig } from '../../src/types/leftTree/connection';
+import { ConnectionConfig } from '../model/database';
 import { DatabaseClient } from './database';
 import { MongoClient } from 'mongodb';
+import { TreeNodeFactory, TreeNode } from '../model/database';
 
 /**
  * MongoDB客户端实现
@@ -119,23 +120,29 @@ export class MongoDBClient implements DatabaseClient {
     /**
      * 获取MongoDB数据库列表
      */
-    async getDatabaseList(): Promise<any[]> {
+    async getDatabaseList(): Promise<TreeNode[]> {
         if (!this.client) {
             throw new Error('Not connected to MongoDB database');
         }
 
         try {
             const dbs = await this.client.db().admin().listDatabases();
-            return dbs.databases.map((db, index) => ({
-                id: `db_${this.config.id}_${index}`,
-                name: db.name,
-                type: 'database',
-                parentId: this.config.id,
-                metadata: {
-                    sizeOnDisk: db.sizeOnDisk,
-                    empty: db.empty
-                }
-            }));
+            return dbs.databases.map((db, index) =>
+                TreeNodeFactory.createDatabase(
+                    `db_${this.config.id}_${index}`,
+                    db.name,
+                    this.config.id,
+                    {
+                        databaseType: 'mongodb',
+                        size: db.sizeOnDisk,
+                        status: db.empty ? 'empty' : 'normal',
+                        info: {
+                            sizeOnDisk: db.sizeOnDisk,
+                            empty: db.empty
+                        }
+                    }
+                )
+            );
         } catch (error) {
             throw new Error(`Failed to get database list: ${error}`);
         }
@@ -156,16 +163,17 @@ export class MongoDBClient implements DatabaseClient {
             const targetDb = this.client.db(dbName);
 
             const collections = await targetDb.listCollections().toArray();
-            return collections.map((collection, index) => ({
-                id: `table_${this.config.id}_${index}`,
-                name: collection.name,
-                type: 'collection',
-                parentId: this.config.id,
-                metadata: {
-                    type: collection.type,
-                    info: (collection as any).info
-                }
-            }));
+            return collections.map((collection, index) =>
+                TreeNodeFactory.createCollection(
+                    `table_${this.config.id}_${index}`,
+                    collection.name,
+                    this.config.id,
+                    {
+                        objectType: collection.type,
+                        info: (collection as any).info
+                    }
+                )
+            );
         } catch (error) {
             throw new Error(`Failed to get collection list: ${error}`);
         }

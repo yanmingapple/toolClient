@@ -1,12 +1,24 @@
 /**
  * 树形数据处理相关工具函数
  */
-import { TreeNode, TreeNodeType } from '../types/leftTree/tree'
-import { ConnectionConfig } from '../types/leftTree/connection'
-import { ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
+import { TreeNode, TreeNodeType, ConnectionConfig, ConnectionStatus, DatabaseStatus } from '../../electron/model/database'
+import { getTreeNodeStatusInfo } from '../../electron/model/database/TreeNode'
 import { Icon } from '../icons'
 import { getDatabaseIcon } from './connectionUtils'
 import { Tag } from 'antd'
+
+/**
+ * 根据数据库状态获取数据库图标组件
+ * @param status 数据库状态
+ * @returns React组件
+ */
+const getDatabaseNodeIcon = (status: DatabaseStatus) => {
+  const statusInfo = getTreeNodeStatusInfo(status)
+  const iconName = status === DatabaseStatus.ERROR ? 'error' : 'database'
+  const animation = status === DatabaseStatus.LOADING ? { animation: 'spin 1s linear infinite' } : {}
+  
+  return <Icon name={iconName} size={16} color={statusInfo.color} style={{ marginRight: '8px', ...animation }} />
+}
 
 /**
  * 生成树形菜单数据
@@ -50,7 +62,7 @@ export const generateTreeData = (
             {getDatabaseIcon(connection.type, isConnected)} {connection.name}
           </span>
           <Tag color={status === ConnectionStatus.CONNECTED ? 'success' : status === ConnectionStatus.CONNECTING ? 'processing' : status === ConnectionStatus.ERROR ? 'error' : 'default'} style={{ marginLeft: '8px' }}>
-            {status === ConnectionStatus.CONNECTED ? '已连接' : status === ConnectionStatus.CONNECTING ? '连接中' : status === ConnectionStatus.ERROR ? '错误' : '未连接'}
+            {getTreeNodeStatusInfo(status).name}
           </Tag>
         </div>
       ),
@@ -144,24 +156,4 @@ export const generateTreeData = (
   return treeNodes
 }
 
-/**
- * 根据数据库状态获取图标
- * @param status 数据库状态
- * @returns React组件
- */
-export const getDatabaseNodeIcon = (status: DatabaseStatus) => {
-  switch (status) {
-    case DatabaseStatus.DISCONNECTED:
-      return <Icon name="database" size={16} color='#d9d9d9' style={{ marginRight: '8px' }} />
-    case DatabaseStatus.LOADING:
-      return <Icon name="database" size={16} color='#1890ff' style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
-    case DatabaseStatus.LOADED:
-      return <Icon name="database" size={16} color='#52c41a' style={{ marginRight: '8px' }} />
-    case DatabaseStatus.ERROR:
-      return <Icon name="error" size={16} color='#ff4d4f' style={{ marginRight: '8px' }} />
-    case DatabaseStatus.EMPTY:
-      return <Icon name="database" size={16} color='#faad14' style={{ marginRight: '8px' }} />
-    default:
-      return <Icon name="database" size={16} color='#d9d9d9' style={{ marginRight: '8px' }} />
-  }
-}
+

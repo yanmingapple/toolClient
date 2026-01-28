@@ -1,5 +1,6 @@
 const electron = require('electron');
 const { Menu, app } = electron;
+import { TerminalService } from './terminalService';
 
 /**
  * 菜单服务类
@@ -7,6 +8,7 @@ const { Menu, app } = electron;
  */
 export class MenuService {
   private mainWindow: any;
+  private currentMenuType: string = 'workspace';
 
   /**
    * 创建菜单服务实例
@@ -17,18 +19,155 @@ export class MenuService {
   }
 
   /**
+   * 设置当前菜单类型
+   * @param menuType 菜单类型：'database' | 'workspace'
+   */
+  setMenuType(menuType: string): void {
+    this.currentMenuType = menuType;
+    this.updateMenu();
+  }
+
+  /**
    * 构建应用程序菜单
    * @returns 构建好的菜单
    */
   buildMenu(): any {
+    const template = this.currentMenuType === 'workspace'
+      ? this.buildWorkspaceMenu()
+      : this.buildDatabaseMenu();
+
+    return Menu.buildFromTemplate(template);
+  }
+
+  /**
+   * 更新菜单
+   */
+  private updateMenu(): void {
+    const menu = this.buildMenu();
+    Menu.setApplicationMenu(menu);
+  }
+
+  /**
+   * 构建主页面菜单模板
+   * @returns 菜单模板数组
+   */
+  private buildWorkspaceMenu(): any[] {
     const template: any[] = [
       {
         label: '文件(F)',
         submenu: [
-          { label: '新建项目...', click: () => { } },
+          { type: 'separator' },
+          { label: '打开外部文件', click: () => { } },
+          { type: 'separator' },
+          { label: '退出', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
+        ],
+      },
+      {
+        label: '查看(V)',
+        submenu: [
+          {
+            label: '缩放', submenu: [
+              { label: '放大', accelerator: 'CmdOrCtrl+Plus', click: () => this.mainWindow?.webContents.setZoomLevel((this.mainWindow.webContents.getZoomLevel() || 0) + 0.5) },
+              { label: '缩小', accelerator: 'CmdOrCtrl+-', click: () => this.mainWindow?.webContents.setZoomLevel((this.mainWindow.webContents.getZoomLevel() || 0) - 0.5) },
+              { label: '重置缩放', accelerator: 'CmdOrCtrl+0', click: () => this.mainWindow?.webContents.setZoomLevel(0) },
+            ]
+          },
+          { type: 'separator' },
+          { label: '刷新', accelerator: 'CmdOrCtrl+R', click: () => this.mainWindow?.webContents.reload() },
+          { type: 'separator' },
+          { label: '全屏模式', accelerator: 'F11', click: () => this.mainWindow?.setFullScreen(!this.mainWindow.isFullScreen()) },
+          { label: '切换开发者工具', accelerator: 'CmdOrCtrl+Shift+I', click: () => this.mainWindow?.webContents.toggleDevTools() },
+        ],
+      },
+      {
+        label: '数据库(D)',
+        submenu: [
           { label: '新建连接...', accelerator: 'CmdOrCtrl+N', click: () => this.mainWindow?.webContents.send('open-new-connection-dialog') },
           { type: 'separator' },
-          { label: '使用 Navicat URI 打开...', accelerator: 'Ctrl+U', click: () => { } },
+          { label: '导入数据', accelerator: 'CmdOrCtrl+i', role: 'import' },
+          { type: 'separator' },
+          { label: '导出数据', accelerator: 'CmdOrCtrl+e', role: 'export' },
+        ],
+      },
+      {
+        label: '终端(Terminal)',
+        submenu: [
+          {
+            label: '打开终端控制台',
+            accelerator: 'Ctrl+`',
+            click: () => {
+              this.mainWindow?.webContents.send('terminal:open-console');
+            }
+          },
+          { type: 'separator' },
+          {
+            label: '系统信息',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'systeminfo',
+                shell: 'cmd',
+                timeout: 15000
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '系统信息',
+                result: result
+              });
+            }
+          },
+          {
+            label: '当前目录',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'cd',
+                shell: 'cmd'
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '当前目录',
+                result: result
+              });
+            }
+          },
+          {
+            label: '列出目录',
+            click: async () => {
+              const terminalService = TerminalService.getInstance();
+              const result = await terminalService.executeCommand({
+                command: 'dir',
+                shell: 'cmd'
+              });
+              this.mainWindow?.webContents.send('terminal:result', {
+                title: '目录列表',
+                result: result
+              });
+            }
+          },
+        ],
+      },
+      {
+        label: '帮助(H)',
+        submenu: [
+          { label: '关于', click: () => { } },
+          { label: '帮助文档', click: () => { } },
+        ],
+      },
+    ];
+
+    return template;
+  }
+
+  /**
+   * 构建数据库页面菜单模板
+   * @returns 菜单模板数组
+   */
+  private buildDatabaseMenu(): any[] {
+    const template: any[] = [
+      {
+        label: '文件(F)',
+        submenu: [
+          { label: '新建连接...', accelerator: 'CmdOrCtrl+N', click: () => this.mainWindow?.webContents.send('open-new-connection-dialog') },
+          { type: 'separator' },
           { label: '打开外部文件', click: () => { } },
           { type: 'separator' },
           {
@@ -144,16 +283,16 @@ export class MenuService {
         label: '帮助(H)',
         submenu: [
           { label: '帮助主题', click: () => { } },
-          { label: 'Navicat 教程', click: () => { } },
+          { label: '数据库 教程', click: () => { } },
           { type: 'separator' },
           { label: '检查更新', click: () => { } },
           { type: 'separator' },
-          { label: '关于 Navicat', click: () => { } },
+          { label: '关于 数据库', click: () => { } },
         ],
       },
     ];
 
-    return Menu.buildFromTemplate(template);
+    return template;
   }
 
   /**

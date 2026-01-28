@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="15px" viewBox="0 0 14 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>编组 16</title>
+    <g id="工作看板" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="05试卷预览" transform="translate(-1015.000000, -470.000000)">
+            <g id="编组-28" transform="translate(348.000000, 457.000000)">
+                <g id="编组-17" transform="translate(656.000000, 6.000000)">
+                    <g id="编组-16" transform="translate(11.000000, 7.000000)">
+                        <rect id="矩形" fill="#000000" x="4.375" y="0" width="5.25" height="1"></rect>
+                        <rect id="矩形备份-13" fill="#000000" x="0" y="1.80645161" width="14" height="1"></rect>
+                        <polygon id="矩形" stroke="#000000" points="2.625 2.25806452 11.2954545 2.25806452 11.2954545 14 2.70454545 14"></polygon>
+                        <rect id="矩形" fill="#000000" x="7.875" y="5.41935484" width="1" height="6.32258065" rx="0.5"></rect>
+                        <rect id="矩形备份-14" fill="#000000" x="5.25" y="5.41935484" width="1" height="6.32258065" rx="0.5"></rect>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

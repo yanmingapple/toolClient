@@ -1,0 +1,1 @@
+GitHubLibrary=function(i,t,b){GitHubFile.call(this,i,t,b)},mxUtils.extend(GitHubLibrary,GitHubFile),GitHubLibrary.prototype.doSave=function(i,t,b){this.saveFile(i,!1,t,b)},GitHubLibrary.prototype.open=function(){};

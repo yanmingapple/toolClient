@@ -1,0 +1,1 @@
+EmbedFile=function(e,t,i){DrawioFile.call(this,e,t),this.desc=i||{},this.mode=App.MODE_EMBED},mxUtils.extend(EmbedFile,DrawioFile),EmbedFile.prototype.getMode=function(){return this.mode},EmbedFile.prototype.getTitle=function(){return this.desc.title||""};

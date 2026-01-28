@@ -1,0 +1,1 @@
+OneDriveLibrary=function(i,e,n){OneDriveFile.call(this,i,e,n)},mxUtils.extend(OneDriveLibrary,OneDriveFile),OneDriveLibrary.prototype.isAutosave=function(){return!0},OneDriveLibrary.prototype.save=function(i,e,n){this.ui.oneDrive.saveFile(this,mxUtils.bind(this,function(i){this.desc=i,null!=e&&e(i)}),n)},OneDriveLibrary.prototype.open=function(){};
