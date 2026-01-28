@@ -58,7 +58,7 @@ export class EventService {
   public async getAllEvents(): Promise<ServiceResult<Event[]>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const rows = await this.databaseClient.execute(SQLStatements.SELECT_ALL_EVENTS) as any[];
@@ -76,7 +76,7 @@ export class EventService {
       return { success: true, data: events };
     } catch (error: any) {
       console.error('获取所有事件失败:', error);
-      return { success: false, error: error.message || '获取事件失败' };
+      return { success: false, message: error.message || '获取事件失败' };
     }
   }
 
@@ -86,7 +86,7 @@ export class EventService {
   public async getEventsByDate(date: string): Promise<ServiceResult<Event[]>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const rows = await this.databaseClient.execute(SQLStatements.SELECT_EVENTS_BY_DATE, [date]) as any[];
@@ -104,7 +104,7 @@ export class EventService {
       return { success: true, data: events };
     } catch (error: any) {
       console.error('根据日期获取事件失败:', error);
-      return { success: false, error: error.message || '获取事件失败' };
+      return { success: false, message: error.message || '获取事件失败' };
     }
   }
 
@@ -114,7 +114,7 @@ export class EventService {
   public async saveEvent(event: Event): Promise<ServiceResult<void>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const now = new Date().toISOString();
@@ -135,7 +135,7 @@ export class EventService {
       return { success: true };
     } catch (error: any) {
       console.error('保存事件失败:', error);
-      return { success: false, error: error.message || '保存事件失败' };
+      return { success: false, message: error.message || '保存事件失败' };
     }
   }
 
@@ -145,14 +145,14 @@ export class EventService {
   public async deleteEvent(eventId: string): Promise<ServiceResult<void>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       await this.databaseClient.execute(SQLStatements.DELETE_EVENT_BY_ID, [eventId]);
       return { success: true };
     } catch (error: any) {
       console.error('删除事件失败:', error);
-      return { success: false, error: error.message || '删除事件失败' };
+      return { success: false, message: error.message || '删除事件失败' };
     }
   }
 
@@ -162,7 +162,7 @@ export class EventService {
   public async getAllTodos(): Promise<ServiceResult<Todo[]>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const rows = await this.databaseClient.execute(SQLStatements.SELECT_ALL_TODOS) as any[];
@@ -178,7 +178,7 @@ export class EventService {
       return { success: true, data: todos };
     } catch (error: any) {
       console.error('获取所有代办事项失败:', error);
-      return { success: false, error: error.message || '获取代办事项失败' };
+      return { success: false, message: error.message || '获取代办事项失败' };
     }
   }
 
@@ -188,7 +188,7 @@ export class EventService {
   public async getTodosByDate(date: string): Promise<ServiceResult<Todo[]>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const rows = await this.databaseClient.execute(SQLStatements.SELECT_TODOS_BY_DATE, [date]) as any[];
@@ -204,7 +204,7 @@ export class EventService {
       return { success: true, data: todos };
     } catch (error: any) {
       console.error('根据日期获取代办事项失败:', error);
-      return { success: false, error: error.message || '获取代办事项失败' };
+      return { success: false, message: error.message || '获取代办事项失败' };
     }
   }
 
@@ -214,7 +214,7 @@ export class EventService {
   public async saveTodo(todo: Todo): Promise<ServiceResult<void>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       const now = new Date().toISOString();
@@ -233,7 +233,7 @@ export class EventService {
       return { success: true };
     } catch (error: any) {
       console.error('保存代办事项失败:', error);
-      return { success: false, error: error.message || '保存代办事项失败' };
+      return { success: false, message: error.message || '保存代办事项失败' };
     }
   }
 
@@ -243,14 +243,14 @@ export class EventService {
   public async deleteTodo(todoId: string): Promise<ServiceResult<void>> {
     try {
       if (!this.databaseClient) {
-        return { success: false, error: '数据库未初始化' };
+        return { success: false, message: '数据库未初始化' };
       }
 
       await this.databaseClient.execute(SQLStatements.DELETE_TODO_BY_ID, [todoId]);
       return { success: true };
     } catch (error: any) {
       console.error('删除代办事项失败:', error);
-      return { success: false, error: error.message || '删除代办事项失败' };
+      return { success: false, message: error.message || '删除代办事项失败' };
     }
   }
 }

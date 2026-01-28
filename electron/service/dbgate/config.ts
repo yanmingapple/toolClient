@@ -1,7 +1,7 @@
 import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
-import { app } from 'electron'
+const { app } = require('electron')
 import { fillMissingSettings } from './utils'
 
 let initialConfig: any = {}
@@ -35,7 +35,7 @@ export function loadConfig(): void {
 /**
  * 保存配置
  */
-export function saveConfig(dbgateWindow: Electron.BrowserWindow | null, saveConfigOnExit: boolean): void {
+export function saveConfig(dbgateWindow: any, saveConfigOnExit: boolean): void {
   if (!dbgateWindow || !saveConfigOnExit) {
     return
   }

@@ -1,10 +1,11 @@
-import { Menu, BrowserWindow } from 'electron'
+const electron = require('electron')
+const { Menu } = electron
 import { isMac, getTranslated, formatKeyText } from './utils'
 import mainMenuDefinition from './mainMenuDefinition'
 
 // 全局变量（需要在 electron.ts 中设置）
 export let commands: Record<string, any> = {}
-export let dbgateWindow: BrowserWindow | null = null
+export let dbgateWindow: any = null
 export let runCommandOnLoad: string | null = null
 
 export function setCommands(newCommands: Record<string, any>) {
@@ -15,11 +16,11 @@ export function getCommands(): Record<string, any> {
   return commands
 }
 
-export function setDbgateWindow(window: BrowserWindow | null) {
+export function setDbgateWindow(window: any | null) {
   dbgateWindow = window
 }
 
-export function getDbgateWindow(): BrowserWindow | null {
+export function getDbgateWindow(): any | null {
   return dbgateWindow
 }
 

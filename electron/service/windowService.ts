@@ -183,7 +183,7 @@ export class WindowService {
     });
 
     // 监听页面标题变化，保持窗口标题不变
-    newWindow.webContents.on('page-title-updated', (event) => {
+    newWindow.webContents.on('page-title-updated', (event: any) => {
       event.preventDefault();
       newWindow.setTitle(windowTitle);
     });
@@ -204,7 +204,7 @@ export class WindowService {
    * @param window 窗口实例
    * @param page 页面类型
    */
-  private static setWindowMenu(window: typeof BrowserWindow, page: string): void {
+  private static setWindowMenu(window: typeof BrowserWindow, _page: string): void {
     // 构建通用菜单模板
     const template: any[] = [
       {

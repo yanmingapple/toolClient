@@ -1,9 +1,8 @@
 // 使用 require 语法避免与本地 electron 目录冲突
 const electron = require('electron')
-const { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain } = electron
+const { app, BrowserWindow, Menu, Tray, nativeImage } = electron
 import * as path from 'path'
 import * as url from 'url'
-import * as os from 'os'
 import { clientManager } from './manager/ClientManager'
 import { MenuService } from './service/menuService'
 import { IpcService } from './service/ipcService'
@@ -62,7 +61,7 @@ function createWindow() {
   }
 
   // 主窗口关闭时隐藏而不是退出
-  mainWindow.on('close', (event) => {
+  mainWindow.on('close', (event: any) => {
     if (mainWindow) {
       event.preventDefault()
       mainWindow.hide()
@@ -161,30 +160,6 @@ function toggleSidebar() {
     }
   } else {
     createSidebarWindow();
-  }
-}
-
-function expandSidebar() {
-  if (sidebarWindow) {
-    const { screen } = require('electron');
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width } = primaryDisplay.workAreaSize;
-    const targetX = width - 300;
-    const [, y] = sidebarWindow.getPosition();
-    sidebarWindow.setSize(300, sidebarWindow.getSize()[1]);
-    sidebarWindow.setPosition(targetX, y);
-  }
-}
-
-function collapseSidebar() {
-  if (sidebarWindow) {
-    const { screen } = require('electron');
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width } = primaryDisplay.workAreaSize;
-    const targetX = width - 20;
-    const [, y] = sidebarWindow.getPosition();
-    sidebarWindow.setSize(20, sidebarWindow.getSize()[1]);
-    sidebarWindow.setPosition(targetX, y);
   }
 }
 

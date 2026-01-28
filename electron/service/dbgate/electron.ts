@@ -1,8 +1,8 @@
-import { BrowserWindow, Menu, ipcMain, app, shell, dialog } from 'electron'
+const electron = require('electron')
+const { BrowserWindow, Menu, ipcMain, app, shell, dialog } = electron
 import * as path from 'path'
 import * as url from 'url'
 import * as fs from 'fs'
-import * as os from 'os'
 import { isMac, ensureBoundsVisible, findDbgatePath } from './utils'
 import { isProApp } from './proTools'
 import { loadConfig, saveConfig, getInitialConfig, getSettingsJson } from './config'
@@ -275,7 +275,7 @@ export function createWindow() {
  */
 export function registerIpcHandlers() {
   // 更新命令（从渲染进程接收命令状态更新）
-  ipcMain.on('update-commands', async (event, arg) => {
+  ipcMain.on('update-commands', async (event: any, arg: any) => {
     // 检查是否是 dbgate 窗口发送的消息
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
@@ -284,7 +284,7 @@ export function registerIpcHandlers() {
   })
   
   // 也支持带前缀的版本（以防万一）
-  ipcMain.on('dbgate-update-commands', async (event, arg) => {
+  ipcMain.on('dbgate-update-commands', async (event: any, arg: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       await handleUpdateCommands(arg)
@@ -292,7 +292,7 @@ export function registerIpcHandlers() {
   })
 
   // 退出应用
-  ipcMain.on('quit-app', async (event) => {
+  ipcMain.on('quit-app', async (event: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       if (isMac()) {
@@ -304,7 +304,7 @@ export function registerIpcHandlers() {
   })
 
   // 重置设置
-  ipcMain.on('reset-settings', async (event) => {
+  ipcMain.on('reset-settings', async (event: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       try {
@@ -325,7 +325,7 @@ export function registerIpcHandlers() {
   })
 
   // 设置窗口标题
-  ipcMain.on('set-title', async (event, title: string) => {
+  ipcMain.on('set-title', async (event: any, title: string) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       window.setTitle(title)
@@ -333,7 +333,7 @@ export function registerIpcHandlers() {
   })
 
   // 打开外部链接
-  ipcMain.on('open-link', async (event, url: string) => {
+  ipcMain.on('open-link', async (event: any, url: string) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       shell.openExternal(url)
@@ -341,7 +341,7 @@ export function registerIpcHandlers() {
   })
 
   // 打开开发者工具
-  ipcMain.on('open-dev-tools', (event) => {
+  ipcMain.on('open-dev-tools', (event: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       window.webContents.openDevTools()
@@ -349,7 +349,7 @@ export function registerIpcHandlers() {
   })
 
   // 应用启动完成
-  ipcMain.on('app-started', async (event) => {
+  ipcMain.on('app-started', async (event: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       const runCmd = getRunCommandOnLoad()
@@ -366,7 +366,7 @@ export function registerIpcHandlers() {
   })
 
   // 窗口操作
-  ipcMain.on('window-action', async (event, action: string) => {
+  ipcMain.on('window-action', async (event: any, action: string) => {
     const window = getDbgateWindow()
     if (!window || event.sender !== window.webContents) {
       return
@@ -425,7 +425,7 @@ export function registerIpcHandlers() {
   })
 
   // 对话框处理
-  ipcMain.handle('showOpenDialog', async (event, options: any) => {
+  ipcMain.handle('showOpenDialog', async (event: any, options: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       return dialog.showOpenDialogSync(window, options)
@@ -433,7 +433,7 @@ export function registerIpcHandlers() {
     return null
   })
 
-  ipcMain.handle('showSaveDialog', async (event, options: any) => {
+  ipcMain.handle('showSaveDialog', async (event: any, options: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       return dialog.showSaveDialogSync(window, options)
@@ -441,14 +441,14 @@ export function registerIpcHandlers() {
     return null
   })
 
-  ipcMain.handle('showItemInFolder', async (event, filePath: string) => {
+  ipcMain.handle('showItemInFolder', async (event: any, filePath: string) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       shell.showItemInFolder(filePath)
     }
   })
 
-  ipcMain.handle('openExternal', async (event, url: string) => {
+  ipcMain.handle('openExternal', async (event: any, url: string) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       shell.openExternal(url)
@@ -456,7 +456,7 @@ export function registerIpcHandlers() {
   })
 
   // 翻译数据
-  ipcMain.on('translation-data', async (event, arg) => {
+  ipcMain.on('translation-data', async (event: any, arg: any) => {
     const window = getDbgateWindow()
     if (window && event.sender === window.webContents) {
       ;(global as any).TRANSLATION_DATA = typeof arg === 'string' ? JSON.parse(arg) : arg

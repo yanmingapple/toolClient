@@ -1,1 +1,0 @@
-var isLocalStorage=!1,mxLoadStylesheets=!1;function getUrlParam(e){e=new RegExp(e+"=([^&]*)").exec(window.location.search);return null!=e&&0<e.length?decodeURIComponent(e[1].replace(/\+/g,"%20")):null}var remoteMath="1"==getUrlParam("remoteMath"),fallbackFont=getUrlParam("fallbackFont");

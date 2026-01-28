@@ -3,8 +3,8 @@ const electron = require('electron');
 // 解构获取IPC主进程
 const { ipcMain } = electron;
 
-// 引入操作系统模块，用于获取系统资源信息
-const os = require('os');
+// 引入操作系统模块，用于获取系统资源信息（使用 ES Module 导入以获得类型支持）
+import * as os from 'os';
 
 // 引入窗口管理服务
 import { WindowService } from './windowService';

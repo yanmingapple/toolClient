@@ -1,4 +1,5 @@
-import { BrowserWindow, Menu, ipcMain, app, shell, dialog } from 'electron'
+const electron = require('electron')
+const { BrowserWindow, Menu, ipcMain, app, shell, dialog } = electron
 import * as path from 'path'
 import * as url from 'url'
 import * as fs from 'fs'
@@ -60,7 +61,7 @@ function formatKeyText(keyText?: string): string | undefined {
 /**
  * 确保窗口边界在可见区域内
  */
-function ensureBoundsVisible(bounds: Electron.Rectangle): Electron.Rectangle {
+function ensureBoundsVisible(bounds: any): any {
   const { screen } = require('electron')
   const area = screen.getDisplayMatching(bounds).workArea
 
@@ -254,8 +255,9 @@ function commandItem(item: any, disableAll: boolean = false): any {
       if (dbgateWindow) {
         dbgateWindow.webContents.send('run-command', id)
       } else {
+        // 如果窗口还没创建，记录命令并创建窗口
         runCommandOnLoad = id
-        createDbgateWindow()
+        DbgateWindowService.createDbgateWindow()
       }
     },
   }
@@ -389,7 +391,7 @@ function findDbgatePath(relativePath: string): string | null {
     // 生产环境：从 resources/app/electron/service 向上三级
     path.join(__dirname, '../../../..'),
     // 如果打包在 app.asar 中，从 resources 目录查找
-    process.resourcesPath ? path.join(process.resourcesPath, 'app') : null,
+    (process as any).resourcesPath ? path.join((process as any).resourcesPath, 'app') : null,
     // 当前工作目录
     process.cwd(),
     // 从 app.getAppPath() 查找（Electron 应用路径）
@@ -685,7 +687,7 @@ export class DbgateWindowService {
   static registerIpcHandlers() {
     // 更新命令（从渲染进程接收命令状态更新）
     // 注意：dbgate 渲染进程发送的是 'update-commands'，不是 'dbgate-update-commands'
-    ipcMain.on('update-commands', async (event, arg) => {
+    ipcMain.on('update-commands', async (event: any, arg: any) => {
       // 检查是否是 dbgate 窗口发送的消息
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         await this.handleUpdateCommands(arg)
@@ -693,14 +695,14 @@ export class DbgateWindowService {
     })
     
     // 也支持带前缀的版本（以防万一）
-    ipcMain.on('dbgate-update-commands', async (event, arg) => {
+    ipcMain.on('dbgate-update-commands', async (event: any, arg: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         await this.handleUpdateCommands(arg)
       }
     })
 
     // 退出应用
-    ipcMain.on('quit-app', async (event) => {
+    ipcMain.on('quit-app', async (event: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         if (isMac()) {
           app.quit()
@@ -711,7 +713,7 @@ export class DbgateWindowService {
     })
 
     // 重置设置
-    ipcMain.on('reset-settings', async (event) => {
+    ipcMain.on('reset-settings', async (event: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         try {
           saveConfigOnExit = false
@@ -731,28 +733,28 @@ export class DbgateWindowService {
     })
 
     // 设置窗口标题
-    ipcMain.on('set-title', async (event, title: string) => {
+    ipcMain.on('set-title', async (event: any, title: string) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         dbgateWindow.setTitle(title)
       }
     })
 
     // 打开外部链接
-    ipcMain.on('open-link', async (event, url: string) => {
+    ipcMain.on('open-link', async (event: any, url: string) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         shell.openExternal(url)
       }
     })
 
     // 打开开发者工具
-    ipcMain.on('open-dev-tools', (event) => {
+    ipcMain.on('open-dev-tools', (event: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         dbgateWindow.webContents.openDevTools()
       }
     })
 
     // 应用启动完成
-    ipcMain.on('app-started', async (event) => {
+    ipcMain.on('app-started', async (event: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         if (runCommandOnLoad) {
           dbgateWindow.webContents.send('run-command', runCommandOnLoad)
@@ -766,7 +768,7 @@ export class DbgateWindowService {
     })
 
     // 窗口操作
-    ipcMain.on('window-action', async (event, action: string) => {
+    ipcMain.on('window-action', async (event: any, action: string) => {
       if (!dbgateWindow || event.sender !== dbgateWindow.webContents) {
         return
       }
@@ -824,34 +826,34 @@ export class DbgateWindowService {
     })
 
     // 对话框处理
-    ipcMain.handle('showOpenDialog', async (event, options: any) => {
+    ipcMain.handle('showOpenDialog', async (event: any, options: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         return dialog.showOpenDialogSync(dbgateWindow, options)
       }
       return null
     })
 
-    ipcMain.handle('showSaveDialog', async (event, options: any) => {
+    ipcMain.handle('showSaveDialog', async (event: any, options: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         return dialog.showSaveDialogSync(dbgateWindow, options)
       }
       return null
     })
 
-    ipcMain.handle('showItemInFolder', async (event, filePath: string) => {
+    ipcMain.handle('showItemInFolder', async (event: any, filePath: string) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         shell.showItemInFolder(filePath)
       }
     })
 
-    ipcMain.handle('openExternal', async (event, url: string) => {
+    ipcMain.handle('openExternal', async (event: any, url: string) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         shell.openExternal(url)
       }
     })
 
     // 翻译数据
-    ipcMain.on('translation-data', async (event, arg) => {
+    ipcMain.on('translation-data', async (event: any, arg: any) => {
       if (dbgateWindow && event.sender === dbgateWindow.webContents) {
         ;(global as any).TRANSLATION_DATA = typeof arg === 'string' ? JSON.parse(arg) : arg
         if (dbgateWindow) {
@@ -909,4 +911,4 @@ export class DbgateWindowService {
       Menu.setApplicationMenu(dbgateMenu)
     }
   }
-
+}

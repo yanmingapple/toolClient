@@ -3,7 +3,6 @@
  * 按照 dbgate-master/app/src 的结构组织代码
  */
 
-import { BrowserWindow } from 'electron'
 import { createWindow, registerIpcHandlers, getWindow, hasWindow } from './electron'
 
 export class DbgateWindowService {
@@ -46,7 +45,7 @@ export class DbgateWindowService {
   /**
    * 获取 dbgate 窗口实例
    */
-  static getDbgateWindow(): typeof BrowserWindow | null {
+  static getDbgateWindow(): any {
     return getWindow()
   }
 

@@ -8,7 +8,7 @@ export function isProApp(): boolean {
 /**
  * 检查许可证
  */
-export function checkLicense(license: any): any {
+export function checkLicense(_license: any): any {
   return null
 }
 

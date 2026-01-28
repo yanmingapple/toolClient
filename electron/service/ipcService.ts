@@ -21,8 +21,6 @@ import { WindowService } from './windowService';  // 窗口管理服务
 export class IpcService {
   // 静态属性，存储主窗口实例的引用，供IPC处理程序使用
   private static mainWindow: any;
-  //
-  private static sidebarWindow: any;
   // 静态属性，存储菜单服务实例的引用
   private static menuService: MenuService;
 
@@ -42,7 +40,6 @@ export class IpcService {
    */
   static registerHandlers(mainWindow: any, sidebarWindow?: any) {
     this.mainWindow = mainWindow;
-    this.sidebarWindow = sidebarWindow;
     this.menuService = new MenuService(mainWindow);
 
     // 1. 注册窗口控制相关的IPC处理程序（最小化、最大化、关闭、重启等）

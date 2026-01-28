@@ -1,7 +1,7 @@
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
-import { app } from 'electron'
+const { app } = require('electron')
 
 /**
  * 检查是否为 Mac 系统
@@ -39,7 +39,7 @@ export function formatKeyText(keyText?: string): string | undefined {
 /**
  * 确保窗口边界在可见区域内
  */
-export function ensureBoundsVisible(bounds: Electron.Rectangle): Electron.Rectangle {
+export function ensureBoundsVisible(bounds: any): any {
   const { screen } = require('electron')
   const area = screen.getDisplayMatching(bounds).workArea
 
@@ -85,7 +85,7 @@ export function findDbgatePath(relativePath: string): string | null {
     // 生产环境：从 resources/app/electron/service 向上三级
     path.join(__dirname, '../../../..'),
     // 如果打包在 app.asar 中，从 resources 目录查找
-    process.resourcesPath ? path.join(process.resourcesPath, 'app') : null,
+    (process as any).resourcesPath ? path.join((process as any).resourcesPath, 'app') : null,
     // 当前工作目录
     process.cwd(),
     // 从 app.getAppPath() 查找（Electron 应用路径）

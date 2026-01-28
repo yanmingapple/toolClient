@@ -1,1 +1,0 @@
-DrawioUser=function(i,s,t,a,e){this.id=i,this.email=s,this.displayName=t,this.pictureUrl=a,this.locale=e};
