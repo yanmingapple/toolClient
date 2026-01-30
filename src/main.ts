@@ -3,8 +3,6 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
-// 为 @paddlejs-models/ocr 提供全局 Module 对象
-(window as any).Module = {}
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import "@/style/tk-common.less";
 import "@/style/tk-public.less";
@@ -44,10 +42,6 @@ async function initApp() {
   }
   else if (hash.startsWith('#dialog-credit-card')) {
     EntryComponent = (await import('./entries/DialogCreditCard.vue')).default
-  }
-  // 检查是否为OCR页面
-  else if (hash.startsWith('#ocr')) {
-    EntryComponent = (await import('./entries/OCR.vue')).default
   }
   // 检查是否为工作区页面
   else if (hash === '#workspace') {

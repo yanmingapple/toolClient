@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import EventReminder from '../view/home/components/EventReminder.vue'
+import EventReminder from '../view/event-reminder/index.vue'
 </script>
 
 <style scoped>

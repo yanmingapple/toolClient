@@ -11,6 +11,7 @@ import { ServiceMonitor } from '../model/database/ServiceMonitor';
 import { TreeNode, TreeNodeFactory } from '../model/database/TreeNode';
 import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
 import { EventService, Event, Todo } from '../service/eventService';
+import { AIService }  from '../service/aiService'; 
 const { ipcMain } = require('electron');
 
 /**
@@ -108,8 +109,10 @@ export class DatabaseManager {
         }
 
         // 确保数据库文件存在
+        let dbExists = false;
         try {
             await fs.promises.access(dbPath);
+            dbExists = true;
             console.log(`数据库文件已存在: ${dbPath}`);
         } catch (err) {
             // 创建空的数据库文件
@@ -130,7 +133,111 @@ export class DatabaseManager {
         };
 
         const sqliteClient = createDatabaseClient(sqliteConfig);
-        await sqliteClient.connect();
+        
+        // 尝试连接并检查数据库完整性
+        try {
+            await sqliteClient.connect();
+            
+            // 如果数据库已存在，检查完整性
+            if (dbExists) {
+                try {
+                    const integrityCheck = await sqliteClient.execute('PRAGMA integrity_check') as any[];
+                    const result = integrityCheck && integrityCheck.length > 0 ? integrityCheck[0] : null;
+                    
+                    if (result && typeof result === 'object' && 'integrity_check' in result) {
+                        const checkResult = (result as any).integrity_check;
+                        if (checkResult !== 'ok') {
+                            console.warn('数据库完整性检查失败:', checkResult);
+                            throw new Error('数据库已损坏');
+                        }
+                    }
+                    console.log('数据库完整性检查通过');
+                } catch (checkError: any) {
+                    // 数据库可能损坏，尝试恢复
+                    console.error('数据库完整性检查失败，尝试恢复...', checkError);
+                    await sqliteClient.disconnect();
+                    
+                    // 备份损坏的数据库
+                    const backupPath = `${dbPath}.corrupted.${Date.now()}`;
+                    try {
+                        await fs.promises.copyFile(dbPath, backupPath);
+                        console.log(`已备份损坏的数据库到: ${backupPath}`);
+                    } catch (backupError) {
+                        console.error('备份数据库失败:', backupError);
+                    }
+                    
+                    // 删除损坏的数据库文件
+                    try {
+                        await fs.promises.unlink(dbPath);
+                        console.log('已删除损坏的数据库文件');
+                    } catch (unlinkError) {
+                        console.error('删除损坏的数据库文件失败:', unlinkError);
+                    }
+                    
+                    // 创建新的数据库文件
+                    await fs.promises.writeFile(dbPath, '');
+                    console.log('已创建新的数据库文件');
+                    
+                    // 重新连接
+                    await sqliteClient.connect();
+                }
+            }
+        } catch (connectError: any) {
+            // 如果连接失败且数据库存在，可能是损坏了
+            if (dbExists && (connectError.code === 'SQLITE_CORRUPT' || connectError.message?.includes('malformed'))) {
+                console.error('数据库已损坏，尝试恢复...', connectError);
+                await sqliteClient.disconnect().catch(() => {});
+                
+                // 备份损坏的数据库
+                const backupPath = `${dbPath}.corrupted.${Date.now()}`;
+                try {
+                    await fs.promises.copyFile(dbPath, backupPath);
+                    console.log(`已备份损坏的数据库到: ${backupPath}`);
+                } catch (backupError) {
+                    console.error('备份数据库失败:', backupError);
+                }
+                
+                // 删除损坏的数据库文件（如果文件被占用，稍后重试）
+                let deleted = false;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        await fs.promises.unlink(dbPath);
+                        deleted = true;
+                        console.log('已删除损坏的数据库文件');
+                        break;
+                    } catch (unlinkError: any) {
+                        if (i < 4) {
+                            console.log(`删除数据库文件失败，等待后重试 (${i + 1}/5)...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        } else {
+                            console.error('删除损坏的数据库文件失败，请手动删除:', unlinkError);
+                            // 尝试重命名而不是删除
+                            try {
+                                const renamedPath = `${dbPath}.old.${Date.now()}`;
+                                await fs.promises.rename(dbPath, renamedPath);
+                                console.log(`已重命名损坏的数据库文件为: ${renamedPath}`);
+                                deleted = true;
+                            } catch (renameError) {
+                                console.error('重命名数据库文件也失败:', renameError);
+                            }
+                        }
+                    }
+                }
+                
+                // 创建新的数据库文件
+                if (deleted) {
+                    await fs.promises.writeFile(dbPath, '');
+                    console.log('已创建新的数据库文件');
+                    
+                    // 重新连接
+                    await sqliteClient.connect();
+                } else {
+                    throw new Error('无法删除或重命名损坏的数据库文件，请手动处理');
+                }
+            } else {
+                throw connectError;
+            }
+        }
 
         // 创建表结构
         try {
@@ -149,6 +256,54 @@ export class DatabaseManager {
             // 创建todos表
             await sqliteClient.execute(SQLStatements.CREATE_TODOS_TABLE);
             console.log('创建todos表成功');
+
+            // 创建AI相关表
+            await sqliteClient.execute(SQLStatements.CREATE_AI_CONFIG_TABLE);
+            console.log('创建ai_config表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_AI_CACHE_TABLE);
+            console.log('创建ai_cache表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_AI_CONTEXT_TABLE);
+            console.log('创建ai_context表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_EVENT_AI_METADATA_TABLE);
+            console.log('创建event_ai_metadata表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_TAGS_TABLE);
+            console.log('创建tags表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_EVENT_TAGS_TABLE);
+            console.log('创建event_tags表成功');
+
+            // 创建记忆索引表
+            await sqliteClient.execute(SQLStatements.CREATE_MEMORY_INDEX_TABLE);
+            console.log('创建memory_index表成功');
+
+            // 创建 FTS5 虚拟表（如果 SQLite 支持）
+            try {
+                await sqliteClient.execute(SQLStatements.CREATE_MEMORY_FTS5_TABLE);
+                console.log('创建memory_fts5表成功');
+            } catch (error) {
+                console.warn('FTS5 表创建失败（可能 SQLite 版本不支持）:', error);
+            }
+
+            // 创建AI智能体自我学习方案相关表
+            await sqliteClient.execute(SQLStatements.CREATE_AI_MODULES_TABLE);
+            console.log('创建ai_modules表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_USER_BEHAVIOR_LOG_TABLE);
+            console.log('创建user_behavior_log表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_USER_PREFERENCES_TABLE);
+            console.log('创建user_preferences表成功');
+
+            await sqliteClient.execute(SQLStatements.CREATE_AI_LEARNED_PATTERNS_TABLE);
+            console.log('创建ai_learned_patterns表成功');
+
+            // 创建打断记录表
+            await sqliteClient.execute(SQLStatements.CREATE_INTERRUPTIONS_TABLE);
+            console.log('创建interruptions表成功');
 
             // 检查serverName列是否存在
             try {
@@ -175,6 +330,19 @@ export class DatabaseManager {
         const eventService = EventService.getInstance();
         eventService.setDatabaseClient(sqliteClient);
         console.log('EventService 初始化成功');
+
+        // 初始化 AIService
+        const aiService = AIService.getInstance();
+        aiService.setDatabaseClient(sqliteClient);
+        console.log('AIService 初始化成功');
+
+        // 初始化 MemoryService
+        const { MemoryService } = await import('../service/memoryService');
+        const memoryService = MemoryService.getInstance();
+        memoryService.setDatabaseClient(sqliteClient);
+        // 启动文件监听（可选，如果 chokidar 未安装会跳过）
+        await memoryService.initializeWatcher();
+        console.log('MemoryService 初始化成功');
 
         // 返回数据库客户端实例
         return sqliteClient;
@@ -626,7 +794,7 @@ export class DatabaseManager {
     /**
      * 注册数据库服务相关的 IPC 处理程序
      */
-    public static registerIpcHandlers() {
+    public static async registerIpcHandlers() {
         const instance = DatabaseManager.getInstance();
         
         // 数据库操作相关
@@ -711,6 +879,10 @@ export class DatabaseManager {
             return await eventService.deleteEvent(eventId);
         });
 
+        ipcMain.handle('event:complete', async (_: any, eventId: string, options?: any) => {
+            return await eventService.completeEvent(eventId, options);
+        });
+
         // 代办事项相关
         ipcMain.handle('todo:get-all', async () => {
             return await eventService.getAllTodos();
@@ -726,6 +898,149 @@ export class DatabaseManager {
 
         ipcMain.handle('todo:delete', async (_: any, todoId: string) => {
             return await eventService.deleteTodo(todoId);
+        });
+
+        // AI相关处理器已移至 AIServiceIPC，此处不再注册
+
+        // Memory相关
+        const { MemoryService: MemoryServiceClass } = await import('../service/memoryService');
+        const memoryService = MemoryServiceClass.getInstance();
+        
+        ipcMain.handle('memory:append-today-log', async (_: any, content: string) => {
+            return await memoryService.appendToTodayLog(content);
+        });
+
+        ipcMain.handle('memory:read-today-log', async () => {
+            return await memoryService.readTodayLog();
+        });
+
+        ipcMain.handle('memory:read-log-by-date', async (_: any, date: string) => {
+            return await memoryService.readLogByDate(date);
+        });
+
+        ipcMain.handle('memory:read-long-term-memory', async () => {
+            return await memoryService.readLongTermMemory();
+        });
+
+        ipcMain.handle('memory:write-long-term-memory', async (_: any, content: string) => {
+            return await memoryService.writeLongTermMemory(content);
+        });
+
+        ipcMain.handle('memory:get-session-memory', async () => {
+            return await memoryService.getSessionMemory();
+        });
+
+        ipcMain.handle('memory:search', async (_: any, query: string, limit?: number) => {
+            return await memoryService.searchMemory(query, limit);
+        });
+
+        ipcMain.handle('memory:reindex-all', async () => {
+            return await memoryService.reindexAll();
+        });
+
+        ipcMain.handle('memory:get-file-list', async () => {
+            return await memoryService.getMemoryFileList();
+        });
+
+        ipcMain.handle('memory:get-index-stats', async () => {
+            return await memoryService.getIndexStats();
+        });
+
+        ipcMain.handle('memory:clear-file-index', async (_: any, filePath: string) => {
+            return await memoryService.clearFileIndex(filePath);
+        });
+
+        // 打断相关
+        const { InterruptionService } = await import('../service/interruptionService');
+        const interruptionService = InterruptionService.getInstance();
+        const dbClient = instance.getDatabaseClient();
+        if (!dbClient) {
+            throw new Error('数据库客户端未初始化');
+        }
+        interruptionService.setDatabaseClient(dbClient);
+
+        ipcMain.handle('interruption:record', async (_: any, interruption: any) => {
+            return await interruptionService.recordInterruption(interruption);
+        });
+
+        ipcMain.handle('interruption:get-pending-reminders', async () => {
+            return await interruptionService.getPendingReminders();
+        });
+
+        ipcMain.handle('interruption:get-by-event', async (_: any, eventId: string) => {
+            return await interruptionService.getInterruptionsByEvent(eventId);
+        });
+
+        ipcMain.handle('interruption:mark-handled', async (_: any, interruptionId: string) => {
+            return await interruptionService.markReminderHandled(interruptionId);
+        });
+
+        ipcMain.handle('interruption:delete', async (_: any, interruptionId: string) => {
+            return await interruptionService.deleteInterruption(interruptionId);
+        });
+
+        // 智能提醒相关
+        const { SmartReminderService } = await import('../service/smartReminderService');
+        const { AIAgentCore } = await import('../service/ai/AIAgentCore');
+        const smartReminderService = SmartReminderService.getInstance();
+        smartReminderService.setDatabaseClient(dbClient);
+        const aiAgentCore = AIAgentCore.getInstance();
+        smartReminderService.setAIAgentCore(aiAgentCore);
+
+        ipcMain.handle('smart-reminder:generate', async (_: any, event: any) => {
+            return await smartReminderService.generateSmartReminders(event);
+        });
+
+        ipcMain.handle('smart-reminder:check-and-trigger', async () => {
+            return await smartReminderService.checkAndTriggerReminders();
+        });
+
+        // 工作日志相关
+        const { WorkLogService } = await import('../service/workLogService');
+        const workLogService = WorkLogService.getInstance();
+        workLogService.setDatabaseClient(dbClient);
+        const aiService = AIService.getInstance();
+        workLogService.setAIService(aiService);
+
+        ipcMain.handle('work-log:get-by-date', async (_: any, date: string) => {
+            return await workLogService.getLogByDate(date);
+        });
+
+        ipcMain.handle('work-log:save', async (_: any, date: string, content: string) => {
+            return await workLogService.saveLog(date, content);
+        });
+
+        ipcMain.handle('work-log:generate', async (_: any, date: string) => {
+            return await workLogService.generateLog(date);
+        });
+
+        ipcMain.handle('work-log:export', async (_: any, date: string) => {
+            return await workLogService.exportLog(date);
+        });
+
+        ipcMain.handle('work-log:get-today-stats', async () => {
+            return await workLogService.getTodayStats();
+        });
+
+        // 数据分析相关
+        const { DataAnalysisService } = await import('../service/dataAnalysisService');
+        const dataAnalysisService = DataAnalysisService.getInstance();
+        dataAnalysisService.setDatabaseClient(dbClient);
+
+        ipcMain.handle('data-analysis:get-efficiency-stats', async () => {
+            return await dataAnalysisService.getEfficiencyStats();
+        });
+
+        ipcMain.handle('data-analysis:get-completion-stats', async () => {
+            return await dataAnalysisService.getTaskCompletionStats();
+        });
+
+        ipcMain.handle('data-analysis:get-work-patterns', async () => {
+            return await dataAnalysisService.getWorkPatterns();
+        });
+
+        ipcMain.handle('data-analysis:get-all-stats', async () => {
+            return await dataAnalysisService.getAllStats();
         });
     }
 

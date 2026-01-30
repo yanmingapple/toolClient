@@ -80,67 +80,12 @@ export class MenuService {
         ],
       },
       {
-        label: '数据库(D)',
-        submenu: [
-          { label: '新建连接...', accelerator: 'CmdOrCtrl+N', click: () => this.mainWindow?.webContents.send('open-new-connection-dialog') },
-          { type: 'separator' },
-          { label: '导入数据', accelerator: 'CmdOrCtrl+i', role: 'import' },
-          { type: 'separator' },
-          { label: '导出数据', accelerator: 'CmdOrCtrl+e', role: 'export' },
-        ],
-      },
-      {
-        label: '终端(Terminal)',
+        label: '设置(S)',
         submenu: [
           {
-            label: '打开终端控制台',
-            accelerator: 'Ctrl+`',
+            label: 'AI服务配置',
             click: () => {
-              this.mainWindow?.webContents.send('terminal:open-console');
-            }
-          },
-          { type: 'separator' },
-          {
-            label: '系统信息',
-            click: async () => {
-              const terminalService = TerminalService.getInstance();
-              const result = await terminalService.executeCommand({
-                command: 'systeminfo',
-                shell: 'cmd',
-                timeout: 15000
-              });
-              this.mainWindow?.webContents.send('terminal:result', {
-                title: '系统信息',
-                result: result
-              });
-            }
-          },
-          {
-            label: '当前目录',
-            click: async () => {
-              const terminalService = TerminalService.getInstance();
-              const result = await terminalService.executeCommand({
-                command: 'cd',
-                shell: 'cmd'
-              });
-              this.mainWindow?.webContents.send('terminal:result', {
-                title: '当前目录',
-                result: result
-              });
-            }
-          },
-          {
-            label: '列出目录',
-            click: async () => {
-              const terminalService = TerminalService.getInstance();
-              const result = await terminalService.executeCommand({
-                command: 'dir',
-                shell: 'cmd'
-              });
-              this.mainWindow?.webContents.send('terminal:result', {
-                title: '目录列表',
-                result: result
-              });
+              this.mainWindow?.webContents.send('open-ai-config-dialog');
             }
           },
         ],

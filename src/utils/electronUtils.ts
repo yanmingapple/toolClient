@@ -43,8 +43,6 @@ interface ElectronAPI {
       title?: string
       width?: number
       height?: number
-      engine?: string
-      ocrTitle?: string
     }) => Promise<string>
     close: (windowId: string) => Promise<void>
     getAll: () => Promise<string[]>
@@ -70,18 +68,20 @@ interface ElectronAPI {
    * 一次性监听 IPC 事件
    */
   once: (channel: string, callback: (...args: any[]) => void) => void
+  /**
+   * 监听打开AI配置对话框事件
+   */
+  onOpenAIConfig: (callback: () => void) => void
   terminal: {
     executeCommand: (command: string, shell: 'cmd' | 'powershell', cwd?: string, timeout?: number) => Promise<ServiceResult<any>>
     executeCommands: (commands: any[], parallel: boolean) => Promise<ServiceResult<any[]>>
     getSystemInfo: () => Promise<ServiceResult<any>>
   }
   sidebar: {
-    openOCRPage: (engine: string) => void
     toggle: () => void
     close: () => void
     expand: () => void
     collapse: () => void
-    getSystemResources: () => Promise<ServiceResult<any>>
     openCalendar: () => void
     openCreditCard: () => void
   }
@@ -89,6 +89,49 @@ interface ElectronAPI {
     open: () => Promise<{success: boolean, windowId?: number, error?: string}>
     close: () => Promise<{success: boolean}>
     isOpen: () => Promise<boolean>
+  }
+  ai: {
+    getConfig: () => Promise<ServiceResult<any>>
+    parseNaturalLanguage: (text: string, context?: any) => Promise<ServiceResult<any>>
+    parseNaturalLanguageWithPlanAndSolve: (text: string, context?: any) => Promise<ServiceResult<any>>
+    configure: (config: any) => Promise<ServiceResult<void>>
+    checkNetworkStatus: () => Promise<ServiceResult<{online: boolean}>>
+    classifyEvent: (event: any) => Promise<ServiceResult<string>>
+    detectConflicts: (newEvent: any, existingEvents: any[]) => Promise<ServiceResult<any>>
+    optimizeSchedule: (events: any[]) => Promise<ServiceResult<any>>
+    generateSummary: (events: any[], period: 'day' | 'week' | 'month') => Promise<ServiceResult<string>>
+    onPlanExecutionEvent: (callback: (event: any) => void) => void
+    offPlanExecutionEvent: (callback?: (event: any) => void) => void
+  }
+  event: {
+    getAll: () => Promise<ServiceResult<any[]>>
+    getByDate: (date: string) => Promise<ServiceResult<any[]>>
+    save: (event: any) => Promise<ServiceResult<void>>
+    delete: (eventId: string) => Promise<ServiceResult<void>>
+    complete: (eventId: string, options?: any) => Promise<ServiceResult<void>>
+  }
+  smartReminder: {
+    generateReminders: (event: any) => Promise<ServiceResult<any[]>>
+    checkAndTrigger: () => Promise<ServiceResult<any[]>>
+  }
+  workLog: {
+    getLogByDate: (date: string) => Promise<ServiceResult<string>>
+    saveLog: (date: string, content: string) => Promise<ServiceResult<void>>
+    generateLog: (date: string) => Promise<ServiceResult<string>>
+    exportLog: (date: string) => Promise<ServiceResult<string>>
+    getTodayStats: () => Promise<ServiceResult<{
+      completedTasks: number
+      totalTasks: number
+      totalHours: number
+      efficiencyScore: number
+      interruptions: number
+    }>>
+  }
+  dataAnalysis: {
+    getEfficiencyStats: () => Promise<ServiceResult<any>>
+    getCompletionStats: () => Promise<ServiceResult<any>>
+    getWorkPatterns: () => Promise<ServiceResult<any>>
+    getAllStats: () => Promise<ServiceResult<any>>
   }
 }
 
@@ -415,18 +458,6 @@ export const selectFolder = async (): Promise<string> => {
 // 侧边栏相关函数
 
 /**
- * 打开OCR页面
- * @param engine OCR引擎名称
- */
-export const openOCRPage = (engine: string): void => {
-  const electronAPI = getSafeIpcRenderer()
-  if (!electronAPI) {
-    return
-  }
-  electronAPI.sidebar.openOCRPage(engine)
-}
-
-/**
  * 切换侧边栏显示/隐藏
  */
 export const toggleSidebar = (): void => {
@@ -471,18 +502,6 @@ export const collapseSidebar = (): void => {
 }
 
 /**
- * 获取系统资源信息（CPU和内存使用率）
- * @returns Promise<ServiceResult<any>> 系统资源信息
- */
-export const getSystemResources = async (): Promise<ServiceResult<any>> => {
-  const electronAPI = getSafeIpcRenderer()
-  if (!electronAPI) {
-    throw new Error('Electron API not available')
-  }
-  return electronAPI.sidebar.getSystemResources()
-}
-
-/**
  * 打开日历提醒 - 直接打开对话框窗口
  */
 export const openCalendarReminder = async (): Promise<void> => {
@@ -502,12 +521,10 @@ export const openCreditCardReminder = async (): Promise<void> => {
  * @returns Promise<string> 窗口ID
  */
 export const createWindow = async (options: {
-  page: 'toolpanel' | 'workspace' | 'ocr' | 'sidebar' | 'dialog-connection' | 'dialog-command-result' | 'dialog-terminal' | 'dialog-event-reminder' | 'dialog-credit-card'
+  page: 'toolpanel' | 'workspace' | 'sidebar' | 'dialog-connection' | 'dialog-command-result' | 'dialog-terminal' | 'dialog-event-reminder' | 'dialog-credit-card'
   title?: string
   width?: number
   height?: number
-  engine?: string
-  ocrTitle?: string
   params?: Record<string, any>
 }): Promise<string | null> => {
   const electronAPI = getSafeIpcRenderer()

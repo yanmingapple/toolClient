@@ -16,31 +16,20 @@ function copyDbgateFiles() {
   console.log('Destination:', dbgateDest);
 
   // 需要复制的目录和文件
+  // 注意：app/packages 已经通过 predist 脚本包含了所有需要的文件（api/dist、web/public、plugins）
+  // 参考 dbgate-master/app/package.json 的 predist 脚本
   const itemsToCopy = [
-    // API bundle
-    {
-      src: 'packages/api/dist',
-      dest: 'packages/api/dist',
-      description: 'API bundle'
-    },
-    // Web public files
-    {
-      src: 'app/packages/web/public',
-      dest: 'app/packages/web/public',
-      description: 'Web public files'
-    },
-    // Plugins
-    {
-      src: 'plugins',
-      dest: 'plugins',
-      description: 'Plugins'
-    },
-    // App packages (如果已经构建)
+    // App packages (包含所有构建后的文件)
     {
       src: 'app/packages',
       dest: 'app/packages',
-      description: 'App packages (if built)',
-      optional: true
+      description: 'App packages (contains api/dist, web/public, plugins)'
+    },
+    // App src (electron.js 等源文件)
+    {
+      src: 'app/src',
+      dest: 'app/src',
+      description: 'App source files'
     }
   ];
 

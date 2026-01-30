@@ -198,8 +198,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param {string} [options.title] 窗口标题
      * @param {number} [options.width] 窗口宽度，默认1200
      * @param {number} [options.height] 窗口高度，默认800
-     * @param {string} [options.engine] OCR引擎（仅当page为ocr时使用）
-     * @param {string} [options.ocrTitle] OCR页面标题（仅当page为ocr时使用）
      * @returns {Promise<string>} 窗口ID
      */
     create: (options: {
@@ -207,8 +205,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       title?: string;
       width?: number;
       height?: number;
-      engine?: string;
-      ocrTitle?: string;
       params?: Record<string, any>;
     }): Promise<string> => {
       return ipcRenderer.invoke('window:create', options);
@@ -293,6 +289,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
+   * 监听打开AI配置对话框事件
+   * @param callback 回调函数
+   */
+  onOpenAIConfig: (callback: () => void): void => {
+    ipcRenderer.on('open-ai-config-dialog', () => callback());
+  },
+
+  /**
    * 移除 IPC 事件监听器
    * @param channel 事件通道名称
    * @param callback 可选，指定要移除的回调函数。如果不提供，将移除该通道的所有监听器
@@ -364,13 +368,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 侧边栏相关
   sidebar: {
-    /**
-     * 打开OCR页面
-     * @param engine OCR引擎名称
-     */
-    openOCRPage: (engine: string): void => {
-      ipcRenderer.send('sidebar:open-ocr-page', engine);
-    },
 
     /**
      * 切换侧边栏显示/隐藏
@@ -398,14 +395,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     collapse: (): void => {
       ipcRenderer.send('sidebar:collapse');
-    },
-
-    /**
-     * 获取系统资源信息（CPU和内存使用率）
-     * @returns Promise<ServiceResult<any>> 系统资源信息
-     */
-    getSystemResources: (): Promise<ServiceResult<any>> => {
-      return ipcRenderer.invoke('sidebar:get-system-resources');
     },
 
     /**
@@ -485,6 +474,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     delete: (eventId: string): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('event:delete', eventId);
+    },
+
+    /**
+     * 标记事件为完成（自动生成工作日志）
+     * @param {string} eventId 事件ID
+     * @param {Object} options 完成选项（实际耗时、打断次数等）
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    complete: (eventId: string, options?: {
+      actualMinutes?: number;
+      interruptionCount?: number;
+      notes?: string;
+    }): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('event:complete', eventId, options);
     }
   },
 
@@ -523,6 +526,313 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     delete: (todoId: string): Promise<ServiceResult<void>> => {
       return ipcRenderer.invoke('todo:delete', todoId);
+    }
+  },
+
+  // AI相关 API
+  ai: {
+    /**
+     * 解析自然语言为事件（传统模式）
+     * @param {string} text 自然语言文本
+     * @param {Object} context 上下文信息
+     * @returns {Promise<ServiceResult<NaturalLanguageParseResult>>}
+     */
+    parseNaturalLanguage: (text: string, context?: any): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:parse-natural-language', text, context);
+    },
+
+    /**
+     * 解析自然语言（Plan-and-Solve 模式）
+     * 先规划后执行，支持复杂任务分解
+     * @param {string} text 自然语言文本
+     * @param {Object} context 上下文信息
+     * @returns {Promise<ServiceResult<NaturalLanguageParseResult>>}
+     */
+    parseNaturalLanguageWithPlanAndSolve: (text: string, context?: any): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:parse-with-plan-solve', text, context);
+    },
+
+    /**
+     * 获取AI配置
+     * @returns {Promise<ServiceResult<AIProvider | null>>}
+     */
+    getConfig: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:get-config');
+    },
+
+    /**
+     * 配置AI服务
+     * @param {Object} config AI配置
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    configure: (config: any): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('ai:configure', config);
+    },
+
+    /**
+     * 检查网络状态
+     * @returns {Promise<ServiceResult<{online: boolean}>>}
+     */
+    checkNetworkStatus: (): Promise<ServiceResult<{online: boolean}>> => {
+      return ipcRenderer.invoke('ai:check-network-status');
+    },
+
+    /**
+     * 智能分类事件
+     * @param {Object} event 事件对象
+     * @returns {Promise<ServiceResult<{type: string, tags: string[], priority: number, energyLevel: string}>>}
+     */
+    classifyEvent: (event: any): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:classify-event', event);
+    },
+
+    /**
+     * 检测事件冲突
+     * @param {Object} newEvent 新事件
+     * @param {Array} existingEvents 现有事件列表
+     * @returns {Promise<ServiceResult<{hasConflict: boolean, conflicts: Array}>>}
+     */
+    detectConflicts: (newEvent: any, existingEvents: any[]): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:detect-conflicts', newEvent, existingEvents);
+    },
+
+    /**
+     * 优化日程安排
+     * @param {Array} events 事件列表
+     * @returns {Promise<ServiceResult<{suggestions: Array, insights: Object}>>}
+     */
+    optimizeSchedule: (events: any[]): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('ai:optimize-schedule', events);
+    },
+
+    /**
+     * 生成日程摘要
+     * @param {Array} events 事件列表
+     * @param {string} period 时间段 ('day' | 'week' | 'month')
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    generateSummary: (events: any[], period: 'day' | 'week' | 'month'): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('ai:generate-summary', events, period);
+    },
+
+    /**
+     * 监听Plan-and-Solve执行事件
+     * @param {Function} callback 回调函数
+     */
+    onPlanExecutionEvent: (callback: (event: any) => void): void => {
+      ipcRenderer.on('ai:plan-execution-event', (_event: any, data: any) => callback(data));
+    },
+
+    /**
+     * 移除Plan-and-Solve执行事件监听器
+     * @param {Function} callback 可选，指定要移除的回调函数
+     */
+    offPlanExecutionEvent: (callback?: (event: any) => void): void => {
+      if (callback) {
+        ipcRenderer.removeListener('ai:plan-execution-event', callback);
+      } else {
+        ipcRenderer.removeAllListeners('ai:plan-execution-event');
+      }
+    }
+  },
+
+  // 智能提醒相关 API
+  smartReminder: {
+    /**
+     * 为事件生成智能提醒
+     * @param {Object} event 事件对象
+     * @returns {Promise<ServiceResult<SmartReminder[]>>}
+     */
+    generateReminders: (event: any): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('smart-reminder:generate', event);
+    },
+
+    /**
+     * 检查并触发待处理的提醒
+     * @returns {Promise<ServiceResult<SmartReminder[]>>}
+     */
+    checkAndTrigger: (): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('smart-reminder:check-and-trigger');
+    }
+  },
+
+  // Memory相关 API
+  memory: {
+    /**
+     * 追加内容到今日日志
+     * @param {string} content 日志内容
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    appendToTodayLog: (content: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('memory:append-today-log', content);
+    },
+
+    /**
+     * 读取今日日志
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    readTodayLog: (): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('memory:read-today-log');
+    },
+
+    /**
+     * 读取指定日期的日志
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    readLogByDate: (date: string): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('memory:read-log-by-date', date);
+    },
+
+    /**
+     * 读取长期记忆
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    readLongTermMemory: (): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('memory:read-long-term-memory');
+    },
+
+    /**
+     * 写入长期记忆
+     * @param {string} content 记忆内容
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    writeLongTermMemory: (content: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('memory:write-long-term-memory', content);
+    },
+
+    /**
+     * 获取会话记忆（启动时加载）
+     * @returns {Promise<ServiceResult<{[key: string]: string}>>}
+     */
+    getSessionMemory: (): Promise<ServiceResult<{[key: string]: string}>> => {
+      return ipcRenderer.invoke('memory:get-session-memory');
+    },
+
+    /**
+     * 搜索记忆
+     * @param {string} query 搜索查询
+     * @param {number} limit 结果数量限制
+     * @returns {Promise<ServiceResult<MemorySearchResult[]>>}
+     */
+    search: (query: string, limit?: number): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('memory:search', query, limit);
+    },
+
+    /**
+     * 重新索引所有记忆文件
+     * @returns {Promise<ServiceResult<{indexed: number, errors: number}>>}
+     */
+    reindexAll: (): Promise<ServiceResult<{indexed: number, errors: number}>> => {
+      return ipcRenderer.invoke('memory:reindex-all');
+    },
+
+    /**
+     * 获取记忆文件列表
+     * @returns {Promise<ServiceResult<{daily: string[], tasks: string[], habits: string[], memory: string | null}>>}
+     */
+    getFileList: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('memory:get-file-list');
+    },
+
+    /**
+     * 获取索引统计信息
+     * @returns {Promise<ServiceResult<{totalChunks: number, totalFiles: number, totalTokens: number, lastIndexed: string | null}>>}
+     */
+    getIndexStats: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('memory:get-index-stats');
+    },
+
+    /**
+     * 清理指定文件的索引
+     * @param {string} filePath 文件路径
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    clearFileIndex: (filePath: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('memory:clear-file-index', filePath);
+    }
+  },
+
+  // 工作日志相关 API
+  workLog: {
+    /**
+     * 获取指定日期的日志
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    getLogByDate: (date: string): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('work-log:get-by-date', date);
+    },
+
+    /**
+     * 保存日志
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @param {string} content 日志内容
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    saveLog: (date: string, content: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('work-log:save', date, content);
+    },
+
+    /**
+     * AI生成日志
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    generateLog: (date: string): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('work-log:generate', date);
+    },
+
+    /**
+     * 导出日志
+     * @param {string} date 日期 (YYYY-MM-DD)
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    exportLog: (date: string): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('work-log:export', date);
+    },
+
+    /**
+     * 获取今日统计
+     * @returns {Promise<ServiceResult<{completedTasks: number, totalTasks: number, totalHours: number, efficiencyScore: number, interruptions: number}>>}
+     */
+    getTodayStats: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('work-log:get-today-stats');
+    }
+  },
+
+  // 数据分析相关 API
+  dataAnalysis: {
+    /**
+     * 获取效率统计
+     * @returns {Promise<ServiceResult<{weekEfficiency: number, monthEfficiency: number, bestTimeSlots: Array}>}
+     */
+    getEfficiencyStats: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('data-analysis:get-efficiency-stats');
+    },
+
+    /**
+     * 获取任务完成率统计
+     * @returns {Promise<ServiceResult<Array<{name: string, total: number, completed: number, rate: number}>>>}
+     */
+    getCompletionStats: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('data-analysis:get-completion-stats');
+    },
+
+    /**
+     * 获取工作模式
+     * @returns {Promise<ServiceResult<Array<{type: string, avgMinutes: number, efficiency: number, sampleCount: number}>>>}
+     */
+    getWorkPatterns: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('data-analysis:get-work-patterns');
+    },
+
+    /**
+     * 获取所有统计数据
+     * @returns {Promise<ServiceResult<{efficiency: any, completion: any, patterns: any}>>}
+     */
+    getAllStats: (): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('data-analysis:get-all-stats');
     }
   }
 

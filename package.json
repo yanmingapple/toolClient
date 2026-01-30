@@ -33,7 +33,6 @@
     "@fullcalendar/timegrid": "^6.1.20",
     "@fullcalendar/vue3": "^6.1.20",
     "@guolao/vue-monaco-editor": "^1.1.3",
-    "@paddlejs-models/ocr": "1.2.0",
     "@types/ws": "^8.18.1",
     "@vue/shared": "^3.5.26",
     "activedirectory2": "^2.2.0",
@@ -86,7 +85,6 @@
     "stream-json": "^1.9.1",
     "tar": "^7.5.7",
     "tedious": "^16.2.0",
-    "tesseract.js": "^7.0.0",
     "utif": "^3.1.0",
     "vue": "^3.4.3",
     "vue-router": "^4.6.4",
@@ -133,9 +131,6 @@
     },
     "files": [
       "dist/**/*",
-      "dbgate-master/packages/api/dist/**/*",
-      "dbgate-master/app/packages/**/*",
-      "dbgate-master/plugins/**/*",
       "node_modules/**/*",
       "package.json",
       "!dbgate-master/**/node_modules/**/*",
@@ -143,9 +138,7 @@
     ],
     "asarUnpack": [
       "**/*.node",
-      "dbgate-master/packages/api/dist/**/*",
-      "dbgate-master/app/packages/**/*",
-      "dbgate-master/plugins/**/*"
+      "dist/dbgate-master/app/packages/**/*"
     ],
     "beforeBuild": null,
     "npmRebuild": false,

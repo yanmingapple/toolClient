@@ -1,178 +1,107 @@
 <template>
   <div class="dashboard-container" ref="mainPanelRef">
-    <!-- 顶部标题栏 -->
+    <!-- 紧凑的顶部标题栏 -->
     <header class="dashboard-header">
-      <div class="header-content">
-        <div class="header-left">
-          <div class="logo-section">
-            <div class="logo-icon">
-              <el-icon><Grid /></el-icon>
-            </div>
-            <h1 class="dashboard-title">工具集</h1>
-          </div>
-          <div class="header-events" @click="handleOpenEventReminder">
-            <div class="events-icon">
-              <el-icon><Bell /></el-icon>
-            </div>
-            <div class="events-info">
-              <div class="events-label">最近事件</div>
-              <div class="events-count" :class="{ 'has-events': upcomingEvents.length > 0 }">{{ upcomingEvents.length }}</div>
-            </div>
-            <div class="events-arrow">
-              <el-icon><ArrowRight /></el-icon>
-            </div>
-          </div>
+      <div class="header-left">
+        <div class="logo-section">
+          <el-icon class="logo-icon"><Grid /></el-icon>
+          <h1 class="dashboard-title">工具集</h1>
         </div>
-        <div class="header-right">
-          <DigitalClock />
+        <div class="header-events" @click="handleOpenEventReminder">
+          <el-icon><Bell /></el-icon>
+          <span class="events-label">事件</span>
+          <span class="events-count" :class="{ 'has-events': upcomingEvents.length > 0 }">{{ upcomingEvents.length }}</span>
         </div>
+      </div>
+      <div class="header-right">
+        <DigitalClock />
       </div>
     </header>
-    
 
-    <!-- 主内容区 -->
+    <!-- 主内容区 - 紧凑网格布局 -->
     <main class="dashboard-main">
-      <!-- 顶部快速操作和AI工具 -->
-      <div class="top-section">
-        <!-- 主要工具面板 -->
-        <section class="panel main-tools-panel">
-          <div class="panel-header">
-            <div class="panel-icon">
-              <el-icon><Tools /></el-icon>
-            </div>
-            <h2 class="panel-title">工具集合</h2>
-          </div>
-          <QuickActions 
-            @create-panel="handleCreatePanel" 
-            @open-terminal="handleOpenTerminal"
-            @open-dbgate="handleOpenDbgate"
-          />
-        </section>
+      <!-- 工具集卡片（合并了快速操作） -->
+      <section class="card tools-card">
+        <div class="card-header">
+          <el-icon class="card-icon"><Tools /></el-icon>
+          <span class="card-title">工具集</span>
+        </div>
+        <ToolSets 
+          @open-event-reminder="handleOpenEventReminder"
+          @create-panel="handleCreatePanel" 
+          @open-terminal="handleOpenTerminal"
+          @open-dbgate="handleOpenDbgate"
+        />
+      </section>
 
-        <!-- AI识别工具面板 -->
-        <section class="panel ai-tools-panel">
-          <div class="panel-header">
-            <div class="panel-icon">
-              <el-icon><MagicStick /></el-icon>
-            </div>
-            <h2 class="panel-title">AI工具</h2>
-          </div>
-          <div class="ai-tool-items">
-            <div class="ai-tool-item" @click="handleOpenOCR('tesseract')">
-              <div class="ai-tool-icon tesseract">
-                <el-icon><MagicStick /></el-icon>
-              </div>
-              <div class="ai-tool-info">
-                <div class="ai-tool-title">Tesseract</div>
-                <div class="ai-tool-desc">经典开源OCR引擎</div>
-              </div>
-              <div class="ai-tool-arrow">
-                <el-icon><ArrowRight /></el-icon>
-              </div>
-            </div>
-            <div class="ai-tool-item" @click="handleOpenOCR('paddleocr')">
-              <div class="ai-tool-icon paddleocr">
-                <el-icon><Document /></el-icon>
-              </div>
-              <div class="ai-tool-info">
-                <div class="ai-tool-title">PaddleOCR</div>
-                <div class="ai-tool-desc">轻量级中文识别</div>
-              </div>
-              <div class="ai-tool-arrow">
-                <el-icon><ArrowRight /></el-icon>
-              </div>
-            </div>
-            <div class="ai-tool-item" @click="handleOpenOCR('deepseek')">
-              <div class="ai-tool-icon deepseek">
-                <el-icon><ChatDotRound /></el-icon>
-              </div>
-              <div class="ai-tool-info">
-                <div class="ai-tool-title">DeepSeek</div>
-                <div class="ai-tool-desc">多模态AI识别</div>
-              </div>
-              <div class="ai-tool-arrow">
-                <el-icon><ArrowRight /></el-icon>
-              </div>
-            </div>
-            <div class="ai-tool-item" @click="handleOpenOCR('qwen3vl')">
-              <div class="ai-tool-icon qwen3vl">
-                <el-icon><Picture /></el-icon>
-              </div>
-              <div class="ai-tool-info">
-                <div class="ai-tool-title">Qwen3-VL</div>
-                <div class="ai-tool-desc">视觉语言模型</div>
-              </div>
-              <div class="ai-tool-arrow">
-                <el-icon><ArrowRight /></el-icon>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+      <!-- AI智能助手卡片 -->
+      <section class="card ai-assistant-card">
+        <div class="card-header">
+          <el-icon class="card-icon"><MagicStick /></el-icon>
+          <span class="card-title">AI智能助手</span>
+        </div>
+        <AIAssistant 
+          @event-created="handleEventCreated"
+          @todo-created="handleTodoCreated"
+          @refresh="handleRefreshAI"
+        />
+      </section>
 
-      <!-- 服务监控面板 -->
-      <section class="panel monitor-panel">
-        <div class="panel-header">
-          <div class="panel-icon">
-            <el-icon><Monitor /></el-icon>
-          </div>
-          <h2 class="panel-title">服务监控</h2>
-          <el-button type="primary" size="small" @click="handleRefreshMonitor">
+      <!-- AI智能推荐卡片 -->
+      <section class="card ai-card">
+        <div class="card-header">
+          <el-icon class="card-icon"><MagicStick /></el-icon>
+          <span class="card-title">AI智能推荐</span>
+          <el-button type="primary" size="small" text @click="handleRefreshAI">
             <el-icon><Refresh /></el-icon>
-            刷新
+          </el-button>
+        </div>
+        <AISuggestionsPanel :events="allEvents" />
+      </section>
+
+      <!-- Plan-and-Solve 执行过程展示 -->
+      <section class="card plan-execution-card">
+        <div class="card-header">
+          <el-icon class="card-icon"><List /></el-icon>
+          <span class="card-title">AI执行过程</span>
+        </div>
+        <PlanExecutionViewer />
+      </section>
+
+      <!-- 服务监控卡片 -->
+      <section class="card monitor-card">
+        <div class="card-header">
+          <el-icon class="card-icon"><Monitor /></el-icon>
+          <span class="card-title">服务监控</span>
+          <el-button type="primary" size="small" text @click="handleRefreshMonitor">
+            <el-icon><Refresh /></el-icon>
           </el-button>
         </div>
         <ServiceMonitor />
       </section>
-
-      <!-- 系统信息面板 -->
-      <section class="panel system-info-panel">
-        <div class="panel-header">
-          <div class="panel-icon">
-            <el-icon><InfoFilled /></el-icon>
-          </div>
-          <h2 class="panel-title">系统信息</h2>
-        </div>
-        <SystemInfo />
-      </section>
-
-      <!-- 工具集面板 -->
-      <section class="panel tools-panel">
-        <div class="panel-header">
-          <div class="panel-icon">
-            <el-icon><Grid /></el-icon>
-          </div>
-          <h2 class="panel-title">工具集</h2>
-        </div>
-        <ToolSets 
-  @open-ocr="handleOpenOCR" 
-  @open-event-reminder="handleOpenEventReminder"
-  @open-paddleocr="() => handleOpenOCR('paddleocr')"
-  @open-deepseek="() => handleOpenOCR('deepseek')"
-  @open-qwen3vl="() => handleOpenOCR('qwen3vl')"
-  @open-tesseract="() => handleOpenOCR('tesseract')"
-/>
-      </section>
     </main>
+
+    <!-- AI配置对话框 -->
+    <AIConfigDialog v-model="showAIConfig" @saved="handleAIConfigSaved" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
-  Monitor, Refresh, Download, Upload, Connection, CircleCheck, CircleClose,
-  Tools, ArrowRight, CopyDocument, Edit, PieChart, InfoFilled, Cpu,
-  Folder, Timer, Clock, Grid, View, Document, MagicStick, UserFilled
+  Monitor, Refresh,
+  Tools, Grid, Bell, MagicStick, List
 } from '@element-plus/icons-vue'
 
-import { useConnectionStore } from '@/stores/connection'
+// import { useConnectionStore } from '@/stores/connection'
 import ServiceMonitor from '../monitor/index.vue'
-import QuickActions from './components/QuickActions.vue'
 import ToolSets from './components/ToolSets.vue'
-import SystemInfo from './components/SystemInfo.vue'
 import DigitalClock from './components/DigitalClock.vue'
+import AIConfigDialog from './components/AIConfigDialog.vue'
+import AISuggestionsPanel from './components/AISuggestionsPanel.vue'
+import AIAssistant from './components/AIAssistant.vue'
+import PlanExecutionViewer from './components/PlanExecutionViewer.vue'
 import { openEventReminderDialog } from '../../utils/electronUtils'
-import type { TreeNode } from '../../../electron/model/database'
 
 // Props
 interface Props {
@@ -190,17 +119,15 @@ const emit = defineEmits<{
 // 导入 ElMessage
 import { ElMessage } from 'element-plus'
 
-// Store
-const connectionStore = useConnectionStore()
+// Store (保留以备将来使用)
+// const connectionStore = useConnectionStore()
 
 // State
 const events = ref<any[]>([])
+const showAIConfig = ref(false)
+const allEvents = ref<any[]>([])
 
 // Computed
-const activeConnections = computed(() => {
-  return connectionStore.connections.filter(c => c.status === 'connected').length
-})
-
 const upcomingEvents = computed(() => {
   return events.value
     .filter(event => {
@@ -216,29 +143,41 @@ const upcomingEvents = computed(() => {
 })
 
 // Methods
-const loadEvents = () => {
-  const stored = localStorage.getItem('calendar_events')
-  if (stored) {
-    try {
-      events.value = JSON.parse(stored)
-    } catch (e) {
-      console.error('Failed to load events:', e)
+const loadEvents = async () => {
+  // 从数据库加载事件
+  try {
+    const result = await (window as any).electronAPI.event.getAll()
+    if (result.success && result.data) {
+      allEvents.value = result.data
+      events.value = result.data
+    } else {
+      allEvents.value = []
       events.value = []
     }
+  } catch (e) {
+    console.error('Failed to load events:', e)
+    allEvents.value = []
+    events.value = []
   }
+}
+
+const handleRefreshAI = () => {
+  // 刷新AI建议
+  loadEvents()
+  ElMessage.success('AI建议已刷新')
+}
+
+const handleEventCreated = () => {
+  // 事件创建后刷新
+  loadEvents()
+}
+
+const handleTodoCreated = () => {
+  // 代办创建后刷新
+  loadEvents()
 }
 
 // Methods
-const handleOpenOCR = (engine: string) => {
-  const titles: Record<string, string> = {
-    'tesseract': 'Tesseract OCR 识别',
-    'paddleocr': 'PaddleOCR 识别',
-    'deepseek': 'DeepSeek 识别',
-    'qwen3vl': 'Qwen3-VL 识别'
-  }
-  emit('createPanel', `ocr-${engine}`, titles[engine] || '文字识别', { engine })
-}
-
 const handleCreatePanel = (type: string, title: string, content: any) => {
   emit('createPanel', type, title, content)
 }
@@ -278,6 +217,23 @@ const handleRefreshMonitor = () => {
   console.log('刷新监控数据')
 }
 
+const handleAIConfigSaved = () => {
+  ElMessage.success('AI配置已保存')
+}
+
+// 监听来自主进程的打开AI配置对话框事件
+onMounted(() => {
+  console.log('Dashboard mounted')
+  loadEvents()
+  
+  // 监听菜单触发的AI配置对话框打开事件
+  if (window.electronAPI?.onOpenAIConfig) {
+    window.electronAPI.onOpenAIConfig(() => {
+      showAIConfig.value = true
+    })
+  }
+})
+
 onMounted(() => {
   console.log('Dashboard mounted')
   loadEvents()
@@ -288,24 +244,23 @@ onMounted(() => {
 .dashboard-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  padding: 12px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   max-height: 100vh;
   overflow-y: auto;
-  padding-right: 12px;
 
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   &::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
+    border-radius: 3px;
 
     &:hover {
       background: rgba(255, 255, 255, 0.5);
@@ -313,17 +268,15 @@ onMounted(() => {
   }
 }
 
+// 紧凑的顶部标题栏
 .dashboard-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 16px 30px;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -332,29 +285,24 @@ onMounted(() => {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 40px;
+  gap: 20px;
 }
 
 .logo-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .logo-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  color: #667eea;
+  font-size: 20px;
 }
 
 .dashboard-title {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   color: #1a202c;
   margin: 0;
@@ -363,279 +311,157 @@ onMounted(() => {
 .header-events {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
+  gap: 8px;
+  padding: 6px 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  border-radius: 8px;
   color: white;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
+  font-size: 14px;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  }
+
+  .el-icon {
+    font-size: 16px;
   }
 }
 
-.event-label {
-  font-size: 14px;
+.events-label {
+  font-size: 13px;
   font-weight: 500;
-  opacity: 0.9;
 }
 
-.event-count {
-  font-size: 24px;
+.events-count {
+  font-size: 14px;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 2px 8px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  min-width: 40px;
+  border-radius: 6px;
+  min-width: 24px;
   text-align: center;
   
   &.has-events {
     background: #4ade80;
     color: #166534;
-    animation: pulse 2s infinite;
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
   }
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
 }
 
-
-
+// 主内容区 - 紧凑网格布局
 .dashboard-main {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 12px;
+  
+  @media (min-width: 1400px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.top-section {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 20px;
-}
-
-.panel {
+// 紧凑的卡片样式
+.card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  }
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.panel-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 20px;
-}
-
-.panel-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1a202c;
-  margin: 0;
-  flex: 1;
-}
-
-.main-tools-panel {
-  grid-column: 1 / 9;
-}
-
-.ai-tools-panel {
-  grid-column: 9 / -1;
-}
-
-.ai-tool-items {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.ai-tool-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 12px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 72px;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-  }
-}
-
-.ai-tool-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
   padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 80px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
-    transform: translateX(8px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   }
 }
 
-.ai-tool-icon {
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+.card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.ai-tool-icon.tesseract {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.card-icon {
+  width: 24px;
+  height: 24px;
+  color: #667eea;
+  font-size: 18px;
 }
 
-.ai-tool-icon.paddleocr {
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-}
-
-.ai-tool-icon.deepseek {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-}
-
-.ai-tool-icon.qwen3vl {
-  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
-}
-
-.ai-tool-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.ai-tool-title {
+.card-title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #1a202c;
+  flex: 1;
 }
 
-.ai-tool-desc {
-  font-size: 12px;
-  opacity: 0.9;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+// 特定卡片布局
+.quick-actions-card {
+  min-height: 200px;
 }
 
-.ai-tool-arrow {
-  font-size: 16px;
-  opacity: 0.8;
-  flex-shrink: 0;
+.monitor-card {
+  min-height: 300px;
 }
 
-.monitor-panel {
-  grid-column: 1 / 9;
-}
-
-.system-info-panel {
-  grid-column: 9 / -1;
-}
-
-.tools-panel {
-  grid-column: 1 / -1;
+.tools-card {
+  min-height: 250px;
 }
 
 // 响应式设计
-@media (max-width: 1200px) {
-  .dashboard-main {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
-  .main-tools-panel,
-  .ai-tools-panel,
-  .monitor-panel,
-  .system-info-panel {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 768px) {
   .dashboard-container {
-    padding: 12px;
-    padding-right: 8px;
+    padding: 8px;
   }
 
   .dashboard-header {
-    padding: 16px;
-  }
-
-  .header-content {
+    padding: 10px 16px;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .header-left {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .header-events {
+    width: 100%;
+    justify-content: center;
   }
 
   .dashboard-title {
-    font-size: 22px;
-  }
-
-  .panel {
-    padding: 16px;
-  }
-
-  .panel-title {
     font-size: 18px;
   }
 
-  .ai-tool-items {
-    grid-template-columns: repeat(1, 1fr);
+  .card {
+    padding: 12px;
+  }
+
+  .card-title {
+    font-size: 14px;
   }
 }
 </style>

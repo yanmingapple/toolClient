@@ -36,13 +36,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Calendar, Money, Cpu, Monitor, ArrowRight } from '@element-plus/icons-vue'
-import { getSystemResources, expandSidebar, collapseSidebar, openCalendarReminder, openCreditCardReminder } from '@/utils/electronUtils'
+import { Calendar, Money, ArrowRight } from '@element-plus/icons-vue'
+import { expandSidebar, collapseSidebar, openCalendarReminder, openCreditCardReminder } from '@/utils/electronUtils'
 
 const sidebarRef = ref<HTMLElement | null>(null)
 const currentTime = ref('')
 const currentDate = ref('')
-const systemInfo = ref({ cpu: '0%', memory: '0%' })
 const isExpanded = ref(false)
 let timer: number | null = null
 let expandTimeout: number | null = null
@@ -57,20 +56,6 @@ const updateTime = () => {
     day: 'numeric',
     weekday: 'long'
   })
-}
-
-const updateSystemInfo = async () => {
-  try {
-    const result = await getSystemResources()
-    if (result.success && result.data) {
-      systemInfo.value = {
-        cpu: result.data.cpu,
-        memory: result.data.memory
-      }
-    }
-  } catch (error) {
-    console.error('Failed to get system resources:', error)
-  }
 }
 
 const handleOpenCalendar = async () => {
@@ -127,11 +112,9 @@ const handleToggleExpand = () => {
 
 onMounted(() => {
   updateTime()
-  updateSystemInfo()
   timer = window.setInterval(() => {
     updateTime()
-    updateSystemInfo()
-  }, 100)
+  }, 1000)
 })
 
 onUnmounted(() => {
@@ -275,24 +258,6 @@ onUnmounted(() => {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.9);
     text-align: center;
-  }
-}
-
-.system-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 16px;
-}
-
-.system-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  
-  .el-icon {
-    font-size: 14px;
   }
 }
 </style>

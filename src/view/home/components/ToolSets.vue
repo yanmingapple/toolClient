@@ -1,5 +1,22 @@
 <template>
   <div class="tool-sets">
+    <!-- 快速操作网格 -->
+    <div class="quick-actions-grid">
+      <div 
+        v-for="action in quickActions" 
+        :key="action.id"
+        class="quick-action-card" 
+        @click="handleQuickAction(action.handler)"
+      >
+        <div class="action-icon-wrapper" :class="action.iconBgClass">
+          <el-icon class="action-icon"><component :is="iconMap[action.icon]" /></el-icon>
+        </div>
+        <div class="action-title">{{ action.title }}</div>
+        <div class="action-desc">{{ action.description }}</div>
+      </div>
+    </div>
+
+    <!-- 工具分类 -->
     <div class="tools-grid">
       <div 
         v-for="category in toolCategories" 
@@ -25,236 +42,167 @@
 
 <script setup lang="ts">
 import { ref, defineEmits } from 'vue'
-import { CopyDocument, Upload, Refresh, Grid, Download, Document, Edit, View, PieChart, CircleCheck, InfoFilled, Cpu, MagicStick, Bell, Monitor, Star, Scissor, ChatDotRound } from '@element-plus/icons-vue'
+import { Bell, Setting, Connection, DataBoard } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
 
-const emit = defineEmits(['open-ocr', 'open-event-reminder', 'open-paddleocr', 'open-deepseek', 'open-qwen3vl', 'open-tesseract'])
+const emit = defineEmits(['open-event-reminder', 'open-ai-config', 'create-panel', 'open-terminal', 'open-dbgate'])
 
-// 工具集配置
-const toolCategories = ref([
+// 图标组件映射
+const iconMap = {
+  Connection,
+  Database: DataBoard,
+  Setting,
+  Bell
+}
+
+// 快速操作数据配置
+const quickActions = ref([
   {
-    title: '数据管理',
-    items: [
-      { id: 'backup', label: '数据备份', icon: CopyDocument, handler: 'handleBackup' },
-      { id: 'restore', label: '数据恢复', icon: Upload, handler: 'handleRestore' },
-      { id: 'sync', label: '数据同步', icon: Refresh, handler: 'handleSync' }
-    ]
+    id: 'enter-database',
+    title: '进入数据库',
+    description: '管理数据库连接、查询和对象',
+    icon: 'Connection',
+    iconBgClass: 'icon-bg-blue',
+    handler: 'handleEnterDatabase'
   },
   {
-    title: '导入导出',
-    items: [
-      { id: 'excel-import', label: 'Excel导入', icon: Grid, handler: 'handleExcelImport' },
-      { id: 'excel-export', label: 'Excel导出', icon: Download, handler: 'handleExcelExport' },
-      { id: 'csv-export', label: 'CSV导出', icon: Document, handler: 'handleCsvExport' }
-    ]
+    id: 'open-dbgate',
+    title: 'DbGate',
+    description: '专业数据库管理工具',
+    icon: 'Database',
+    iconBgClass: 'icon-bg-dbgate',
+    handler: 'handleOpenDbgate'
   },
   {
-    title: '开发工具',
-    items: [
-      { id: 'schema-designer', label: '结构设计', icon: Edit, handler: 'handleSchemaDesigner' },
-      { id: 'query-builder', label: '查询构建器', icon: View, handler: 'handleQueryBuilder' },
-      { id: 'performance', label: '性能分析', icon: PieChart, handler: 'handlePerformance' }
-    ]
+    id: 'open-terminal',
+    title: '终端控制台',
+    description: '执行SQL命令和脚本',
+    icon: 'Setting',
+    iconBgClass: 'icon-bg-green',
+    handler: 'handleOpenTerminal'
   },
   {
-    title: '系统监控',
-    items: [
-      { id: 'health-check', label: '健康检查', icon: CircleCheck, handler: 'handleHealthCheck' },
-      { id: 'system-info', label: '系统信息', icon: InfoFilled, handler: 'handleSystemInfo' },
-      { id: 'resource-monitor', label: '资源监控', icon: Cpu, handler: 'handleResourceMonitor' }
-    ]
-  },
-  {
-    title: '日历事件',
-    items: [
-      { id: 'event-reminder', label: '事件提醒', icon: Bell, handler: 'handleEventReminder' }
-    ]
-  },
-  {
-    title: 'AI工具',
-    items: [
-      { id: 'ocr', label: '文字识别', icon: MagicStick, handler: 'handleOCR' }
-    ]
-  },
-  {
-    title: 'AI工具集',
-    items: [
-      { id: 'paddleocr', label: 'PaddleOCR', icon: Monitor, handler: 'handlePaddleOCR' },
-      { id: 'deepseek', label: 'DeepSeek', icon: ChatDotRound, handler: 'handleDeepSeek' },
-      { id: 'qwen3vl', label: 'Qwen3-VL', icon: Star, handler: 'handleQwen3VL' },
-      { id: 'tesseract', label: 'Tesseract', icon: Scissor, handler: 'handleTesseract' }
-    ]
+    id: 'event-reminder',
+    title: '代办提醒',
+    description: '日历提醒和代办', 
+    icon: 'Bell',
+    iconBgClass: 'icon-bg-purple',
+    handler: 'handleEventReminderQuick'
   }
 ])
 
-// 处理工具点击事件
-const handleToolClick = (handler: string) => {
+// 处理快速操作点击事件
+const handleQuickAction = (handler: string) => {
   const handlerMap: Record<string, () => void> = {
-    handleBackup: handleBackup,
-    handleRestore: handleRestore,
-    handleSync: handleSync,
-    handleExcelImport: handleExcelImport,
-    handleExcelExport: handleExcelExport,
-    handleCsvExport: handleCsvExport,
-    handleSchemaDesigner: handleSchemaDesigner,
-    handleQueryBuilder: handleQueryBuilder,
-    handlePerformance: handlePerformance,
-    handleHealthCheck: handleHealthCheck,
-    handleSystemInfo: handleSystemInfo,
-    handleResourceMonitor: handleResourceMonitor,
-    handleEventReminder: handleEventReminder,
-    handlePaddleOCR: handlePaddleOCR,
-    handleDeepSeek: handleDeepSeek,
-    handleQwen3VL: handleQwen3VL,
-    handleTesseract: handleTesseract
+    handleEnterDatabase: handleEnterDatabase,
+    handleOpenDbgate: handleOpenDbgate,
+    handleOpenTerminal: handleOpenTerminal,
+    handleEventReminderQuick: handleEventReminderQuick
   }
   
-  const toolHandler = handlerMap[handler]
-  if (toolHandler) {
-    toolHandler()
+  const actionHandler = handlerMap[handler]
+  if (actionHandler) {
+    actionHandler()
   }
 }
 
-const handleBackup = () => {
-  CTMessage.info('数据备份功能开发中...')
+const handleEnterDatabase = () => {
+  emit('create-panel', 'database', '数据库管理', null)
 }
 
-const handleRestore = () => {
-  CTMessage.info('数据恢复功能开发中...')
+const handleOpenDbgate = () => {
+  emit('open-dbgate')
 }
 
-const handleSync = () => {
-  CTMessage.info('数据同步功能开发中...')
+const handleOpenTerminal = () => {
+  emit('open-terminal')
 }
 
-const handleExcelImport = () => {
-  CTMessage.info('Excel导入功能开发中...')
-}
-
-const handleExcelExport = () => {
-  CTMessage.info('Excel导出功能开发中...')
-}
-
-const handleCsvExport = () => {
-  CTMessage.info('CSV导出功能开发中...')
-}
-
-const handleSchemaDesigner = () => {
-  CTMessage.info('结构设计工具开发中...')
-}
-
-const handleQueryBuilder = () => {
-  CTMessage.info('查询构建器开发中...')
-}
-
-const handlePerformance = () => {
-  CTMessage.info('性能分析工具开发中...')
-}
-
-const handleHealthCheck = () => {
-  CTMessage.info('健康检查功能开发中...')
-}
-
-const handleSystemInfo = () => {
-  CTMessage.info('系统信息功能开发中...')
-}
-
-const handleResourceMonitor = () => {
-  CTMessage.info('资源监控功能开发中...')
-}
-
-const handleEventReminder = () => {
-  // 触发事件通知父组件打开事件提醒
+const handleEventReminderQuick = () => {
   emit('open-event-reminder')
   CTMessage.success('正在打开事件提醒...')
 }
 
-const handleOCR = () => {
-  // 触发事件通知父组件打开OCR页面
-  emit('open-ocr')
-  CTMessage.success('正在打开文字识别工具...')
-}
 
-const handlePaddleOCR = () => {
-  // 触发事件通知父组件打开PaddleOCR页面
-  emit('open-paddleocr')
-  CTMessage.success('正在打开PaddleOCR...')
-}
-
-const handleDeepSeek = () => {
-  // 触发事件通知父组件打开DeepSeek页面
-  emit('open-deepseek')
-  CTMessage.success('正在打开DeepSeek...')
-}
-
-const handleQwen3VL = () => {
-  // 触发事件通知父组件打开Qwen3-VL页面
-  emit('open-qwen3vl')
-  CTMessage.success('正在打开Qwen3-VL...')
-}
-
-const handleTesseract = () => {
-  // 触发事件通知父组件打开Tesseract页面
-  emit('open-tesseract')
-  CTMessage.success('正在打开Tesseract...')
-}
 </script>
 
 <style scoped>
 .tool-sets {
-  margin-bottom: 32px;
+  width: 100%;
 }
 
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #409eff;
-}
-
-.tools-grid {
+/* 快速操作网格 */
+.quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
-.tool-category {
+.quick-action-card {
   background: white;
   border: 1px solid #e8e8e8;
   border-radius: 8px;
-  padding: 20px;
-}
-
-.tool-category-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.tool-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.tool-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  color: #606266;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.tool-item:hover {
-  background: #f0f9ff;
-  color: #409eff;
+.quick-action-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #409eff;
 }
+
+.quick-action-card:hover .action-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.action-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  transition: all 0.3s ease;
+}
+
+.icon-bg-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-bg-green {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.icon-bg-purple {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.icon-bg-dbgate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.action-icon {
+  font-size: 24px;
+  color: white;
+}
+
+.action-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 6px;
+}
+
+.action-desc {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+}
+
 </style>

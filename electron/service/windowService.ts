@@ -19,12 +19,10 @@ export class WindowService {
   static registerIpcHandlers() {
     // 处理创建新窗口的请求
     ipcMain.handle('window:create', async (_event: any, options: {
-      page: string; // 页面类型: 'toolpanel' | 'workspace' | 'ocr' | 'sidebar'
+      page: string; // 页面类型: 'toolpanel' | 'workspace' | 'sidebar'
       title?: string; // 窗口标题
       width?: number; // 窗口宽度
       height?: number; // 窗口高度
-      engine?: string; // OCR引擎（仅当page为ocr时使用）
-      ocrTitle?: string; // OCR页面标题（仅当page为ocr时使用）
     }) => {
       return await this.createWindow(options);
     });
@@ -50,8 +48,6 @@ export class WindowService {
     title?: string;
     width?: number;
     height?: number;
-    engine?: string;
-    ocrTitle?: string;
     params?: Record<string, any>;
   }): Promise<string> {
     const {
@@ -59,8 +55,6 @@ export class WindowService {
       title,
       width = 1200,
       height = 800,
-      engine,
-      ocrTitle,
       params = {}
     } = options;
 
@@ -76,17 +70,6 @@ export class WindowService {
         break;
       case 'workspace':
         hash = '#workspace';
-        break;
-      case 'ocr':
-        if (engine) {
-          const params = new URLSearchParams({
-            engine: engine,
-            title: ocrTitle || '智能文字识别'
-          });
-          hash = `#ocr?${params.toString()}`;
-        } else {
-          hash = '#ocr';
-        }
         break;
       case 'sidebar':
         hash = '#sidebar';

@@ -46,7 +46,9 @@ export class IpcService {
     this.registerWindowControlHandlers();
 
     // 2. 注册数据库相关的IPC处理程序（连接管理、查询执行等）
-    DatabaseManager.registerIpcHandlers();
+    DatabaseManager.registerIpcHandlers().catch(err => {
+      console.error('注册IPC处理器失败:', err);
+    });
 
     // 3. 初始化WebContentsService，传入主窗口引用用于后续通信
     WebContentsService.initialize(mainWindow);
@@ -80,6 +82,34 @@ export class IpcService {
     // 12. 注册 dbgate 窗口服务的 IPC 处理程序
     const { DbgateWindowService } = require('./dbgate');
     DbgateWindowService.registerIpcHandlers();
+
+    // 13. 注册 AI 服务相关的 IPC 处理程序
+    this.registerAIHandlers();
+  }
+
+  /**
+   * 注册 AI 服务相关的 IPC 处理程序
+   */
+  private static registerAIHandlers() {
+    const { AIServiceIPC } = require('./aiServiceIPC');
+    const { DatabaseManager } = require('../manager/ClientManager');
+    
+    // 获取数据库管理器实例并等待初始化完成
+    const dbManager = DatabaseManager.getInstance();
+    
+    // 等待数据库初始化完成后再注册AI服务
+    dbManager.initialize().then(() => {
+      const client = dbManager.getDatabaseClient();
+      if (client) {
+        AIServiceIPC.initialize(client);
+        AIServiceIPC.registerIpcHandlers();
+        console.log('AI服务IPC处理器注册成功');
+      } else {
+        console.warn('数据库客户端未初始化，AI服务IPC处理器注册失败');
+      }
+    }).catch((err: any) => {
+      console.error('初始化AI服务失败:', err);
+    });
   }
 
   /**
@@ -141,6 +171,13 @@ export class IpcService {
         return true;
       }
       return false;
+    });
+
+    // 监听打开AI配置对话框的请求（从菜单触发）
+    ipcMain.on('open-ai-config-dialog', () => {
+      if (this.mainWindow) {
+        this.mainWindow.webContents.send('open-ai-config-dialog');
+      }
     });
   }
 
