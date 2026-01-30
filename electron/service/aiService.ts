@@ -682,7 +682,7 @@ ${insights.map(insight => `- ${insight}`).join('\n')}
         type: e.type,
         date: e.date,
         time: e.time,
-        description: e.description || ''
+        description: '' // Event 接口没有 description 属性
       })));
       
       const todosJson = JSON.stringify(allTodos.map(t => ({
@@ -1113,29 +1113,88 @@ ${toolDescriptions}
    */
   private convertPlanToResult(plan: any): ServiceResult<NaturalLanguageParseResult> {
     try {
-      // 查找最后成功执行的步骤，提取结果
-      const lastSuccessStep = plan.steps
+      // 查找所有成功执行的步骤，提取结果
+      const successSteps = plan.steps
         .filter((s: any) => s.status === 'success')
-        .sort((a: any, b: any) => b.order - a.order)[0];
+        .sort((a: any, b: any) => b.order - a.order);
 
+      // 收集所有步骤中的事件和待办数据
+      let allEvents: any[] = [];
+      let allTodos: any[] = [];
+
+      for (const step of successSteps) {
+        if (step.result) {
+          let result = step.result;
+          
+          // 如果结果是字符串，尝试解析为 JSON
+          if (typeof result === 'string') {
+            try {
+              result = JSON.parse(result);
+            } catch {
+              // 如果不是 JSON，保持原样
+            }
+          }
+          
+          // 如果结果是数组，检查数组元素类型
+          if (Array.isArray(result)) {
+            result.forEach((item: any) => {
+              // 如果 item 是字符串，尝试解析
+              if (typeof item === 'string') {
+                try {
+                  item = JSON.parse(item);
+                } catch {
+                  // 解析失败，跳过
+                  return;
+                }
+              }
+              
+              // 判断是事件还是待办：事件有 title 和 type，待办有 text
+              if (item && item.title && (item.type || item.time)) {
+                // 这是事件
+                allEvents.push(item);
+              } else if (item && (item.text || (item.date && !item.time && !item.title))) {
+                // 这是待办
+                allTodos.push(item);
+              }
+            });
+          } 
+          // 如果结果包含 matchedEvents 或 matchedTodos
+          else if (result && (result.matchedEvents || result.matchedTodos)) {
+            if (result.matchedEvents && Array.isArray(result.matchedEvents)) {
+              allEvents.push(...result.matchedEvents);
+            }
+            if (result.matchedTodos && Array.isArray(result.matchedTodos)) {
+              allTodos.push(...result.matchedTodos);
+            }
+          }
+        }
+      }
+      
+      // 调试日志：显示收集到的数据
+      if (allEvents.length > 0 || allTodos.length > 0) {
+        console.log(`[convertPlanToResult] 收集到搜索结果: events=${allEvents.length}, todos=${allTodos.length}`);
+      }
+
+      // 如果有收集到事件或待办，返回搜索结果
+      if (allEvents.length > 0 || allTodos.length > 0) {
+        return {
+          success: true,
+          data: {
+            intent: 'search',
+            searchResults: {
+              events: allEvents,
+              todos: allTodos
+            },
+            confidence: 0.9,
+            source: 'online'
+          }
+        };
+      }
+
+      // 如果没有收集到数据，检查最后一步的结果（用于非搜索场景）
+      const lastSuccessStep = successSteps[0];
       if (lastSuccessStep && lastSuccessStep.result) {
         const result = lastSuccessStep.result;
-        
-        // 检查是否是查询结果（包含 matchedEvents 或 matchedTodos）
-        if (result.matchedEvents || result.matchedTodos || (Array.isArray(result) && result.length > 0 && (result[0].type === 'event' || result[0].type === 'todo'))) {
-          return {
-            success: true,
-            data: {
-              intent: 'search',
-              searchResults: {
-                events: result.matchedEvents || (Array.isArray(result) ? result.filter((r: any) => r.type === 'event' || r.title) : []),
-                todos: result.matchedTodos || (Array.isArray(result) ? result.filter((r: any) => r.type === 'todo' || r.text) : [])
-              },
-              confidence: 0.9,
-              source: 'online'
-            }
-          };
-        }
         
         // 如果结果是事件或代办，直接返回
         if (result.event || result.title) {

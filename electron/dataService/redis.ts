@@ -139,7 +139,7 @@ export class RedisClient implements DatabaseClient {
 
         try {
             // Redis 默认有 16 个数据库（0-15）
-            const databases = [];
+            const databases: TreeNode[] = [];
             const maxDatabases = 16;
             const currentDb = await this.redis.get('db') || '0';
 

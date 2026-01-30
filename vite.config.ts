@@ -12,11 +12,16 @@ export default defineConfig({
     svgr(),
     AutoImport({
       imports: ['vue', 'vue-router', 'pinia'],
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({
+        importStyle: false, // 禁用自动导入样式，避免导入不存在的组件样式
+        exclude: /^ElMessageBox2$/ // 排除 ElMessageBox2 的自动导入
+      })],
       dts: 'src/auto-imports.d.ts'
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [ElementPlusResolver({
+        importStyle: false // 禁用自动导入样式，避免导入不存在的组件样式
+      })],
       dts: 'src/components.d.ts'
     }),
   ],

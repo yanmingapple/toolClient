@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+const { ipcMain } = require('electron');
 import { DataAnalysisService } from './dataAnalysisService';
 
 /**

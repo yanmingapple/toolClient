@@ -71,7 +71,14 @@ export class Executor {
         // 执行工具
         let result: any;
         try {
-          result = await this.toolRegistry.executeTool(step.tool, resolvedParams);
+          // 如果步骤没有工具（逻辑整合步骤），跳过工具执行
+          if (!step.tool || step.tool === 'null' || step.tool === null) {
+            // 对于没有工具的步骤，返回一个空结果或使用前面步骤的结果
+            // 这种情况下，步骤应该只是逻辑整合，不调用工具
+            result = { message: 'Logical integration step, no tool execution needed' };
+          } else {
+            result = await this.toolRegistry.executeTool(step.tool, resolvedParams);
+          }
         } catch (toolError: any) {
           console.error(`[Executor] 工具执行失败 (${step.tool}):`, toolError);
           throw toolError; // 重新抛出，让外层 catch 处理

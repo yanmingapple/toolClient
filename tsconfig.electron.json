@@ -9,7 +9,10 @@
     "allowImportingTsExtensions": false,
     "sourceMap": true,
     "declaration": false,
-    "removeComments": false
+    "removeComments": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitAny": false
   },
   "include": [
     "electron/**/*"

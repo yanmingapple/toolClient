@@ -247,7 +247,7 @@ ${messagesText}
         const sqlModule = await import('../../dataService/sql');
         const SQLStatements = sqlModule.SQLStatements;
         await this.databaseClient.execute(
-          SQLStatements.DELETE_AI_CONTEXT_BY_ID,
+          SQLStatements.DELETE_AI_CONTEXT_BY_SESSION,
           [sessionId]
         );
       } catch (error: any) {
@@ -357,7 +357,7 @@ ${messagesText}
       const sqlModule = await import('../../dataService/sql');
       const SQLStatements = sqlModule.SQLStatements;
       const result = await this.databaseClient.execute(
-        SQLStatements.SELECT_AI_CONTEXT_BY_ID,
+        SQLStatements.SELECT_AI_CONTEXT_BY_SESSION,
         [sessionId]
       );
 

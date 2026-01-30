@@ -669,19 +669,19 @@ ${JSON.stringify(events, null, 2)}
           const result = await this.aiService.callAI(prompt, provider);
           return ServiceResultFactory.success(result);
         }
-      } else {
-        // 无AI时生成基础日志
-        let log = `# ${date} 工作日志\n\n`;
-        log += `## 📊 今日概览\n\n`;
-        log += `- 完成任务: ${events.length}\n\n`;
-        log += `## ✅ 完成任务\n\n`;
-        events.forEach(event => {
-          log += `### ${event.title}\n`;
-          log += `- 类型: ${event.type}\n`;
-          log += `- 时间: ${event.time}\n\n`;
-        });
-        return ServiceResultFactory.success(log);
       }
+      
+      // 无AI时生成基础日志
+      let log = `# ${date} 工作日志\n\n`;
+      log += `## 📊 今日概览\n\n`;
+      log += `- 完成任务: ${events.length}\n\n`;
+      log += `## ✅ 完成任务\n\n`;
+      events.forEach(event => {
+        log += `### ${event.title}\n`;
+        log += `- 类型: ${event.type}\n`;
+        log += `- 时间: ${event.time}\n\n`;
+      });
+      return ServiceResultFactory.success(log);
     } catch (error: any) {
       console.error('生成日志失败:', error);
       return ServiceResultFactory.error(`生成日志失败: ${error.message}`);

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+const { ipcMain } = require('electron');
 import { AIService } from './aiService';
 import { AIAgentCore } from './ai/AIAgentCore';
 import { CalendarModule } from './ai/modules/CalendarModule';

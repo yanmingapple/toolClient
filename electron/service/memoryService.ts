@@ -130,7 +130,7 @@ export class MemoryService {
    * 当事件创建、更新或完成时自动调用
    * 注意：这只是日志记录，不影响数据存储（数据存储在SQLite中）
    */
-  public async logEvent(action: 'created' | 'updated' | 'completed', event: any): Promise<ServiceResult<void>> {
+  public async logEvent(action: 'created' | 'updated' | 'completed' | 'deleted', event: any): Promise<ServiceResult<void>> {
     try {
       const actionMap = {
         created: '创建',
@@ -704,6 +704,79 @@ export class MemoryService {
     } catch (error: any) {
       console.error('重新索引失败:', error);
       return ServiceResultFactory.error(`重新索引失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 获取索引统计信息
+   */
+  public async getIndexStats(): Promise<ServiceResult<{
+    totalFiles: number;
+    indexedFiles: number;
+    totalChunks: number;
+  }>> {
+    try {
+      if (!this.databaseClient) {
+        return ServiceResultFactory.error('数据库未初始化');
+      }
+
+      // 获取所有记忆文件
+      const dailyDir = path.join(this.memoryBasePath, 'daily');
+      const tasksDir = path.join(this.memoryBasePath, 'tasks');
+      const habitsDir = path.join(this.memoryBasePath, 'habits');
+      
+      const allFiles: string[] = [];
+      if (fs.existsSync(dailyDir)) {
+        allFiles.push(...fs.readdirSync(dailyDir).filter(f => f.endsWith('.md')).map(f => path.join(dailyDir, f)));
+      }
+      if (fs.existsSync(tasksDir)) {
+        allFiles.push(...fs.readdirSync(tasksDir).filter(f => f.endsWith('.md')).map(f => path.join(tasksDir, f)));
+      }
+      if (fs.existsSync(habitsDir)) {
+        allFiles.push(...fs.readdirSync(habitsDir).filter(f => f.endsWith('.md')).map(f => path.join(habitsDir, f)));
+      }
+
+      // 获取已索引的文件数量
+      const indexedResult = await this.databaseClient.execute(
+        'SELECT COUNT(DISTINCT file_path) as count FROM memory_chunks'
+      ) as any[];
+      const indexedFiles = indexedResult[0]?.count || 0;
+
+      // 获取总块数
+      const chunksResult = await this.databaseClient.execute(
+        'SELECT COUNT(*) as count FROM memory_chunks'
+      ) as any[];
+      const totalChunks = chunksResult[0]?.count || 0;
+
+      return ServiceResultFactory.success({
+        totalFiles: allFiles.length,
+        indexedFiles,
+        totalChunks
+      });
+    } catch (error: any) {
+      console.error('获取索引统计失败:', error);
+      return ServiceResultFactory.error(`获取索引统计失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 清除指定文件的索引
+   */
+  public async clearFileIndex(filePath: string): Promise<ServiceResult<void>> {
+    try {
+      if (!this.databaseClient) {
+        return ServiceResultFactory.error('数据库未初始化');
+      }
+
+      await this.databaseClient.execute(
+        'DELETE FROM memory_chunks WHERE file_path = ?',
+        [filePath]
+      );
+
+      return ServiceResultFactory.success(undefined);
+    } catch (error: any) {
+      console.error('清除文件索引失败:', error);
+      return ServiceResultFactory.error(`清除文件索引失败: ${error.message}`);
     }
   }
 
