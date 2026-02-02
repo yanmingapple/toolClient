@@ -43,7 +43,7 @@ export class DatabaseManager {
 
 
     /**
-     * 显式初始化数据库管理器
+     * 显式初始化工具
      * @returns Promise<void>
      */
     public async initialize(): Promise<void> {
@@ -320,6 +320,32 @@ export class DatabaseManager {
             } catch (error) {
                 console.error('检查或添加serverName列时出错:', error);
             }
+
+            // 检查events表的description列是否存在
+            try {
+                const result = await sqliteClient.execute('PRAGMA table_info(events)');
+                const tableInfo = result as any[];
+                const hasDescriptionColumn = tableInfo.some(col => col.name === 'description');
+                const hasEndTimeColumn = tableInfo.some(col => col.name === 'endTime');
+
+                if (!hasDescriptionColumn) {
+                    // 添加description列
+                    await sqliteClient.execute(SQLStatements.ALTER_EVENTS_ADD_DESCRIPTION);
+                    console.log('添加events表的description列成功');
+                } else {
+                    console.log('events表的description列已存在，跳过添加操作');
+                }
+                
+                if (!hasEndTimeColumn) {
+                    // 添加endTime列
+                    await sqliteClient.execute(SQLStatements.ALTER_EVENTS_ADD_END_TIME);
+                    console.log('添加events表的endTime列成功');
+                } else {
+                    console.log('events表的endTime列已存在，跳过添加操作');
+                }
+            } catch (error) {
+                console.error('检查或添加events表的列时出错:', error);
+            }
         } catch (error) {
             console.error('创建数据库表失败:', error);
             await sqliteClient.disconnect();
@@ -330,6 +356,23 @@ export class DatabaseManager {
         const eventService = EventService.getInstance();
         eventService.setDatabaseClient(sqliteClient);
         console.log('EventService 初始化成功');
+
+        // 初始化 EventReminderService（事件提醒服务）
+        const { EventReminderService } = await import('../service/eventReminderService');
+        const eventReminderService = EventReminderService.getInstance();
+        eventReminderService.setDatabaseClient(sqliteClient);
+        eventReminderService.start(); // 启动定时检查
+        console.log('EventReminderService 初始化并启动成功');
+
+        // 初始化 InterruptionReminderService（恢复提醒触发服务）
+        const { InterruptionReminderService } = await import('../service/interruptionReminderService');
+        const { InterruptionService } = await import('../service/interruptionService');
+        const interruptionReminderService = InterruptionReminderService.getInstance();
+        const interruptionService = InterruptionService.getInstance();
+        interruptionService.setDatabaseClient(sqliteClient);
+        interruptionReminderService.setInterruptionService(interruptionService);
+        interruptionReminderService.start(); // 启动定时检查
+        console.log('InterruptionReminderService 初始化并启动成功');
 
         // 初始化 AIService
         const aiService = AIService.getInstance();
@@ -349,7 +392,7 @@ export class DatabaseManager {
     }
 
     /**
-     * 确保数据库管理器已初始化
+     * 确保工具已初始化
      * 如果未初始化，则自动初始化
      * @throws 如果初始化失败则抛出错误
      */
@@ -450,6 +493,15 @@ export class DatabaseManager {
             this.healthCheckTimer = null;
         }
 
+        // 停止事件提醒服务
+        try {
+            const { EventReminderService } = await import('../service/eventReminderService');
+            const eventReminderService = EventReminderService.getInstance();
+            eventReminderService.stop();
+        } catch (error) {
+            console.warn('停止事件提醒服务失败:', error);
+        }
+
         // 关闭所有数据库连接
         if (this.databaseClient) {
             await this.databaseClient.disconnect();
@@ -486,6 +538,16 @@ export class DatabaseManager {
      * 执行健康检查
      */
     public async performHealthCheck(): Promise<void> {
+        // 先从数据库加载最新的服务监控列表，确保 serviceMonitors Map 是最新的
+        try {
+            const serviceResult = await this.handleGetAllServiceMonitors();
+            if (serviceResult.success && Array.isArray(serviceResult.data)) {
+                this.serviceMonitors = new Map(serviceResult.data.map(monitor => [monitor.id, monitor]));
+            }
+        } catch (error) {
+            console.error('Failed to load service monitors for health check:', error);
+        }
+
         //定时执行检查监控的服务是否正常再当前系统中端口是存在
         for (const [id, monitor] of this.serviceMonitors.entries()) {
             try {
@@ -495,7 +557,9 @@ export class DatabaseManager {
 
                 // 调用健康检查方法，传递monitor的id
                 await this.checkServiceHealth(host, port, id);
-            } catch (error) { }
+            } catch (error) {
+                console.error(`Health check failed for service ${id}:`, error);
+            }
         }
     }
 
@@ -516,9 +580,11 @@ export class DatabaseManager {
 
         try {
             const result: CheckResult = await portChecker.checkPort(config);
+            
+            console.log(`[ClientManager] 服务 ${id} (端口 ${port}) 健康检查结果:`, result.status);
 
             // 将检查结果通知到前端，包含monitor的id
-            WebContentsService.sendToRenderer('service-monitor:health-check-result', {
+            const healthCheckData = {
                 id: id,
                 host: configHost,
                 port: port,
@@ -526,8 +592,11 @@ export class DatabaseManager {
                 responseTime: result.responseTime,
                 error: result.error,
                 timestamp: result.timestamp
-            });
+            };
+            console.log(`[ClientManager] 准备发送健康检查结果到前端:`, healthCheckData);
+            WebContentsService.sendToRenderer('service-monitor:health-check-result', healthCheckData);
         } catch (error) {
+            console.error(`[ClientManager] 服务 ${id} (端口 ${port}) 健康检查失败:`, error);
             // 处理异常情况，包含monitor的id
             WebContentsService.sendToRenderer('service-monitor:health-check-result', {
                 id: id,
@@ -906,14 +975,6 @@ export class DatabaseManager {
         const { MemoryService: MemoryServiceClass } = await import('../service/memoryService');
         const memoryService = MemoryServiceClass.getInstance();
         
-        ipcMain.handle('memory:append-today-log', async (_: any, content: string) => {
-            return await memoryService.appendToTodayLog(content);
-        });
-
-        ipcMain.handle('memory:read-today-log', async () => {
-            return await memoryService.readTodayLog();
-        });
-
         ipcMain.handle('memory:read-log-by-date', async (_: any, date: string) => {
             return await memoryService.readLogByDate(date);
         });
@@ -999,23 +1060,9 @@ export class DatabaseManager {
         const { WorkLogService } = await import('../service/workLogService');
         const workLogService = WorkLogService.getInstance();
         workLogService.setDatabaseClient(dbClient);
-        const aiService = AIService.getInstance();
-        workLogService.setAIService(aiService);
 
         ipcMain.handle('work-log:get-by-date', async (_: any, date: string) => {
             return await workLogService.getLogByDate(date);
-        });
-
-        ipcMain.handle('work-log:save', async (_: any, date: string, content: string) => {
-            return await workLogService.saveLog(date, content);
-        });
-
-        ipcMain.handle('work-log:generate', async (_: any, date: string) => {
-            return await workLogService.generateLog(date);
-        });
-
-        ipcMain.handle('work-log:export', async (_: any, date: string) => {
-            return await workLogService.exportLog(date);
         });
 
         ipcMain.handle('work-log:get-today-stats', async () => {
@@ -1041,6 +1088,22 @@ export class DatabaseManager {
 
         ipcMain.handle('data-analysis:get-all-stats', async () => {
             return await dataAnalysisService.getAllStats();
+        });
+
+        // 想法记事本相关
+        const { IdeaNotebookService } = await import('../service/ideaNotebookService');
+        const ideaNotebookService = IdeaNotebookService.getInstance();
+
+        ipcMain.handle('idea-notebook:read', async () => {
+            return await ideaNotebookService.readIdeas();
+        });
+
+        ipcMain.handle('idea-notebook:save', async (_: any, content: string) => {
+            return await ideaNotebookService.saveIdeas(content);
+        });
+
+        ipcMain.handle('idea-notebook:append', async (_: any, idea: string, tags?: string[]) => {
+            return await ideaNotebookService.appendIdea(idea, tags);
         });
     }
 

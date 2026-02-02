@@ -17,7 +17,7 @@ import {
 } from '../utils/electronUtils'
 
 /** 加密密钥，用于密码加密存储 */
-const SECRET_KEY = 'dbmanager-pro-secret-key'
+const SECRET_KEY = 'Mytool-secret-key'
 /** 本地存储键名，存储连接配置信息 */
 const STORAGE_KEY = 'connection-storage'
 

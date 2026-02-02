@@ -40,6 +40,90 @@
           <el-button size="small" @click="handleClear">清空</el-button>
         </div>
         
+        <!-- AI 回答结果 -->
+        <el-card
+          v-if="lastResult && lastResult.type === 'aiResponse'"
+          shadow="never"
+          class="parse-result-card"
+          style="margin-top: 12px;"
+        >
+          <template #header>
+            <div class="result-header">
+              <span>💬 AI 回答</span>
+              <el-button 
+                type="text" 
+                size="small" 
+                @click="lastResult = null"
+                style="padding: 0;"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+          </template>
+          
+          <div class="result-content">
+            <div class="ai-response-content">
+              {{ lastResult.content }}
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 创建成功结果 -->
+        <el-card
+          v-if="lastResult && (lastResult.type === 'eventCreated' || lastResult.type === 'todoCreated')"
+          shadow="never"
+          class="parse-result-card"
+          style="margin-top: 12px;"
+        >
+          <template #header>
+            <div class="result-header">
+              <span>{{ lastResult.type === 'eventCreated' ? '📅 事件创建成功' : '✓ 待办创建成功' }}</span>
+              <el-button 
+                type="text" 
+                size="small" 
+                @click="lastResult = null"
+                style="padding: 0;"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+          </template>
+          
+          <div class="result-content">
+            <div class="created-result-content">
+              <div class="result-item">
+                <span class="result-label">{{ lastResult.type === 'eventCreated' ? '标题' : '内容' }}：</span>
+                <span class="result-value">{{ lastResult.data.title || lastResult.data.text }}</span>
+              </div>
+              <div class="result-item" v-if="lastResult.data.date">
+                <span class="result-label">日期：</span>
+                <span class="result-value">{{ lastResult.data.date }}</span>
+              </div>
+              <div class="result-item" v-if="lastResult.data.time">
+                <span class="result-label">时间：</span>
+                <span class="result-value">{{ lastResult.data.time }}</span>
+              </div>
+              <div class="result-item" v-if="lastResult.data.type">
+                <span class="result-label">类型：</span>
+                <span class="result-value">{{ lastResult.data.type }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <template #footer>
+            <div class="result-actions">
+              <el-button size="small" @click="lastResult = null">关闭</el-button>
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="handleOpenEventReminder"
+              >
+                查看详情
+              </el-button>
+            </div>
+          </template>
+        </el-card>
+
         <!-- 搜索结果预览 -->
         <el-card
           v-if="searchResults.length > 0"
@@ -50,6 +134,14 @@
           <template #header>
             <div class="result-header">
               <span>🔍 检索结果 ({{ searchResults.length }}条)</span>
+              <el-button 
+                type="text" 
+                size="small" 
+                @click="searchResults = []; lastResult = null"
+                style="padding: 0;"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
             </div>
           </template>
           
@@ -72,7 +164,7 @@
           
           <template #footer>
             <div class="result-actions">
-              <el-button size="small" @click="searchResults = []">关闭</el-button>
+              <el-button size="small" @click="searchResults = []; lastResult = null">关闭</el-button>
               <el-button 
                 type="primary" 
                 size="small" 
@@ -91,7 +183,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { MagicStick } from '@element-plus/icons-vue'
+import { MagicStick, Close } from '@element-plus/icons-vue'
 
 const emit = defineEmits<{
   'event-created': []
@@ -105,6 +197,11 @@ const processing = ref(false)
 const networkStatus = ref<'online' | 'offline' | 'checking'>('checking')
 const parseResult = ref<any>(null)
 const searchResults = ref<any[]>([])
+const lastResult = ref<{
+  type: 'aiResponse' | 'eventCreated' | 'todoCreated' | 'search'
+  content?: string
+  data?: any
+} | null>(null)
 
 // Methods
 
@@ -161,16 +258,91 @@ const handleAutoParse = async () => {
     parseResult.value = result.data
     const detectedIntent = result.data.intent || 'event'
     
+    // 如果 AI 直接返回了回答（不需要工具的情况，如"明天几号"）
+    if (result.data.aiResponse) {
+      // 保存结果用于展示
+      lastResult.value = {
+        type: 'aiResponse',
+        content: result.data.aiResponse
+      }
+      ElMessage.success({
+        message: result.data.aiResponse,
+        duration: 3000,
+        showClose: true
+      })
+      // 清空输入框
+      inputText.value = ''
+      return
+    }
+    
+    // 检查是否已经自动保存
+    if (parseResult.value.autoSaved) {
+      // 已经自动保存，直接显示结果
+      if (detectedIntent === 'event') {
+        lastResult.value = {
+          type: 'eventCreated',
+          data: {
+            title: parseResult.value.title,
+            date: parseResult.value.date,
+            time: parseResult.value.time,
+            type: parseResult.value.type
+          }
+        }
+        ElMessage.success('事件已自动创建并保存')
+        emit('event-created')
+        emit('refresh')
+        inputText.value = ''
+        return
+      } else if (detectedIntent === 'todo') {
+        lastResult.value = {
+          type: 'todoCreated',
+          data: {
+            text: parseResult.value.text,
+            date: parseResult.value.date
+          }
+        }
+        ElMessage.success('待办已自动创建并保存')
+        emit('todo-created')
+        emit('refresh')
+        inputText.value = ''
+        return
+      }
+    }
+    
+    // 如果自动保存失败，显示错误信息
+    if (parseResult.value.autoSaved === false && parseResult.value.saveError) {
+      ElMessage.warning(`自动保存失败: ${parseResult.value.saveError}，请手动保存`)
+    }
+    
     // 根据识别的意图自动处理
     if (detectedIntent === 'search') {
       // 自动切换到搜索模式并执行搜索
       await handleSearch()
     } else if (detectedIntent === 'todo') {
-      // 自动创建代办
-      await handleConfirmTodo()
+      // 只有在明确识别为待办意图，且有有效数据时才创建
+      // 避免将查询问题误判为待办
+      if (parseResult.value.text && parseResult.value.text.trim() && 
+          !parseResult.value.text.includes('哪些') && 
+          !parseResult.value.text.includes('有没有') &&
+          !parseResult.value.text.includes('查询') &&
+          !parseResult.value.text.includes('查找')) {
+        await handleConfirmTodo()
+      } else {
+        // 如果看起来像查询问题，转为搜索
+        await handleSearch()
+      }
     } else {
-      // 默认创建事件
-      await handleConfirmEvent()
+      // 默认创建事件（但也要检查是否是查询问题）
+      if (parseResult.value.title && 
+          (parseResult.value.title.includes('哪些') || 
+           parseResult.value.title.includes('有没有') ||
+           parseResult.value.title.includes('查询') ||
+           parseResult.value.title.includes('查找'))) {
+        // 如果是查询问题，转为搜索
+        await handleSearch()
+      } else {
+        await handleConfirmEvent()
+      }
     }
   } else {
     ElMessage.error(result.message || '解析失败')
@@ -233,6 +405,11 @@ const handleSearch = async () => {
       }
       
       searchResults.value = results
+      // 保存搜索结果
+      lastResult.value = {
+        type: 'search',
+        data: { count: results.length }
+      }
       
       if (results.length === 0) {
         ElMessage.info('未找到匹配的结果')
@@ -382,6 +559,12 @@ const handleConfirmEvent = async () => {
     
     const result = await (window as any).electronAPI.event.save(eventData)
     if (result.success) {
+      // 保存创建结果用于展示
+      lastResult.value = {
+        type: 'eventCreated',
+        data: eventData
+      }
+      
       const source = parseResult.value.source
       if (source === 'offline' || source === 'offline-fallback') {
         ElMessage.success({
@@ -393,7 +576,9 @@ const handleConfirmEvent = async () => {
       }
       emit('event-created')
       emit('refresh')
-      handleClear()
+      // 不清空结果，保留展示
+      inputText.value = ''
+      parseResult.value = null
     } else {
       ElMessage.error(result.message || '创建失败')
     }
@@ -421,6 +606,12 @@ const handleConfirmTodo = async () => {
     
     const result = await (window as any).electronAPI.todo.save(todoData)
     if (result.success) {
+      // 保存创建结果用于展示
+      lastResult.value = {
+        type: 'todoCreated',
+        data: todoData
+      }
+      
       const source = parseResult.value.source
       if (source === 'offline' || source === 'offline-fallback') {
         ElMessage.success({
@@ -432,7 +623,9 @@ const handleConfirmTodo = async () => {
       }
       emit('todo-created')
       emit('refresh')
-      handleClear()
+      // 不清空结果，保留展示
+      inputText.value = ''
+      parseResult.value = null
     } else {
       ElMessage.error(result.message || '创建失败')
     }
@@ -453,6 +646,7 @@ const handleClear = () => {
   inputText.value = ''
   parseResult.value = null
   searchResults.value = []
+  lastResult.value = null
 }
 
 // 初始化时检查网络状态
@@ -586,6 +780,29 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.ai-response-content {
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+  line-height: 1.6;
+  color: #1e40af;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.created-result-content {
+  padding: 8px 0;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 </style>
 

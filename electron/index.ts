@@ -18,7 +18,7 @@ let sidebarWindow: typeof BrowserWindow | null
 async function initializeDatabase() {
   try {
     console.log('Initializing database manager...')
-    // 显式初始化数据库管理器
+    // 显式初始化工具
     await clientManager.initialize()
     console.log('Database manager initialized successfully')
   } catch (error) {
@@ -100,7 +100,7 @@ function createTray() {
       }
     },
   ] as any[])
-  tray.setToolTip('数据库管理器')
+  tray.setToolTip('工具')
   tray.setContextMenu(contextMenu)
   tray.on('click', () => mainWindow?.show())
 }
@@ -165,10 +165,10 @@ function toggleSidebar() {
 
 app.on('ready', async () => {
   try {
-    // 初始化 dbgate API 服务（在数据库管理器之前）
+    // 初始化 dbgate API 服务（在工具之前）
     await DbgateWindowService.initialize()
     
-    // 初始化数据库管理器
+    // 初始化工具
     await initializeDatabase()
 
     createWindow()

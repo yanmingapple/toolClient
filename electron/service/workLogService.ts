@@ -4,7 +4,6 @@ const { app } = require('electron');
 import { DatabaseClient } from '../dataService/database';
 import { SQLStatements } from '../dataService/sql';
 import { ServiceResult, ServiceResultFactory } from '../model/result/ServiceResult';
-import { AIService } from './aiService';
 
 /**
  * 任务完成信息
@@ -24,13 +23,12 @@ export interface TaskCompletionInfo {
 
 /**
  * 工作日志服务
- * 负责自动生成详细的工作日志
+ * 负责提取工作模式（不生成日志文件）
  */
 export class WorkLogService {
   private static instance: WorkLogService;
   private databaseClient: DatabaseClient | null = null;
   private memoryBasePath: string;
-  private aiService: AIService | null = null;
 
   private constructor() {
     const userDataPath = app.getPath('userData');
@@ -52,12 +50,6 @@ export class WorkLogService {
     this.databaseClient = client;
   }
 
-  /**
-   * 设置AI服务
-   */
-  public setAIService(aiService: AIService): void {
-    this.aiService = aiService;
-  }
 
   /**
    * 确保记忆目录结构存在
@@ -77,195 +69,18 @@ export class WorkLogService {
   }
 
   /**
-   * 生成任务完成日志
+   * 只提取工作模式，不生成日志文件
    */
-  public async generateTaskCompletionLog(
+  public async extractWorkPatternsOnly(
     completionInfo: TaskCompletionInfo
-  ): Promise<ServiceResult<string>> {
+  ): Promise<ServiceResult<void>> {
     try {
-      const logPath = this.getTodayLogPath();
-      const logContent = await this.buildCompletionLog(completionInfo);
-      
-      // 读取现有日志
-      let existingContent = '';
-      if (fs.existsSync(logPath)) {
-        existingContent = fs.readFileSync(logPath, 'utf-8');
-      } else {
-        const today = new Date().toISOString().split('T')[0];
-        existingContent = `# ${today} 工作日志\n\n`;
-      }
-
-      // 追加新日志
-      const newContent = existingContent + '\n' + logContent;
-      fs.writeFileSync(logPath, newContent, 'utf-8');
-
-      // 提取关键经验到工作模式文件
+      // 只提取关键经验到工作模式文件，不写入日志
       await this.extractWorkPatterns(completionInfo);
-
-      return ServiceResultFactory.success(logContent, '工作日志已生成');
+      return ServiceResultFactory.success(undefined, '工作模式已更新');
     } catch (error: any) {
-      console.error('生成工作日志失败:', error);
-      return ServiceResultFactory.error(`生成工作日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 构建完成日志内容
-   */
-  private async buildCompletionLog(info: TaskCompletionInfo): Promise<string> {
-    const actualMinutes = info.actualMinutes || this.calculateActualMinutes(info.createTime, info.completeTime);
-    const estimatedMinutes = info.estimatedMinutes || 60;
-    const efficiency = this.calculateEfficiency(actualMinutes, estimatedMinutes);
-    const interruptionCount = info.interruptionCount || 0;
-
-    let log = `## ✅ ${info.title}\n\n`;
-    log += `### 任务信息\n`;
-    log += `- **创建时间**: ${this.formatDateTime(info.createTime)}\n`;
-    log += `- **完成时间**: ${this.formatDateTime(info.completeTime)}\n`;
-    log += `- **实际耗时**: ${this.formatDuration(actualMinutes)}\n`;
-    log += `- **预计耗时**: ${this.formatDuration(estimatedMinutes)}\n`;
-    log += `- **打断次数**: ${interruptionCount}\n`;
-    log += `- **效率评分**: ${efficiency}/100\n\n`;
-
-    if (info.description) {
-      log += `### 工作内容\n`;
-      log += `${info.description}\n\n`;
-    }
-
-    // AI生成洞察
-    const insights = await this.generateAIInsights(info, actualMinutes, estimatedMinutes, efficiency);
-    if (insights) {
-      log += `### 💡 AI洞察\n`;
-      insights.forEach(insight => {
-        log += `- ${insight}\n`;
-      });
-      log += '\n';
-    }
-
-    // 如果有打断，记录打断情况
-    if (interruptionCount > 0) {
-      log += `### ⚠️ 打断情况\n`;
-      log += `- 共被打断 ${interruptionCount} 次\n`;
-      log += `- 建议：重要任务预留更多缓冲时间\n\n`;
-    }
-
-    return log;
-  }
-
-  /**
-   * 生成AI洞察
-   */
-  private async generateAIInsights(
-    info: TaskCompletionInfo,
-    actualMinutes: number,
-    estimatedMinutes: number,
-    efficiency: number
-  ): Promise<string[] | null> {
-    if (!this.aiService) {
-      return null;
-    }
-
-    try {
-      // 获取历史数据
-      const historicalData = await this.getHistoricalTaskData(info.type);
-      
-      const prompt = `分析以下任务完成情况，生成3-5条洞察建议：
-
-任务信息：
-- 标题：${info.title}
-- 类型：${info.type}
-- 实际耗时：${actualMinutes}分钟
-- 预计耗时：${estimatedMinutes}分钟
-- 效率评分：${efficiency}/100
-${info.interruptionCount ? `- 打断次数：${info.interruptionCount}` : ''}
-
-历史数据：
-${historicalData ? JSON.stringify(historicalData, null, 2) : '无历史数据'}
-
-请生成简洁的洞察建议，每条一行，用中文。`;
-
-      const provider = await this.aiService.getCurrentProvider();
-      if (!provider) {
-        // 没有AI配置，使用规则引擎生成基础洞察
-        return this.generateBasicInsights(actualMinutes, estimatedMinutes, efficiency);
-      }
-
-      const response = await this.aiService.callAI(prompt, provider);
-      const insights = this.parseAIInsights(response);
-      return insights;
-    } catch (error) {
-      console.error('生成AI洞察失败:', error);
-      return this.generateBasicInsights(actualMinutes, estimatedMinutes, efficiency);
-    }
-  }
-
-  /**
-   * 解析AI洞察
-   */
-  private parseAIInsights(response: string): string[] {
-    // 尝试解析JSON格式
-    try {
-      const json = JSON.parse(response);
-      if (Array.isArray(json.insights)) {
-        return json.insights;
-      }
-    } catch {
-      // 不是JSON，尝试按行分割
-    }
-
-    // 按行分割，过滤空行
-    const lines = response.split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('#') && !line.startsWith('```'))
-      .slice(0, 5); // 最多5条
-
-    return lines;
-  }
-
-  /**
-   * 生成基础洞察（无AI时使用）
-   */
-  private generateBasicInsights(
-    actualMinutes: number,
-    estimatedMinutes: number,
-    efficiency: number
-  ): string[] {
-    const insights: string[] = [];
-
-    if (actualMinutes > estimatedMinutes * 1.2) {
-      insights.push(`实际耗时比预计多${Math.round((actualMinutes / estimatedMinutes - 1) * 100)}%，建议下次类似任务预留更多时间`);
-    } else if (actualMinutes < estimatedMinutes * 0.8) {
-      insights.push(`实际耗时比预计少${Math.round((1 - actualMinutes / estimatedMinutes) * 100)}%，时间估算可以更准确`);
-    }
-
-    if (efficiency >= 85) {
-      insights.push(`效率评分较高（${efficiency}分），这个时间段适合处理此类任务`);
-    } else if (efficiency < 70) {
-      insights.push(`效率评分较低（${efficiency}分），建议分析原因并优化工作方式`);
-    }
-
-    return insights;
-  }
-
-  /**
-   * 获取历史任务数据
-   */
-  private async getHistoricalTaskData(taskType: string): Promise<any> {
-    if (!this.databaseClient) {
-      return null;
-    }
-
-    try {
-      // 查询最近30天同类型任务
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      // 这里可以查询events表获取历史数据
-      // 简化实现，返回空
-      return null;
-    } catch (error) {
-      console.error('获取历史数据失败:', error);
-      return null;
+      console.error('提取工作模式失败:', error);
+      return ServiceResultFactory.error(`提取工作模式失败: ${error.message}`);
     }
   }
 
@@ -558,42 +373,9 @@ ${historicalData ? JSON.stringify(historicalData, null, 2) : '无历史数据'}
     return 60; // 严重超时
   }
 
-  /**
-   * 格式化日期时间
-   */
-  private formatDateTime(isoString: string): string {
-    const date = new Date(isoString);
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
 
   /**
-   * 格式化时长
-   */
-  private formatDuration(minutes: number): string {
-    if (minutes < 60) {
-      return `${minutes}分钟`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`;
-  }
-
-  /**
-   * 获取今日日志路径
-   */
-  private getTodayLogPath(): string {
-    const today = new Date().toISOString().split('T')[0];
-    return path.join(this.memoryBasePath, 'daily', `${today}.md`);
-  }
-
-  /**
-   * 获取指定日期的日志路径
+   * 获取指定日期的日志路径（只读，用于总结上下文）
    */
   private getLogPath(date: string): string {
     return path.join(this.memoryBasePath, 'daily', `${date}.md`);
@@ -617,93 +399,7 @@ ${historicalData ? JSON.stringify(historicalData, null, 2) : '无历史数据'}
     }
   }
 
-  /**
-   * 保存日志
-   */
-  public async saveLog(date: string, content: string): Promise<ServiceResult<void>> {
-    try {
-      const logPath = this.getLogPath(date);
-      fs.writeFileSync(logPath, content, 'utf-8');
-      return ServiceResultFactory.success(undefined, '日志保存成功');
-    } catch (error: any) {
-      console.error('保存日志失败:', error);
-      return ServiceResultFactory.error(`保存日志失败: ${error.message}`);
-    }
-  }
 
-  /**
-   * AI生成日志
-   */
-  public async generateLog(date: string): Promise<ServiceResult<string>> {
-    try {
-      if (!this.databaseClient) {
-        return ServiceResultFactory.error('数据库未初始化');
-      }
-
-      // 获取该日期的事件
-      const events = await this.databaseClient.execute(
-        'SELECT * FROM events WHERE date = ?',
-        [date]
-      ) as any[];
-
-      if (events.length === 0) {
-        return ServiceResultFactory.error('该日期没有事件');
-      }
-
-      // 使用AI生成日志内容
-      if (this.aiService) {
-        const provider = await this.aiService.getCurrentProvider();
-        if (provider) {
-          const prompt = `请为${date}的工作生成一份详细的工作日志，包括：
-1. 今日概览
-2. 完成的任务
-3. 遇到的问题
-4. 学到的经验
-5. 明日计划
-
-事件列表：
-${JSON.stringify(events, null, 2)}
-
-请用Markdown格式生成，要求详细且有条理。`;
-
-          const result = await this.aiService.callAI(prompt, provider);
-          return ServiceResultFactory.success(result);
-        }
-      }
-      
-      // 无AI时生成基础日志
-      let log = `# ${date} 工作日志\n\n`;
-      log += `## 📊 今日概览\n\n`;
-      log += `- 完成任务: ${events.length}\n\n`;
-      log += `## ✅ 完成任务\n\n`;
-      events.forEach(event => {
-        log += `### ${event.title}\n`;
-        log += `- 类型: ${event.type}\n`;
-        log += `- 时间: ${event.time}\n\n`;
-      });
-      return ServiceResultFactory.success(log);
-    } catch (error: any) {
-      console.error('生成日志失败:', error);
-      return ServiceResultFactory.error(`生成日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 导出日志
-   */
-  public async exportLog(date: string): Promise<ServiceResult<string>> {
-    try {
-      const logPath = this.getLogPath(date);
-      if (!fs.existsSync(logPath)) {
-        return ServiceResultFactory.error('日志文件不存在');
-      }
-      // 返回文件路径，由前端处理下载
-      return ServiceResultFactory.success(logPath);
-    } catch (error: any) {
-      console.error('导出日志失败:', error);
-      return ServiceResultFactory.error(`导出日志失败: ${error.message}`);
-    }
-  }
 
   /**
    * 获取今日统计

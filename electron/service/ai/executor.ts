@@ -26,6 +26,9 @@ export class Executor {
    * 执行任务计划
    */
   async executePlan(plan: TaskPlan): Promise<TaskPlan> {
+    // 执行前预检查
+    this.preExecuteValidation(plan);
+    
     const context: ExecutionContext = {
       plan: plan,
       currentStepIndex: 0,
@@ -244,6 +247,59 @@ export class Executor {
     }
     
     return parameters;
+  }
+
+  /**
+   * 执行前验证
+   */
+  private preExecuteValidation(plan: TaskPlan): void {
+    // 验证所有工具是否存在
+    for (const step of plan.steps) {
+      if (step.tool && step.tool !== 'null' && step.tool !== null) {
+        const tool = this.toolRegistry.getAllTools().find(t => t.name === step.tool);
+        if (!tool) {
+          throw new Error(`步骤 ${step.id} 使用了不存在的工具: ${step.tool}`);
+        }
+        
+        // 验证参数是否符合工具定义
+        this.validateStepParameters(step, tool);
+      }
+    }
+  }
+
+  /**
+   * 验证步骤参数
+   */
+  private validateStepParameters(step: TaskStep, tool: any): void {
+    const { parameters: stepParams } = step;
+    const { parameters: toolParams } = tool;
+    
+    if (!toolParams || !toolParams.properties) {
+      return;
+    }
+
+    const { properties, required = [] } = toolParams;
+    
+    // 检查必需参数（注意：这里只检查参数是否存在，不检查值，因为值可能来自变量引用）
+    for (const paramName of required) {
+      // 检查参数是否存在（可能是直接值或变量引用）
+      const hasParam = stepParams && (
+        stepParams[paramName] !== undefined || 
+        stepParams[this.snakeToCamel(paramName)] !== undefined ||
+        JSON.stringify(stepParams).includes(paramName)
+      );
+      
+      if (!hasParam) {
+        console.warn(`步骤 ${step.id} 可能缺少必需参数: ${paramName}（如果使用变量引用，请忽略此警告）`);
+      }
+    }
+  }
+
+  /**
+   * 将 snake_case 转换为 camelCase（用于参数名称匹配）
+   */
+  private snakeToCamel(str: string): string {
+    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
   }
 }
 

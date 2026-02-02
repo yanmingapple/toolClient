@@ -252,9 +252,55 @@ ${toolDescriptions}
         updatedAt: new Date().toISOString()
       };
 
+      // 验证计划有效性
+      this.validatePlan(plan);
+      
       return plan;
     } catch (error: any) {
       throw new Error(`Failed to parse plan: ${error.message}`);
+    }
+  }
+
+  /**
+   * 验证计划有效性
+   */
+  private validatePlan(plan: TaskPlan): void {
+    const toolNames = this.toolRegistry.getAllTools().map(t => t.name);
+    
+    for (const step of plan.steps) {
+      // 验证工具是否存在
+      if (step.tool && step.tool !== 'null' && step.tool !== null && !toolNames.includes(step.tool)) {
+        throw new Error(`步骤 ${step.id} 使用了不存在的工具: ${step.tool}`);
+      }
+      
+      // 验证依赖关系
+      for (const depId of step.dependencies) {
+        const depStep = plan.steps.find(s => s.id === depId);
+        if (!depStep) {
+          throw new Error(`步骤 ${step.id} 的依赖 ${depId} 不存在`);
+        }
+        if (depStep.order >= step.order) {
+          throw new Error(`步骤 ${step.id} 的依赖 ${depId} 顺序错误（依赖应该在当前步骤之前）`);
+        }
+      }
+      
+      // 验证步骤描述不为空
+      if (!step.description || step.description.trim().length === 0) {
+        throw new Error(`步骤 ${step.id} 缺少描述`);
+      }
+      
+      // 验证步骤ID格式
+      if (!step.id || !/^step_\d+$/.test(step.id)) {
+        console.warn(`步骤ID格式不规范: ${step.id}，建议使用 step_1, step_2 格式`);
+      }
+    }
+    
+    // 验证步骤顺序
+    const orders = plan.steps.map(s => s.order).sort((a, b) => a - b);
+    for (let i = 0; i < orders.length; i++) {
+      if (orders[i] !== i + 1) {
+        console.warn(`步骤顺序不连续，可能存在遗漏或重复`);
+      }
     }
   }
 }

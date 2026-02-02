@@ -2,18 +2,55 @@ import { DatabaseClient } from '../../dataService/database';
 import { ServiceResult } from '../../model/result/ServiceResult';
 
 /**
+ * 工具操作类型
+ */
+export type ToolOperationType = 
+  | 'query'      // 查询操作（只读，返回数据）
+  | 'create'     // 创建操作（写入数据）
+  | 'update'     // 更新操作（修改数据）
+  | 'delete'     // 删除操作（删除数据）
+  | 'compute'    // 计算操作（纯计算，不涉及数据）
+  | 'transform'; // 转换操作（数据转换）
+
+/**
+ * 工具结果类型
+ */
+export type ToolResultType = 
+  | 'event'      // 返回事件数据
+  | 'todo'       // 返回待办数据
+  | 'array'      // 返回数组
+  | 'object'     // 返回对象
+  | 'string'     // 返回字符串
+  | 'mixed';     // 混合类型
+
+/**
+ * 工具元数据
+ */
+export interface ToolMetadata {
+  operationType: ToolOperationType;  // 操作类型
+  resultType?: ToolResultType;       // 结果类型
+  resultEntityType?: 'event' | 'todo' | 'mixed' | 'none'; // 结果实体类型
+  autoSave?: boolean;                 // 是否自动保存结果
+  requiresConfirmation?: boolean;     // 是否需要用户确认
+  sideEffects?: string[];             // 副作用说明（如：'writes_to_database', 'logs_to_markdown'）
+  intent?: string[];                  // 可能对应的用户意图（如：['search', 'create']）
+}
+
+/**
  * 工具定义接口
  */
 export interface ToolDefinition {
   name: string;                    // 工具名称
   description: string;              // 工具描述（AI可见）
   category: 'database' | 'memory' | 'file' | 'event' | 'todo' | 'system'; // 工具分类
+  metadata?: ToolMetadata;          // 工具元数据（用于智能判断）
   parameters: {                    // 参数定义（JSON Schema格式）
     type: 'object';
     properties: Record<string, {
       type: string;
       description: string;
       required?: boolean;
+      format?: string;              // 格式验证（如 'date', 'time'）
     }>;
     required?: string[];
   };
@@ -126,8 +163,15 @@ export class ToolRegistry {
         console.log(`[ToolRegistry] 参数名称规范化:`, args, '->', normalizedArgs);
       }
       
+      // 验证参数类型和必需参数
+      this.validateToolParameters(tool, normalizedArgs);
+      
       console.log(`[ToolRegistry] 执行工具: ${name}`, normalizedArgs);
       const result = await tool.handler(normalizedArgs);
+      
+      // 验证返回结果格式
+      this.validateToolResult(tool, result);
+      
       console.log(`[ToolRegistry] 工具执行成功: ${name}`, typeof result === 'string' ? result.substring(0, 100) : (typeof result === 'object' ? JSON.stringify(result).substring(0, 100) : result));
       return result;
     } catch (error: any) {
@@ -135,6 +179,74 @@ export class ToolRegistry {
       console.error(`[ToolRegistry] 错误堆栈:`, error.stack);
       throw error;
     }
+  }
+
+  /**
+   * 验证工具参数
+   */
+  private validateToolParameters(tool: ToolDefinition, args: any): void {
+    const { parameters } = tool;
+    if (!parameters || !parameters.properties) {
+      return; // 无参数定义，跳过验证
+    }
+
+    const { properties, required = [] } = parameters;
+    
+    // 检查必需参数
+    for (const paramName of required) {
+      if (args[paramName] === undefined || args[paramName] === null) {
+        throw new Error(`工具 ${tool.name} 缺少必需参数: ${paramName}`);
+      }
+    }
+
+    // 验证参数类型和格式
+    for (const [paramName, paramValue] of Object.entries(args)) {
+      // 检查参数是否在定义中（支持 camelCase 和 snake_case）
+      const camelName = this.snakeToCamel(paramName);
+      const paramDef = properties[paramName] || properties[camelName];
+      
+      if (!paramDef && paramValue !== undefined && paramValue !== null) {
+        console.warn(`[ToolRegistry] 工具 ${tool.name} 使用了未定义的参数: ${paramName}`);
+        continue;
+      }
+
+      if (!paramDef) continue;
+
+      const expectedType = paramDef.type;
+      const actualType = typeof paramValue;
+      
+      // 类型检查
+      if (expectedType === 'string' && actualType !== 'string') {
+        throw new Error(`工具 ${tool.name} 参数 ${paramName} 类型错误：期望 string，实际 ${actualType}`);
+      }
+      if (expectedType === 'number' && actualType !== 'number') {
+        throw new Error(`工具 ${tool.name} 参数 ${paramName} 类型错误：期望 number，实际 ${actualType}`);
+      }
+      if (expectedType === 'boolean' && actualType !== 'boolean') {
+        throw new Error(`工具 ${tool.name} 参数 ${paramName} 类型错误：期望 boolean，实际 ${actualType}`);
+      }
+      
+      // 格式验证（如日期格式）
+      if (paramDef.format === 'date' && typeof paramValue === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(paramValue)) {
+        throw new Error(`工具 ${tool.name} 参数 ${paramName} 格式错误：期望 YYYY-MM-DD 格式，实际 ${paramValue}`);
+      }
+      if (paramDef.format === 'time' && typeof paramValue === 'string' && !/^\d{2}:\d{2}$/.test(paramValue)) {
+        throw new Error(`工具 ${tool.name} 参数 ${paramName} 格式错误：期望 HH:mm 格式，实际 ${paramValue}`);
+      }
+    }
+  }
+
+  /**
+   * 验证工具返回结果
+   */
+  private validateToolResult(tool: ToolDefinition, result: any): void {
+    // 检查结果是否为错误格式
+    if (result && typeof result === 'object' && result.success === false) {
+      throw new Error(`工具 ${tool.name} 返回错误: ${result.message || '未知错误'}`);
+    }
+    
+    // 可以添加更多结果格式验证
+    // 例如：检查返回的数据结构是否符合预期
   }
 
   /**
@@ -191,6 +303,15 @@ export class ToolRegistry {
       name: 'get_all_events',
       description: '获取所有事件数据，返回事件列表，包括id、title、type、date、time等字段',
       category: 'event',
+      metadata: {
+        operationType: 'query',
+        resultType: 'array',
+        resultEntityType: 'event',
+        autoSave: false,
+        requiresConfirmation: false,
+        sideEffects: [],
+        intent: ['search', 'query']
+      },
       parameters: {
         type: 'object',
         properties: {}
@@ -211,6 +332,15 @@ export class ToolRegistry {
       name: 'get_events_by_date',
       description: '根据日期获取事件列表，日期格式：YYYY-MM-DD',
       category: 'event',
+      metadata: {
+        operationType: 'query',
+        resultType: 'array',
+        resultEntityType: 'event',
+        autoSave: false,
+        requiresConfirmation: false,
+        sideEffects: [],
+        intent: ['search', 'query']
+      },
       parameters: {
         type: 'object',
         properties: {
@@ -249,6 +379,15 @@ export class ToolRegistry {
       name: 'get_all_todos',
       description: '获取所有代办事项数据，返回代办列表，包括id、text、date、done等字段',
       category: 'todo',
+      metadata: {
+        operationType: 'query',
+        resultType: 'array',
+        resultEntityType: 'todo',
+        autoSave: false,
+        requiresConfirmation: false,
+        sideEffects: [],
+        intent: ['search', 'query']
+      },
       parameters: {
         type: 'object',
         properties: {}
@@ -316,7 +455,8 @@ export class ToolRegistry {
       handler: async () => {
         const { MemoryService } = await import('../memoryService');
         const service = MemoryService.getInstance();
-        const result = await service.readTodayLog();
+        const today = new Date().toISOString().split('T')[0];
+        const result = await service.readLogByDate(today);
         if (result.success) {
           return result.data || '';
         }
@@ -466,8 +606,17 @@ export class ToolRegistry {
     // 创建事件
     this.registerTool({
       name: 'create_event',
-      description: '创建新事件，自动生成ID和时间戳',
+      description: '创建新事件，自动生成ID和时间戳，自动保存到数据库和Markdown日志',
       category: 'event',
+      metadata: {
+        operationType: 'create',
+        resultType: 'object',
+        resultEntityType: 'event',
+        autoSave: true,
+        requiresConfirmation: false,
+        sideEffects: ['writes_to_database', 'logs_to_markdown'],
+        intent: ['create', 'add']
+      },
       parameters: {
         type: 'object',
         properties: {
@@ -545,6 +694,15 @@ export class ToolRegistry {
       name: 'delete_event',
       description: '删除事件',
       category: 'event',
+      metadata: {
+        operationType: 'delete',
+        resultType: 'object',
+        resultEntityType: 'event',
+        autoSave: false,
+        requiresConfirmation: true,
+        sideEffects: ['writes_to_database', 'logs_to_markdown'],
+        intent: ['delete', 'remove']
+      },
       parameters: {
         type: 'object',
         properties: {
@@ -566,8 +724,17 @@ export class ToolRegistry {
     // 创建代办
     this.registerTool({
       name: 'create_todo',
-      description: '创建新代办事项，自动生成ID和时间戳',
+      description: '创建新代办事项，自动生成ID和时间戳，自动保存到数据库和Markdown日志',
       category: 'todo',
+      metadata: {
+        operationType: 'create',
+        resultType: 'object',
+        resultEntityType: 'todo',
+        autoSave: true,
+        requiresConfirmation: false,
+        sideEffects: ['writes_to_database', 'logs_to_markdown'],
+        intent: ['create', 'add']
+      },
       parameters: {
         type: 'object',
         properties: {
@@ -600,6 +767,15 @@ export class ToolRegistry {
       name: 'update_todo',
       description: '更新代办事项（可以修改内容、日期、完成状态）',
       category: 'todo',
+      metadata: {
+        operationType: 'update',
+        resultType: 'object',
+        resultEntityType: 'todo',
+        autoSave: true,
+        requiresConfirmation: false,
+        sideEffects: ['writes_to_database', 'logs_to_markdown'],
+        intent: ['update', 'modify']
+      },
       parameters: {
         type: 'object',
         properties: {
@@ -787,6 +963,60 @@ export class ToolRegistry {
         const formattedDate = `${year}-${month}-${day}`;
         console.log(`[calculate_date_offset] 格式化结果: ${formattedDate}`);
         return formattedDate;
+      }
+    });
+
+    // 获取指定月份的起始日期和结束日期
+    this.registerTool({
+      name: 'get_month_date_range',
+      description: '获取指定月份的起始日期和结束日期，返回对象包含 startDate 和 endDate（格式：YYYY-MM-DD）',
+      category: 'system',
+      parameters: {
+        type: 'object',
+        properties: {
+          year: {
+            type: 'number',
+            description: '年份，例如：2026。如果不提供，使用当前年份'
+          },
+          month: {
+            type: 'number',
+            description: '月份，1-12。如果不提供，使用当前月份'
+          }
+        },
+        required: []
+      },
+      handler: async (args: { year?: number; month?: number }) => {
+        const now = new Date();
+        const year = args.year || now.getFullYear();
+        const month = args.month || (now.getMonth() + 1);
+        
+        // 验证月份范围
+        if (month < 1 || month > 12) {
+          throw new Error(`Invalid month: ${month}. Month must be between 1 and 12.`);
+        }
+        
+        // 计算月份的第一天
+        const startDate = new Date(year, month - 1, 1);
+        // 计算月份的最后一天（下个月的第一天减1天）
+        const endDate = new Date(year, month, 0);
+        
+        // 格式化日期
+        const formatDate = (date: Date): string => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        };
+        
+        const result = {
+          startDate: formatDate(startDate),
+          endDate: formatDate(endDate),
+          year: year,
+          month: month
+        };
+        
+        console.log(`[get_month_date_range] ${year}年${month}月: ${result.startDate} 至 ${result.endDate}`);
+        return result;
       }
     });
   }

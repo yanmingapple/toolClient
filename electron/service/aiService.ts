@@ -29,6 +29,7 @@ export interface NaturalLanguageParseResult {
   description?: string;
   tags?: string[]; // 标签数组
   text?: string; // 代办内容
+  aiResponse?: string; // AI 的直接回答（当不需要工具时，如"明天几号"）
   searchCriteria?: { // 搜索条件（仅当intent为search时，离线模式使用）
     keywords: string[]; // 关键词数组
     dateRange: { start: string | null; end: string | null }; // 日期范围
@@ -42,6 +43,9 @@ export interface NaturalLanguageParseResult {
   };
   confidence: number; // 0-1，解析置信度
   source?: 'online'; // 解析来源（仅在线模式）
+  autoSaved?: boolean; // 是否已自动保存
+  saveError?: string; // 保存错误信息
+  plan?: any; // 计划信息
 }
 
 /**
@@ -932,8 +936,116 @@ ${memoryContext ? `\n## 用户记忆和习惯\n${memoryContext}` : ''}
   }
 
   /**
+   * 智能判断是否需要调用本地工具
+   * 这是一个通用的 AI 框架方法，让 AI 自己判断是否需要工具
+   * 返回对象包含判断结果和可能的直接回答
+   */
+  private async needsLocalTools(text: string, context?: any): Promise<{
+    needsTools: boolean;
+    directAnswer?: string; // 如果不需要工具，AI 可能已经给出了答案
+  }> {
+    try {
+      const provider = await this.getCurrentProvider();
+      if (!provider) {
+        // 没有 AI 配置，默认需要工具
+        return { needsTools: true };
+      }
+
+      // 获取可用工具列表（用于 AI 判断）
+      const toolRegistry = await this.getToolRegistry();
+      const availableTools = toolRegistry.getToolsForAI();
+      const toolNames = availableTools.map((t: any) => t.function?.name || t.name).filter(Boolean).join(', ');
+
+      // 获取当前上下文信息（日期等）
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const currentDate = `${year}-${month}-${day}`;
+      const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
+
+      // 构建通用的判断提示词（不写死具体问题类型）
+      const systemPrompt = `你是一个智能助手，需要判断用户的问题是否需要调用本地工具。
+
+**可用工具**：${toolNames || '无'}
+
+**当前上下文**：
+- 当前日期：${currentDate}（${weekday}）
+
+**判断原则**：
+1. 如果问题只需要你的知识、计算能力或推理能力就能回答，不需要工具
+2. 如果问题需要访问本地数据（数据库、文件、用户数据等）或执行本地操作（创建、更新、删除数据等），需要工具
+3. 如果问题涉及用户的具体数据、事件、待办、文件等，需要工具
+
+**输出格式**（JSON）：
+{
+  "needsTools": true/false,
+  "directAnswer": "如果不需要工具，直接给出答案；如果需要工具，留空"
+}`;
+
+      const userMessage = `用户问题："${text}"
+
+请判断是否需要调用本地工具，并按照输出格式返回 JSON。`;
+
+      // 调用 AI 判断
+      let response: string;
+      if (provider.provider === 'openai') {
+        response = await this.callOpenAIWithSystemPrompt(systemPrompt, userMessage, provider);
+      } else if (provider.provider === 'deepseek') {
+        response = await this.callDeepSeekWithSystemPrompt(systemPrompt, userMessage, provider);
+      } else {
+        // 默认需要工具
+        return { needsTools: true };
+      }
+
+      // 尝试解析 JSON 响应
+      try {
+        // 提取 JSON 部分（可能包含 markdown 代码块）
+        let jsonStr = response.trim();
+        const jsonMatch = jsonStr.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1];
+        } else {
+          // 尝试直接查找 JSON 对象
+          const braceMatch = jsonStr.match(/\{[\s\S]*\}/);
+          if (braceMatch) {
+            jsonStr = braceMatch[0];
+          }
+        }
+
+        const result = JSON.parse(jsonStr);
+        const needsTools = result.needsTools === true || result.needsTools === 'true';
+        const directAnswer = result.directAnswer || undefined;
+
+        console.log(`[needsLocalTools] 问题："${text}" -> ${needsTools ? '需要' : '不需要'}本地工具${directAnswer ? `，直接回答：${directAnswer.substring(0, 50)}...` : ''}`);
+        
+        return {
+          needsTools,
+          directAnswer
+        };
+      } catch (parseError) {
+        // JSON 解析失败，尝试从文本中提取
+        const lowerResponse = response.toLowerCase();
+        const needsTools = lowerResponse.includes('"needsTools": true') || 
+                          lowerResponse.includes('needsTools: true') ||
+                          lowerResponse.includes('需要工具') ||
+                          lowerResponse.includes('yes');
+        
+        console.log(`[needsLocalTools] JSON 解析失败，使用文本判断："${text}" -> ${needsTools ? '需要' : '不需要'}本地工具`);
+        return { needsTools };
+      }
+
+    } catch (error: any) {
+      console.error('判断是否需要本地工具失败，默认需要工具:', error);
+      // 出错时默认需要工具，保证功能可用
+      return { needsTools: true };
+    }
+  }
+
+  /**
    * 智能解析自然语言（使用 Plan-and-Solve 架构）
-   * 先规划后执行，支持复杂任务分解
+   * 先判断是否需要本地工具，如果不需要，直接返回 AI 回答
+   * 如果需要，再使用 Plan-and-Solve 架构执行
    */
   public async parseNaturalLanguageWithPlanAndSolve(
     text: string,
@@ -942,6 +1054,77 @@ ${memoryContext ? `\n## 用户记忆和习惯\n${memoryContext}` : ''}
     ipcSender?: (channel: string, data: any) => void
   ): Promise<ServiceResult<NaturalLanguageParseResult>> {
     try {
+      // 1. 先判断是否需要本地工具（AI 框架自动判断）
+      const toolCheck = await this.needsLocalTools(text, context);
+      
+      if (!toolCheck.needsTools) {
+        // 不需要本地工具，使用 AI 的直接回答（如果已提供）或让 AI 回答
+        console.log('[parseNaturalLanguageWithPlanAndSolve] 不需要本地工具，直接返回 AI 回答');
+        const provider = await this.getCurrentProvider();
+        if (!provider) {
+          return {
+            success: false,
+            message: 'AI服务未配置'
+          };
+        }
+
+        // 如果判断过程中 AI 已经给出了直接回答，使用它
+        if (toolCheck.directAnswer) {
+          return {
+            success: true,
+            data: {
+              intent: 'search',
+              searchResults: {
+                events: [],
+                todos: []
+              },
+              aiResponse: toolCheck.directAnswer,
+              confidence: 0.9,
+              source: 'online'
+            }
+          };
+        }
+
+        // 否则，让 AI 直接回答（提供上下文信息）
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const currentDate = `${year}-${month}-${day}`;
+        const weekday = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][now.getDay()];
+
+        const systemPrompt = `你是一个智能助手。当前日期是 ${currentDate}（${weekday}）。请直接回答用户的问题，不需要调用任何工具。`;
+        const userMessage = text;
+
+        let response: string;
+        if (provider.provider === 'openai') {
+          response = await this.callOpenAIWithSystemPrompt(systemPrompt, userMessage, provider, undefined, sessionId);
+        } else if (provider.provider === 'deepseek') {
+          response = await this.callDeepSeekWithSystemPrompt(systemPrompt, userMessage, provider, undefined, sessionId);
+        } else {
+          return {
+            success: false,
+            message: '不支持的 AI 提供商'
+          };
+        }
+
+        // 返回 AI 的直接回答
+        return {
+          success: true,
+          data: {
+            intent: 'search',
+            searchResults: {
+              events: [],
+              todos: []
+            },
+            aiResponse: response,
+            confidence: 0.9,
+            source: 'online'
+          }
+        };
+      }
+
+      // 2. 需要本地工具，使用 Plan-and-Solve 架构
       const toolRegistry = await this.getToolRegistry();
       const { PlanAndSolveAgent } = await import('./ai/planAndSolveAgent');
       
@@ -949,7 +1132,7 @@ ${memoryContext ? `\n## 用户记忆和习惯\n${memoryContext}` : ''}
       const plan = await agent.execute(text, context);
       
       // 将计划结果转换为 NaturalLanguageParseResult
-      return this.convertPlanToResult(plan);
+      return await this.convertPlanToResult(plan);
       
     } catch (error: any) {
       console.error('Plan-and-Solve 执行失败，降级到工具调用模式:', error);
@@ -1111,140 +1294,656 @@ ${toolDescriptions}
   /**
    * 将任务计划转换为 NaturalLanguageParseResult
    */
-  private convertPlanToResult(plan: any): ServiceResult<NaturalLanguageParseResult> {
+  private async convertPlanToResult(plan: any): Promise<ServiceResult<NaturalLanguageParseResult>> {
     try {
-      // 查找所有成功执行的步骤，提取结果
-      const successSteps = plan.steps
-        .filter((s: any) => s.status === 'success')
-        .sort((a: any, b: any) => b.order - a.order);
-
-      // 收集所有步骤中的事件和待办数据
-      let allEvents: any[] = [];
-      let allTodos: any[] = [];
-
-      for (const step of successSteps) {
-        if (step.result) {
-          let result = step.result;
-          
-          // 如果结果是字符串，尝试解析为 JSON
-          if (typeof result === 'string') {
-            try {
-              result = JSON.parse(result);
-            } catch {
-              // 如果不是 JSON，保持原样
-            }
-          }
-          
-          // 如果结果是数组，检查数组元素类型
-          if (Array.isArray(result)) {
-            result.forEach((item: any) => {
-              // 如果 item 是字符串，尝试解析
-              if (typeof item === 'string') {
-                try {
-                  item = JSON.parse(item);
-                } catch {
-                  // 解析失败，跳过
-                  return;
-                }
-              }
-              
-              // 判断是事件还是待办：事件有 title 和 type，待办有 text
-              if (item && item.title && (item.type || item.time)) {
-                // 这是事件
-                allEvents.push(item);
-              } else if (item && (item.text || (item.date && !item.time && !item.title))) {
-                // 这是待办
-                allTodos.push(item);
-              }
-            });
-          } 
-          // 如果结果包含 matchedEvents 或 matchedTodos
-          else if (result && (result.matchedEvents || result.matchedTodos)) {
-            if (result.matchedEvents && Array.isArray(result.matchedEvents)) {
-              allEvents.push(...result.matchedEvents);
-            }
-            if (result.matchedTodos && Array.isArray(result.matchedTodos)) {
-              allTodos.push(...result.matchedTodos);
-            }
-          }
-        }
-      }
+      // 获取工具注册表，用于分析工具元数据
+      const toolRegistry = await this.getToolRegistry();
+      const allTools = toolRegistry.getAllTools();
+      const toolMap = new Map<string, any>(allTools.map((t: any) => [t.name, t]));
       
-      // 调试日志：显示收集到的数据
-      if (allEvents.length > 0 || allTodos.length > 0) {
-        console.log(`[convertPlanToResult] 收集到搜索结果: events=${allEvents.length}, todos=${allTodos.length}`);
-      }
-
-      // 如果有收集到事件或待办，返回搜索结果
-      if (allEvents.length > 0 || allTodos.length > 0) {
-        return {
-          success: true,
-          data: {
-            intent: 'search',
-            searchResults: {
-              events: allEvents,
-              todos: allTodos
-            },
-            confidence: 0.9,
-            source: 'online'
-          }
-        };
-      }
-
-      // 如果没有收集到数据，检查最后一步的结果（用于非搜索场景）
-      const lastSuccessStep = successSteps[0];
-      if (lastSuccessStep && lastSuccessStep.result) {
-        const result = lastSuccessStep.result;
-        
-        // 如果结果是事件或代办，直接返回
-        if (result.event || result.title) {
-          return {
-            success: true,
-            data: {
-              intent: 'event',
-              title: result.title || result.event?.title,
-              date: result.date || result.event?.date,
-              time: result.time || result.event?.time,
-              type: result.type || result.event?.type,
-              reminder: result.reminder || result.event?.reminder || 30,
-              description: result.description || result.event?.description,
-              confidence: 0.9,
-              source: 'online'
-            }
-          };
-        }
-
-        if (result.todo || result.text) {
-          return {
-            success: true,
-            data: {
-              intent: 'todo',
-              text: result.text || result.todo?.text,
-              date: result.date || result.todo?.date,
-              confidence: 0.9,
-              source: 'online'
-            }
-          };
-        }
-      }
-
-      // 默认返回成功，但需要用户进一步处理
-      return {
-        success: true,
-        data: {
-          intent: 'event',
-          title: plan.goal,
-          confidence: 0.8,
-          source: 'online',
-          // 附加计划信息
-          plan: plan
-        } as any
-      };
+      // 基于工具元数据分析计划意图
+      const planAnalysis = this.analyzePlanByToolMetadata(plan, toolMap);
+      
+      // 收集执行结果
+      const executionResults = this.collectExecutionResults(plan);
+      
+      // 基于工具元数据和执行结果，动态决定返回格式
+      return await this.processConvertPlanToResult(plan, executionResults, planAnalysis);
     } catch (error: any) {
       return {
         success: false,
         message: `转换计划结果失败: ${error.message}`
       };
+    }
+  }
+
+  /**
+   * 基于工具元数据分析计划意图
+   */
+  private analyzePlanByToolMetadata(plan: any, toolMap: Map<string, any>): {
+    primaryIntent: string;
+    operationTypes: string[];
+    resultEntityTypes: Set<string>;
+    hasAutoSave: boolean;
+    requiresConfirmation: boolean;
+  } {
+    const operationTypes = new Set<string>();
+    const resultEntityTypes = new Set<string>();
+    const intents = new Set<string>();
+    let hasAutoSave = false;
+    let requiresConfirmation = false;
+    
+    for (const step of plan.steps) {
+      if (step.tool && toolMap.has(step.tool)) {
+        const tool = toolMap.get(step.tool)!;
+        const metadata = tool.metadata;
+        
+        if (metadata) {
+          if (metadata.operationType) {
+            operationTypes.add(metadata.operationType);
+          }
+          if (metadata.resultEntityType) {
+            resultEntityTypes.add(metadata.resultEntityType);
+          }
+          if (metadata.autoSave) {
+            hasAutoSave = true;
+          }
+          if (metadata.requiresConfirmation) {
+            requiresConfirmation = true;
+          }
+          if (metadata.intent) {
+            metadata.intent.forEach((i: string) => intents.add(i));
+          }
+        }
+      }
+    }
+    
+    // 根据操作类型推断主要意图
+    let primaryIntent = 'event'; // 默认
+    if (operationTypes.has('query')) {
+      primaryIntent = 'search';
+    } else if (operationTypes.has('create')) {
+      if (resultEntityTypes.has('todo')) {
+        primaryIntent = 'todo';
+      } else if (resultEntityTypes.has('event')) {
+        primaryIntent = 'event';
+      }
+    } else if (intents.size > 0) {
+      // 如果有明确的意图声明，使用第一个
+      primaryIntent = Array.from(intents)[0];
+    }
+    
+    return {
+      primaryIntent,
+      operationTypes: Array.from(operationTypes),
+      resultEntityTypes,
+      hasAutoSave,
+      requiresConfirmation
+    };
+  }
+
+  /**
+   * 收集执行结果
+   */
+  private collectExecutionResults(plan: any): {
+    events: any[];
+    todos: any[];
+    otherResults: any[];
+  } {
+    const events: any[] = [];
+    const todos: any[] = [];
+    const otherResults: any[] = [];
+    
+    // 查找所有成功执行的步骤，提取结果
+    const successSteps = plan.steps
+      .filter((s: any) => s.status === 'success')
+      .sort((a: any, b: any) => b.order - a.order);
+
+    for (const step of successSteps) {
+      if (step.result) {
+        let result = step.result;
+        
+        // 如果结果是字符串，尝试解析为 JSON
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result);
+          } catch {
+            // 如果不是 JSON，保持原样
+          }
+        }
+        
+        // 如果结果是数组，检查数组元素类型
+        if (Array.isArray(result)) {
+          result.forEach((item: any) => {
+            // 如果 item 是字符串，尝试解析
+            if (typeof item === 'string') {
+              try {
+                item = JSON.parse(item);
+              } catch {
+                // 解析失败，跳过
+                return;
+              }
+            }
+            
+            // 判断是事件还是待办：事件有 title 和 type，待办有 text
+            // 注意：必须确保 item 有 id 字段，避免将查询问题本身误判为数据
+            if (item && item.id) {
+              if (item.title && (item.type || item.time)) {
+                events.push(item);
+              } else if (item.text || (item.date && !item.time && !item.title)) {
+                todos.push(item);
+              } else {
+                otherResults.push(item);
+              }
+            }
+          });
+        } 
+        // 如果结果包含 matchedEvents 或 matchedTodos
+        else if (result && typeof result === 'object') {
+          if (result.matchedEvents && Array.isArray(result.matchedEvents)) {
+            events.push(...result.matchedEvents);
+          }
+          if (result.matchedTodos && Array.isArray(result.matchedTodos)) {
+            todos.push(...result.matchedTodos);
+          }
+          // 如果结果本身是事件或待办
+          if (result.id) {
+            if (result.title && (result.type || result.time)) {
+              events.push(result);
+            } else if (result.text) {
+              todos.push(result);
+            } else if (result.event) {
+              events.push(result.event);
+            } else if (result.todo) {
+              todos.push(result.todo);
+            } else {
+              otherResults.push(result);
+            }
+          }
+        }
+      }
+    }
+    
+    // 调试日志：显示收集到的数据
+    if (events.length > 0 || todos.length > 0) {
+      console.log(`[convertPlanToResult] 收集到结果: events=${events.length}, todos=${todos.length}`);
+    }
+    
+    return { events, todos, otherResults };
+  }
+
+  /**
+   * 将任务计划转换为 NaturalLanguageParseResult（处理逻辑部分）
+   */
+  private async processConvertPlanToResult(
+    plan: any,
+    executionResults: { events: any[]; todos: any[]; otherResults: any[] },
+    planAnalysis: { primaryIntent: string; operationTypes: string[]; resultEntityTypes: Set<string>; hasAutoSave: boolean; requiresConfirmation: boolean }
+  ): Promise<ServiceResult<NaturalLanguageParseResult>> {
+    const { events: allEvents, todos: allTodos } = executionResults;
+    const { primaryIntent, operationTypes } = planAnalysis;
+    
+    // 检查是否是查询操作
+    const hasQueryTool = operationTypes.includes('query');
+    const isQueryGoal = plan.goal && (plan.goal.includes('查询') || plan.goal.includes('搜索') || plan.goal.includes('查找'));
+
+    // 如果使用了查询工具或者是查询问题，且没有收集到数据，返回空搜索结果
+    if ((hasQueryTool || isQueryGoal) && allEvents.length === 0 && allTodos.length === 0) {
+      return {
+        success: true,
+        data: {
+          intent: 'search',
+          searchResults: {
+            events: [],
+            todos: []
+          },
+          confidence: 0.9,
+          source: 'online'
+        }
+      };
+    }
+
+    // 如果有收集到事件或待办，返回搜索结果
+    if (allEvents.length > 0 || allTodos.length > 0) {
+      // 验证收集到的数据一致性
+      this.validateSearchResults(allEvents, allTodos);
+      
+      return {
+        success: true,
+        data: {
+          intent: 'search',
+          searchResults: {
+            events: allEvents,
+            todos: allTodos
+          },
+          confidence: 0.9,
+          source: 'online'
+        }
+      };
+    }
+
+    // 如果没有收集到数据，检查最后一步的结果（用于非搜索场景）
+    const successSteps = plan.steps
+      .filter((s: any) => s.status === 'success')
+      .sort((a: any, b: any) => b.order - a.order);
+    const lastSuccessStep = successSteps[0];
+    if (lastSuccessStep && lastSuccessStep.result) {
+      const result = lastSuccessStep.result;
+      
+      // 如果结果是事件或代办，自动保存到数据库和Markdown（但必须确保不是查询问题）
+      if ((result.event || result.title) && !isQueryGoal) {
+        // 确保有 id 字段，避免将查询问题误判为事件
+        if (result.id || result.event?.id) {
+          // 自动保存事件
+          const eventData = {
+            id: result.id || result.event?.id || `event_${Date.now()}`,
+            title: result.title || result.event?.title,
+            type: result.type || result.event?.type || '其他',
+            date: result.date || result.event?.date || new Date().toISOString().split('T')[0],
+            time: result.time || result.event?.time || '09:00',
+            reminder: result.reminder || result.event?.reminder || 30,
+            createTime: new Date().toISOString()
+          };
+          
+          const saveResult = await this.autoSaveEvent(eventData);
+          if (saveResult.success) {
+            return {
+              success: true,
+              data: {
+                intent: 'event',
+                title: eventData.title,
+                date: eventData.date,
+                time: eventData.time,
+                type: eventData.type,
+                reminder: eventData.reminder,
+                description: result.description || result.event?.description,
+                confidence: 0.9,
+                source: 'online',
+                autoSaved: true // 标记为自动保存
+              }
+            };
+          } else {
+            // 保存失败，返回数据但不标记为已保存
+            return {
+              success: true,
+              data: {
+                intent: 'event',
+                title: eventData.title,
+                date: eventData.date,
+                time: eventData.time,
+                type: eventData.type,
+                reminder: eventData.reminder,
+                description: result.description || result.event?.description,
+                confidence: 0.9,
+                source: 'online',
+                autoSaved: false,
+                saveError: saveResult.message
+              }
+            };
+          }
+        }
+      }
+
+      // 如果是待办，自动保存到数据库和Markdown（必须确保有 id 字段，且不是查询问题）
+      if ((result.todo || result.text) && !isQueryGoal && (result.id || result.todo?.id)) {
+        // 自动保存待办
+        const todoData = {
+          id: result.id || result.todo?.id || `todo_${Date.now()}`,
+          text: result.text || result.todo?.text,
+          date: result.date || result.todo?.date || new Date().toISOString().split('T')[0],
+          done: false,
+          createTime: new Date().toISOString()
+        };
+        
+        const saveResult = await this.autoSaveTodo(todoData);
+        if (saveResult.success) {
+          return {
+            success: true,
+            data: {
+              intent: 'todo',
+              text: todoData.text,
+              date: todoData.date,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: true // 标记为自动保存
+            }
+          };
+        } else {
+          // 保存失败，返回数据但不标记为已保存
+          return {
+            success: true,
+            data: {
+              intent: 'todo',
+              text: todoData.text,
+              date: todoData.date,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: false,
+              saveError: saveResult.message
+            }
+          };
+        }
+      }
+    }
+
+    // 如果是查询问题但没有结果，返回空搜索结果
+    if (hasQueryTool || isQueryGoal) {
+      return {
+        success: true,
+        data: {
+          intent: 'search',
+          searchResults: {
+            events: [],
+            todos: []
+          },
+          confidence: 0.9,
+          source: 'online'
+        }
+      };
+    }
+
+    // 默认返回成功，但需要用户进一步处理（避免将查询问题保存为事件）
+    // 如果目标是查询问题，返回搜索意图
+    if (isQueryGoal) {
+      return {
+        success: true,
+        data: {
+          intent: 'search',
+          searchResults: {
+            events: [],
+            todos: []
+          },
+          confidence: 0.8,
+          source: 'online'
+        }
+      };
+    }
+      
+    return {
+      success: true,
+      data: {
+        intent: 'event',
+        title: plan.goal,
+        confidence: 0.8,
+        source: 'online',
+        // 附加计划信息
+        plan: plan
+      } as any
+    };
+  }
+
+  /**
+   * 基于分析结果构建返回数据
+   */
+  private async buildResultFromAnalysis(
+    analysis: {
+      primaryIntent: string;
+      operationTypes: string[];
+      resultEntityTypes: Set<string>;
+      hasAutoSave: boolean;
+      requiresConfirmation: boolean;
+    },
+    results: {
+      events: any[];
+      todos: any[];
+      otherResults: any[];
+    },
+    plan: any
+  ): Promise<ServiceResult<NaturalLanguageParseResult>> {
+    const { primaryIntent, operationTypes, resultEntityTypes, hasAutoSave } = analysis;
+    const { events, todos } = results;
+    
+    // 如果是查询操作，返回搜索结果
+    if (operationTypes.includes('query') || primaryIntent === 'search') {
+      this.validateSearchResults(events, todos);
+      return {
+        success: true,
+        data: {
+          intent: 'search',
+          searchResults: {
+            events,
+            todos
+          },
+          confidence: 0.9,
+          source: 'online'
+        }
+      };
+    }
+    
+    // 如果是创建操作，且工具声明了自动保存，则自动保存
+    if (operationTypes.includes('create') && hasAutoSave) {
+      // 处理事件创建
+      if (resultEntityTypes.has('event') && events.length > 0) {
+        const eventData = events[0];
+        // 确保数据完整
+        if (!eventData.id) {
+          eventData.id = `event_${Date.now()}`;
+        }
+        if (!eventData.createTime) {
+          eventData.createTime = new Date().toISOString();
+        }
+        
+        const saveResult = await this.autoSaveEvent(eventData);
+        if (saveResult.success) {
+          return {
+            success: true,
+            data: {
+              intent: 'event',
+              title: eventData.title,
+              date: eventData.date,
+              time: eventData.time,
+              type: eventData.type,
+              reminder: eventData.reminder,
+              description: eventData.description,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: true
+            }
+          };
+        } else {
+          return {
+            success: true,
+            data: {
+              intent: 'event',
+              title: eventData.title,
+              date: eventData.date,
+              time: eventData.time,
+              type: eventData.type,
+              reminder: eventData.reminder,
+              description: eventData.description,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: false,
+              saveError: saveResult.message
+            }
+          };
+        }
+      }
+      
+      // 处理待办创建
+      if (resultEntityTypes.has('todo') && todos.length > 0) {
+        const todoData = todos[0];
+        // 确保数据完整
+        if (!todoData.id) {
+          todoData.id = `todo_${Date.now()}`;
+        }
+        if (!todoData.createTime) {
+          todoData.createTime = new Date().toISOString();
+        }
+        if (todoData.done === undefined) {
+          todoData.done = false;
+        }
+        
+        const saveResult = await this.autoSaveTodo(todoData);
+        if (saveResult.success) {
+          return {
+            success: true,
+            data: {
+              intent: 'todo',
+              text: todoData.text,
+              date: todoData.date,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: true
+            }
+          };
+        } else {
+          return {
+            success: true,
+            data: {
+              intent: 'todo',
+              text: todoData.text,
+              date: todoData.date,
+              confidence: 0.9,
+              source: 'online',
+              autoSaved: false,
+              saveError: saveResult.message
+            }
+          };
+        }
+      }
+    }
+    
+    // 默认返回
+    return {
+      success: true,
+      data: {
+        intent: primaryIntent as any,
+        title: plan.goal,
+        confidence: 0.8,
+        source: 'online',
+        autoSaved: false
+      } as any
+    };
+  }
+
+  /**
+   * 自动保存事件到数据库和Markdown日志
+   */
+  private async autoSaveEvent(eventData: any): Promise<ServiceResult<void>> {
+    try {
+      const { EventService } = await import('./eventService');
+      const eventService = EventService.getInstance();
+      const result = await eventService.saveEvent(eventData);
+      
+      if (result.success) {
+        console.log(`[autoSaveEvent] 事件已自动保存: ${eventData.title}`);
+      } else {
+        console.error(`[autoSaveEvent] 事件保存失败: ${result.message}`);
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('[autoSaveEvent] 保存事件异常:', error);
+      return {
+        success: false,
+        message: error.message || '自动保存事件失败'
+      };
+    }
+  }
+
+  /**
+   * 自动保存待办到数据库和Markdown日志
+   */
+  private async autoSaveTodo(todoData: any): Promise<ServiceResult<void>> {
+    try {
+      const { EventService } = await import('./eventService');
+      const eventService = EventService.getInstance();
+      const result = await eventService.saveTodo(todoData);
+      
+      if (result.success) {
+        console.log(`[autoSaveTodo] 待办已自动保存: ${todoData.text}`);
+      } else {
+        console.error(`[autoSaveTodo] 待办保存失败: ${result.message}`);
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('[autoSaveTodo] 保存待办异常:', error);
+      return {
+        success: false,
+        message: error.message || '自动保存待办失败'
+      };
+    }
+  }
+
+  /**
+   * 验证搜索结果数据一致性
+   */
+  private validateSearchResults(events: any[], todos: any[]): void {
+    // 验证事件数据完整性
+    for (const event of events) {
+      if (!event.id || !event.title || !event.date) {
+        console.warn(`[convertPlanToResult] 事件数据不完整:`, {
+          id: event.id,
+          title: event.title,
+          date: event.date
+        });
+        // 尝试修复：如果缺少关键字段，标记为无效
+        if (!event.id || !event.title) {
+          const index = events.indexOf(event);
+          if (index > -1) {
+            events.splice(index, 1);
+            console.warn(`[convertPlanToResult] 已移除无效事件数据`);
+          }
+        }
+      }
+      
+      // 验证日期格式
+      if (event.date && !/^\d{4}-\d{2}-\d{2}$/.test(event.date)) {
+        console.warn(`[convertPlanToResult] 事件日期格式错误: ${event.date}`);
+      }
+      
+      // 验证时间格式
+      if (event.time && !/^\d{2}:\d{2}$/.test(event.time)) {
+        console.warn(`[convertPlanToResult] 事件时间格式错误: ${event.time}`);
+      }
+    }
+    
+    // 验证待办数据完整性
+    for (const todo of todos) {
+      if (!todo.id || !todo.text || !todo.date) {
+        console.warn(`[convertPlanToResult] 待办数据不完整:`, {
+          id: todo.id,
+          text: todo.text,
+          date: todo.date
+        });
+        // 尝试修复：如果缺少关键字段，标记为无效
+        if (!todo.id || !todo.text) {
+          const index = todos.indexOf(todo);
+          if (index > -1) {
+            todos.splice(index, 1);
+            console.warn(`[convertPlanToResult] 已移除无效待办数据`);
+          }
+        }
+      }
+      
+      // 验证日期格式
+      if (todo.date && !/^\d{4}-\d{2}-\d{2}$/.test(todo.date)) {
+        console.warn(`[convertPlanToResult] 待办日期格式错误: ${todo.date}`);
+      }
+    }
+    
+    // 去重：基于 ID 去重
+    const eventIds = new Set();
+    const todoIds = new Set();
+    
+    for (let i = events.length - 1; i >= 0; i--) {
+      if (eventIds.has(events[i].id)) {
+        events.splice(i, 1);
+        console.warn(`[convertPlanToResult] 发现重复事件，已移除`);
+      } else {
+        eventIds.add(events[i].id);
+      }
+    }
+    
+    for (let i = todos.length - 1; i >= 0; i--) {
+      if (todoIds.has(todos[i].id)) {
+        todos.splice(i, 1);
+        console.warn(`[convertPlanToResult] 发现重复待办，已移除`);
+      } else {
+        todoIds.add(todos[i].id);
+      }
     }
   }
 
@@ -1316,7 +2015,7 @@ ${toolDescriptions}
     sessionId?: string
   ): Promise<string> {
     const baseUrl = provider.baseUrl || 'https://api.deepseek.com/v1';
-    const model = provider.model || 'deepseek-chat';
+    const model = provider.model || 'deepseek-reasoner';
 
     const messages: any[] = [
       { role: 'system', content: systemPrompt },
@@ -1423,7 +2122,7 @@ ${toolDescriptions}
     sessionId?: string
   ): Promise<string> {
     const baseUrl = provider.baseUrl || 'https://api.deepseek.com/v1';
-    const model = provider.model || 'deepseek-chat';
+    const model = provider.model || 'deepseek-reasoner';
 
     const requestBody: any = {
       model: model,
@@ -1616,7 +2315,7 @@ ${toolDescriptions}
     messages?: any[]
   ): Promise<string> {
     const baseUrl = provider.baseUrl || 'https://api.deepseek.com/v1';
-    const model = provider.model || 'deepseek-chat';
+    const model = provider.model || 'deepseek-reasoner';
 
     const requestBody: any = {
       model: model,
@@ -1714,7 +2413,7 @@ ${toolDescriptions}
 
     // 再次调用AI，传入工具执行结果
     const baseUrl = provider.baseUrl || 'https://api.deepseek.com/v1';
-    const model = provider.model || 'deepseek-chat';
+    const model = provider.model || 'deepseek-reasoner';
 
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -2095,13 +2794,19 @@ ${toolDescriptions}
     }> = [];
 
     const newEventStart = new Date(`${newEvent.date}T${newEvent.time}`);
-    const newEventEnd = new Date(newEventStart.getTime() + 60 * 60 * 1000); // 默认1小时
+    // 如果有结束时间，使用结束时间；否则默认1小时
+    const newEventEnd = newEvent.endTime 
+      ? new Date(`${newEvent.date}T${newEvent.endTime}`)
+      : new Date(newEventStart.getTime() + 60 * 60 * 1000);
 
     for (const existingEvent of existingEvents) {
       // 时间冲突检测
       if (existingEvent.date === newEvent.date) {
         const existingStart = new Date(`${existingEvent.date}T${existingEvent.time}`);
-        const existingEnd = new Date(existingStart.getTime() + 60 * 60 * 1000);
+        // 如果有结束时间，使用结束时间；否则默认1小时
+        const existingEnd = existingEvent.endTime
+          ? new Date(`${existingEvent.date}T${existingEvent.endTime}`)
+          : new Date(existingStart.getTime() + 60 * 60 * 1000);
 
         if (
           (newEventStart >= existingStart && newEventStart < existingEnd) ||

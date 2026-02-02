@@ -21,7 +21,7 @@
             v-for="service in services"
             :key="service.id"
             class="service-item"
-            :class="{ 'is-running': service.status === 'running' }"
+            :class="{ 'is-running': service.status === ServiceMonitorStatus.RUNNING }"
             @contextmenu.prevent="handleContextMenu($event, service)"
           >
             <div class="service-info">
@@ -45,7 +45,7 @@
             </div>
             <div class="service-actions">
               <el-button
-                v-if="service.status === 'stopped'"
+                v-if="service.status === ServiceMonitorStatus.STOPPED"
                 type="success"
                 size="small"
                 @click.stop="handleServiceAction(service, 'toggle')"
@@ -54,7 +54,7 @@
                 启动
               </el-button>
               <el-button
-                v-else-if="service.status === 'running'"
+                v-else-if="service.status === ServiceMonitorStatus.RUNNING"
                 type="warning"
                 size="small"
                 @click.stop="handleServiceAction(service, 'toggle')"
@@ -63,7 +63,7 @@
                 停止
               </el-button>
               <el-button
-                v-if="service.status !== 'starting' && service.status !== 'stopping'"
+                v-if="service.status !== ServiceMonitorStatus.STARTING && service.status !== ServiceMonitorStatus.STOPPING"
                 type="primary"
                 size="small"
                 @click.stop="handleServiceAction(service, 'edit')"
@@ -72,7 +72,7 @@
                 编辑
               </el-button>
               <el-button
-                v-if="service.status !== 'starting' && service.status !== 'stopping'"
+                v-if="service.status !== ServiceMonitorStatus.STARTING && service.status !== ServiceMonitorStatus.STOPPING"
                 type="danger"
                 size="small"
                 @click.stop="handleServiceAction(service, 'delete')"
@@ -110,6 +110,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Refresh, Connection, Plus, Edit, Delete, VideoPlay, VideoPause, InfoFilled } from '@element-plus/icons-vue'
+import { ElMessage as CTMessage, ElMessageBox as CTMessageBox } from 'element-plus'
 import type { ServiceMonitor } from '../../../electron/model/database/ServiceMonitor'
 
 import { getAllServiceMonitors, controlService, performServiceHealthCheck } from '@/utils/electronUtils'
@@ -120,32 +121,42 @@ import ServiceMonitorDlg from './components/ServiceMonitorDlg.vue'
 // 服务监控数据
 const services = ref<ServiceMonitor[]>([])
 
-// 组件挂载时获取服务列表
+// 组件挂载时获取服务列表并执行健康检查
 onMounted(() => {
   handleRefreshService()
+  // 组件挂载后也执行一次健康检查
+  performServiceHealthCheck().catch(err => {
+    console.error('执行健康检查失败:', err)
+  })
 })
 
 // 使用IPC通信获取服务监控健康检查结果
 useIpcCommunication({
-  onOpenNewConnectionDialog: () => {}, // 空实现，不使用
   onServiceMonitorHealthCheckResult: (data: any) => {
+    console.log('[ServiceMonitor] 收到健康检查结果:', data)
     // 查找对应的服务并更新状态
     const serviceIndex = services.value.findIndex((service: ServiceMonitor) => service.id === data.id)
     if (serviceIndex !== -1) {
       // 将健康检查结果映射到服务状态
       let serviceStatus = ServiceMonitorStatus.STOPPED
       
-      switch (data.status) {
-        case ServiceHealthStatus.HEALTHY:
-          serviceStatus = ServiceMonitorStatus.RUNNING
-          break
-        case ServiceHealthStatus.UNHEALTHY:
-        case ServiceHealthStatus.WARNING:
-        case ServiceHealthStatus.UNKNOWN:
-        case ServiceHealthStatus.TIMEOUT:
-          serviceStatus = ServiceMonitorStatus.STOPPED
-          break
+      // 检查状态值（可能是字符串或枚举值）
+      const statusValue = (data.status || '').toString().toLowerCase()
+      console.log('[ServiceMonitor] 状态值:', statusValue, '原始值:', data.status)
+      
+      if (statusValue === 'healthy' || statusValue === ServiceHealthStatus.HEALTHY.toLowerCase()) {
+        serviceStatus = ServiceMonitorStatus.RUNNING
+        console.log('[ServiceMonitor] 映射为运行中')
+      } else if (statusValue === 'unhealthy' || statusValue === 'warning' || statusValue === 'unknown' || statusValue === 'timeout' ||
+                 statusValue === ServiceHealthStatus.UNHEALTHY.toLowerCase() || statusValue === ServiceHealthStatus.WARNING.toLowerCase() || 
+                 statusValue === ServiceHealthStatus.UNKNOWN.toLowerCase() || statusValue === ServiceHealthStatus.TIMEOUT.toLowerCase()) {
+        serviceStatus = ServiceMonitorStatus.STOPPED
+        console.log('[ServiceMonitor] 映射为已停止')
+      } else {
+        console.warn('[ServiceMonitor] 未知状态值:', statusValue)
       }
+      
+      console.log('[ServiceMonitor] 更新服务状态:', data.id, '从', services.value[serviceIndex].status, '到', serviceStatus)
       
       // 更新服务状态
       const updatedService = {
@@ -153,6 +164,8 @@ useIpcCommunication({
         status: serviceStatus
       }
       services.value[serviceIndex] = updatedService
+    } else {
+      console.warn('[ServiceMonitor] 未找到对应的服务，id:', data.id)
     }
   }
 })
@@ -354,8 +367,11 @@ const handleServiceAction = async (service: ServiceMonitor, action: string) => {
 // 刷新服务列表
 const handleRefreshService = async () => {
   try {
+    debugger
     const serviceMonitors = await getAllServiceMonitors()
     services.value = serviceMonitors?.data??[]
+    // 刷新后立即执行健康检查
+    await performServiceHealthCheck()
     CTMessage.success('服务列表已刷新')
   } catch (error) {
     CTMessage.error('刷新服务列表失败: ' + (error instanceof Error ? error.message : '未知错误'))

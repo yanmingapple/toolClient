@@ -22,8 +22,28 @@ export class WebContentsService {
    * @param args 消息参数
    */
   static sendToRenderer(channel: string, ...args: any[]) {
-    if (this.mainWindow?.webContents) {
-      this.mainWindow.webContents.send(channel, ...args);
+    // 向所有窗口广播消息，确保对话框窗口也能收到
+    const allWebContents = webContents.getAllWebContents();
+    console.log(`[WebContentsService] 向 ${allWebContents.length} 个窗口发送消息: ${channel}`, args);
+    
+    allWebContents.forEach((wc) => {
+      if (!wc.isDestroyed()) {
+        try {
+          wc.send(channel, ...args);
+          console.log(`[WebContentsService] 消息已发送到窗口 ID: ${wc.id}`);
+        } catch (error) {
+          console.error(`[WebContentsService] 发送消息到窗口 ${wc.id} 失败:`, error);
+        }
+      }
+    });
+    
+    // 保持向后兼容：也向主窗口发送（如果主窗口不在上面的列表中）
+    if (this.mainWindow?.webContents && !this.mainWindow.webContents.isDestroyed()) {
+      try {
+        this.mainWindow.webContents.send(channel, ...args);
+      } catch (error) {
+        console.error('[WebContentsService] 发送消息到主窗口失败:', error);
+      }
     }
   }
 

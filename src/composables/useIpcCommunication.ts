@@ -8,6 +8,7 @@ interface IpcCallbacks {
   onServiceMonitorHealthCheckResult?: (data: any) => void
   onSidebarOpenCalendar?: () => void
   onSidebarOpenCreditCard?: () => void
+  onInterruptionReminderTriggered?: (data: any) => void
 }
 
 export const useIpcCommunication = (callbacks: IpcCallbacks) => {
@@ -29,6 +30,7 @@ export const useIpcCommunication = (callbacks: IpcCallbacks) => {
 
     // 添加服务监控健康检查结果监听器
     if (callbacks.onServiceMonitorHealthCheckResult) {
+      console.log('[useIpcCommunication] 注册服务监控健康检查结果监听器');
       listeners.push(listenToIpcMessage('service-monitor:health-check-result', callbacks.onServiceMonitorHealthCheckResult))
     }
 
@@ -39,6 +41,17 @@ export const useIpcCommunication = (callbacks: IpcCallbacks) => {
 
     if (callbacks.onSidebarOpenCreditCard) {
       listeners.push(listenToIpcMessage('sidebar-open-credit-card', callbacks.onSidebarOpenCreditCard))
+    }
+
+    // 添加恢复提醒触发监听器
+    if (callbacks.onInterruptionReminderTriggered) {
+      const electronAPI = (window as any).electronAPI
+      if (electronAPI && electronAPI.onInterruptionReminderTriggered) {
+        electronAPI.onInterruptionReminderTriggered(callbacks.onInterruptionReminderTriggered)
+        listeners.push(() => {
+          electronAPI.off('interruption-reminder:triggered', callbacks.onInterruptionReminderTriggered)
+        })
+      }
     }
 
     // 返回清理函数

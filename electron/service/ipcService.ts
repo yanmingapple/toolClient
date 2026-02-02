@@ -7,7 +7,7 @@ const { ipcMain, app } = electron;
 import { FileService } from './fileService';           // 文件操作服务
 import { WebContentsService } from './webContentsService'; // Web内容服务
 import { NotificationService } from './notificationService'; // 通知服务
-import { DatabaseManager } from '../manager/ClientManager';   // 数据库管理器
+import { DatabaseManager } from '../manager/ClientManager';   // 工具
 import { TerminalService } from './terminalService';  // 终端命令服务
 import { MenuService } from './menuService';  // 菜单服务
 import { SidebarService } from './sidebarService';  // 侧边栏服务
@@ -94,7 +94,7 @@ export class IpcService {
     const { AIServiceIPC } = require('./aiServiceIPC');
     const { DatabaseManager } = require('../manager/ClientManager');
     
-    // 获取数据库管理器实例并等待初始化完成
+    // 获取工具实例并等待初始化完成
     const dbManager = DatabaseManager.getInstance();
     
     // 等待数据库初始化完成后再注册AI服务

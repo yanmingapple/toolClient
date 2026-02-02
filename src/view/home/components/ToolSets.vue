@@ -42,17 +42,18 @@
 
 <script setup lang="ts">
 import { ref, defineEmits } from 'vue'
-import { Bell, Setting, Connection, DataBoard } from '@element-plus/icons-vue'
+import { Bell, Setting, Connection, DataBoard, Monitor } from '@element-plus/icons-vue'
 import { ElMessage as CTMessage } from 'element-plus'
 
-const emit = defineEmits(['open-event-reminder', 'open-ai-config', 'create-panel', 'open-terminal', 'open-dbgate'])
+const emit = defineEmits(['open-event-reminder', 'open-ai-config', 'create-panel', 'open-terminal', 'open-dbgate', 'open-service-monitor'])
 
 // 图标组件映射
 const iconMap = {
   Connection,
   Database: DataBoard,
   Setting,
-  Bell
+  Bell,
+  Monitor
 }
 
 // 快速操作数据配置
@@ -88,6 +89,14 @@ const quickActions = ref([
     icon: 'Bell',
     iconBgClass: 'icon-bg-purple',
     handler: 'handleEventReminderQuick'
+  },
+  {
+    id: 'service-monitor',
+    title: '服务监控',
+    description: '监控和管理服务状态',
+    icon: 'Monitor',
+    iconBgClass: 'icon-bg-orange',
+    handler: 'handleOpenServiceMonitor'
   }
 ])
 
@@ -97,7 +106,8 @@ const handleQuickAction = (handler: string) => {
     handleEnterDatabase: handleEnterDatabase,
     handleOpenDbgate: handleOpenDbgate,
     handleOpenTerminal: handleOpenTerminal,
-    handleEventReminderQuick: handleEventReminderQuick
+    handleEventReminderQuick: handleEventReminderQuick,
+    handleOpenServiceMonitor: handleOpenServiceMonitor
   }
   
   const actionHandler = handlerMap[handler]
@@ -121,6 +131,10 @@ const handleOpenTerminal = () => {
 const handleEventReminderQuick = () => {
   emit('open-event-reminder')
   CTMessage.success('正在打开事件提醒...')
+}
+
+const handleOpenServiceMonitor = () => {
+  emit('open-service-monitor')
 }
 
 
@@ -185,6 +199,10 @@ const handleEventReminderQuick = () => {
 
 .icon-bg-dbgate {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.icon-bg-orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 }
 
 .action-icon {

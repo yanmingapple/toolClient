@@ -265,10 +265,18 @@
               value-format="YYYY-MM-DD"
             />
           </el-form-item>
-          <el-form-item label="时间" prop="time">
+          <el-form-item label="开始时间" prop="time">
             <el-time-picker
               v-model="formData.time"
-              placeholder="选择时间"
+              placeholder="选择开始时间"
+              format="HH:mm"
+              value-format="HH:mm"
+            />
+          </el-form-item>
+          <el-form-item label="结束时间" prop="endTime">
+            <el-time-picker
+              v-model="formData.endTime"
+              placeholder="选择结束时间（可选）"
               format="HH:mm"
               value-format="HH:mm"
             />
@@ -287,6 +295,15 @@
           <el-button type="primary" @click="submitEvent">保存</el-button>
         </template>
       </el-drawer>
+
+    <!-- 冲突解决对话框 -->
+    <ConflictResolutionDialog
+      v-model="conflictDialogVisible"
+      :new-event="pendingEvent"
+      :conflicts="detectedConflicts"
+      @apply-solution="handleApplyConflictSolution"
+      @ignore="handleIgnoreConflict"
+    />
   </div>
 </template>
 
@@ -294,6 +311,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox, FormInstance, FormRules } from 'element-plus'
 import { Plus, Edit, Delete, Calendar, Clock, ArrowLeft, ArrowRight, Bell, CircleCheck } from '@element-plus/icons-vue'
+import ConflictResolutionDialog from '@/components/ConflictResolutionDialog.vue'
 import { Solar } from 'lunar-javascript'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -316,6 +334,7 @@ interface Event {
   type: string
   date: string
   time: string
+  endTime?: string
   description: string
   remindBefore: number
   createdAt: number
@@ -328,6 +347,7 @@ interface FormData {
   type: string
   date: string
   time: string
+  endTime?: string
   description: string
   remindBefore: number
 }
@@ -361,15 +381,18 @@ const fullCalendarEvents = computed(() => {
     // event.date 格式: "2024-01-01"
     // event.time 格式: "09:00"
     const startDateTime = `${event.date}T${event.time}:00`
+    const endDateTime = event.endTime ? `${event.date}T${event.endTime}:00` : undefined
     
     return {
       id: event.id,
       title: event.title,
       start: startDateTime,
+      end: endDateTime,
       allDay: false,
       extendedProps: {
         type: event.type,
         time: event.time,
+        endTime: event.endTime,
         description: event.description,
         remindBefore: event.remindBefore
       },
@@ -502,6 +525,11 @@ const rules = ref<FormRules>({
 
 // 日历标题（从 FullCalendar 获取）
 const calendarTitle = ref('')
+
+// 冲突检测相关
+const conflictDialogVisible = ref(false)
+const pendingEvent = ref<any>(null)
+const detectedConflicts = ref<any[]>([])
 
 const selectedDateText = computed(() => {
   if (!selectedDate.value) {
@@ -942,7 +970,8 @@ const loadEvents = async () => {
         type: dbEvent.type,
         date: dbEvent.date,
         time: dbEvent.time,
-        description: '', // 数据库中没有 description 字段，设为空
+        endTime: dbEvent.endTime || undefined,
+        description: dbEvent.description || '', // 数据库中的 description 字段
         remindBefore: dbEvent.reminder || 0, // reminder 转换为 remindBefore
         createdAt: dbEvent.createTime ? new Date(dbEvent.createTime).getTime() : Date.now()
       }))
@@ -986,6 +1015,7 @@ const showAddEventDialog = () => {
     type: '其他',
     date: selectedDate.value || new Date().toISOString().split('T')[0],
     time: '09:00',
+    endTime: undefined,
     description: '',
     remindBefore: 15
   }
@@ -1008,6 +1038,7 @@ const editEvent = (event: Event) => {
     type: event.type,
     date: event.date,
     time: event.time,
+    endTime: event.endTime,
     description: event.description,
     remindBefore: event.remindBefore
   }
@@ -1041,79 +1072,202 @@ const submitEvent = () => {
   formRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       try {
-        if (editingEvent.value) {
-          // 编辑事件
-          const updatedEvent: Event = {
-            ...editingEvent.value,
-            title: formData.value.title,
-            type: formData.value.type,
-            date: formData.value.date,
-            time: formData.value.time,
-            description: formData.value.description,
-            remindBefore: formData.value.remindBefore
-          }
-          
-          const dbEvent = {
-            id: updatedEvent.id,
-            title: updatedEvent.title,
-            type: updatedEvent.type,
-            date: updatedEvent.date,
-            time: updatedEvent.time,
-            reminder: updatedEvent.remindBefore || 0,
-            createTime: updatedEvent.createdAt ? new Date(updatedEvent.createdAt).toISOString() : undefined
-          }
-          
-          const result = await (window as any).electronAPI.event.save(dbEvent)
-          if (result.success) {
-            const index = events.value.findIndex((e: Event) => e.id === editingEvent.value!.id)
-            if (index !== -1) {
-              events.value[index] = updatedEvent
+        // 构建事件对象
+        const eventToSave: any = editingEvent.value
+          ? {
+              id: editingEvent.value.id,
+              title: formData.value.title,
+              type: formData.value.type,
+              date: formData.value.date,
+              time: formData.value.time,
+              endTime: formData.value.endTime,
+              description: formData.value.description,
+              remindBefore: formData.value.remindBefore
             }
-            ElMessage.success('更新成功')
-          } else {
-            ElMessage.error(result.error || '更新失败')
-            return
-          }
-        } else {
-          // 添加新事件
-          const newEvent: Event = {
-            id: generateId(),
-            title: formData.value.title,
-            type: formData.value.type,
-            date: formData.value.date,
-            time: formData.value.time,
-            description: formData.value.description,
-            remindBefore: formData.value.remindBefore,
-            createdAt: Date.now()
-          }
+          : {
+              id: generateId(),
+              title: formData.value.title,
+              type: formData.value.type,
+              date: formData.value.date,
+              time: formData.value.time,
+              endTime: formData.value.endTime,
+              description: formData.value.description,
+              remindBefore: formData.value.remindBefore,
+              createdAt: Date.now()
+            }
+
+        // 检测冲突（排除当前编辑的事件）
+        const otherEvents = events.value
+          .filter((e: Event) => editingEvent.value ? e.id !== editingEvent.value.id : true)
+          .map((e: Event) => ({
+            id: e.id,
+            title: e.title,
+            type: e.type,
+            date: e.date,
+            time: e.time,
+            endTime: e.endTime
+          }))
+
+        if (window.electronAPI?.ai) {
+          const conflictResult = await window.electronAPI.ai.detectConflicts(eventToSave, otherEvents)
           
-          const dbEvent = {
-            id: newEvent.id,
-            title: newEvent.title,
-            type: newEvent.type,
-            date: newEvent.date,
-            time: newEvent.time,
-            reminder: newEvent.remindBefore || 0,
-            createTime: new Date(newEvent.createdAt).toISOString()
-          }
-          
-          const result = await (window as any).electronAPI.event.save(dbEvent)
-          if (result.success) {
-            events.value.push(newEvent)
-            ElMessage.success('添加成功')
-          } else {
-            ElMessage.error(result.error || '添加失败')
-            return
+          if (conflictResult.success && conflictResult.data?.hasConflict && conflictResult.data.conflicts.length > 0) {
+            // 有冲突，显示冲突解决对话框
+            pendingEvent.value = eventToSave
+            detectedConflicts.value = conflictResult.data.conflicts
+            conflictDialogVisible.value = true
+            return // 等待用户选择解决方案
           }
         }
-        addEventVisible.value = false
-        refreshCalendarEvents()
+
+        // 没有冲突，直接保存
+        await saveEventDirectly(eventToSave, editingEvent.value !== null)
       } catch (e) {
         console.error('Failed to save event:', e)
         ElMessage.error('保存失败')
       }
     }
   })
+}
+
+// 直接保存事件（不检测冲突）
+const saveEventDirectly = async (eventToSave: any, isEdit: boolean) => {
+  try {
+    const dbEvent = {
+      id: eventToSave.id,
+      title: eventToSave.title,
+      type: eventToSave.type,
+      date: eventToSave.date,
+      time: eventToSave.time,
+      endTime: eventToSave.endTime,
+      description: eventToSave.description,
+      reminder: eventToSave.remindBefore || 0,
+      createTime: eventToSave.createdAt ? new Date(eventToSave.createdAt).toISOString() : undefined
+    }
+
+    const result = await (window as any).electronAPI.event.save(dbEvent)
+    if (result.success) {
+      if (isEdit) {
+        const index = events.value.findIndex((e: Event) => e.id === eventToSave.id)
+        if (index !== -1) {
+          events.value[index] = eventToSave as Event
+        }
+        ElMessage.success('更新成功')
+      } else {
+        events.value.push(eventToSave as Event)
+        ElMessage.success('添加成功')
+      }
+      addEventVisible.value = false
+      refreshCalendarEvents()
+    } else {
+      ElMessage.error(result.error || '保存失败')
+    }
+  } catch (e) {
+    console.error('Failed to save event:', e)
+    ElMessage.error('保存失败')
+  }
+}
+
+// 处理冲突解决方案
+const handleApplyConflictSolution = async (solution: { type: string; adjustedTime?: string; conflictIds?: string[] }) => {
+  if (!pendingEvent.value) return
+
+  try {
+    switch (solution.type) {
+      case 'adjust-time':
+        // 调整新事件时间
+        if (solution.adjustedTime) {
+          pendingEvent.value.time = solution.adjustedTime
+          // 重新检测冲突
+          const otherEvents = events.value
+            .filter((e: Event) => editingEvent.value ? e.id !== editingEvent.value.id : true)
+            .map((e: Event) => ({
+              id: e.id,
+              title: e.title,
+              type: e.type,
+              date: e.date,
+              time: e.time,
+              endTime: e.endTime
+            }))
+          
+          if (window.electronAPI?.ai) {
+            const conflictResult = await window.electronAPI.ai.detectConflicts(pendingEvent.value, otherEvents)
+            if (conflictResult.success && conflictResult.data?.hasConflict && conflictResult.data.conflicts.length > 0) {
+              ElMessage.warning('调整后的时间仍有冲突，请重新选择')
+              detectedConflicts.value = conflictResult.data.conflicts
+              return
+            }
+          }
+        }
+        await saveEventDirectly(pendingEvent.value, editingEvent.value !== null)
+        break
+
+      case 'cancel-existing':
+        // 取消冲突事件
+        if (solution.conflictIds && solution.conflictIds.length > 0) {
+          for (const conflictId of solution.conflictIds) {
+            await (window as any).electronAPI.event.delete(conflictId)
+            events.value = events.value.filter((e: Event) => e.id !== conflictId)
+          }
+          ElMessage.success(`已取消 ${solution.conflictIds.length} 个冲突事件`)
+        }
+        await saveEventDirectly(pendingEvent.value, editingEvent.value !== null)
+        break
+
+      case 'merge':
+        // 合并事件（将新事件合并到第一个冲突事件）
+        if (solution.conflictIds && solution.conflictIds.length > 0) {
+          const firstConflictId = solution.conflictIds[0]
+          const conflictEvent = events.value.find((e: Event) => e.id === firstConflictId)
+          
+          if (conflictEvent) {
+            // 合并标题和描述
+            const mergedEvent = {
+              ...conflictEvent,
+              title: `${conflictEvent.title} / ${pendingEvent.value.title}`,
+              description: `${conflictEvent.description || ''}\n${pendingEvent.value.description || ''}`.trim()
+            }
+            
+            const dbEvent = {
+              id: mergedEvent.id,
+              title: mergedEvent.title,
+              type: mergedEvent.type,
+              date: mergedEvent.date,
+              time: mergedEvent.time,
+              endTime: mergedEvent.endTime,
+              description: mergedEvent.description,
+              reminder: mergedEvent.remindBefore || 0,
+              createTime: mergedEvent.createdAt ? new Date(mergedEvent.createdAt).toISOString() : undefined
+            }
+
+            await (window as any).electronAPI.event.save(dbEvent)
+            const index = events.value.findIndex((e: Event) => e.id === mergedEvent.id)
+            if (index !== -1) {
+              events.value[index] = mergedEvent
+            }
+            ElMessage.success('事件已合并')
+          }
+        }
+        addEventVisible.value = false
+        refreshCalendarEvents()
+        break
+
+      case 'ignore':
+        // 忽略冲突，直接保存
+        await saveEventDirectly(pendingEvent.value, editingEvent.value !== null)
+        break
+    }
+  } catch (e) {
+    console.error('Failed to apply conflict solution:', e)
+    ElMessage.error('应用解决方案失败')
+  }
+}
+
+// 忽略冲突
+const handleIgnoreConflict = async () => {
+  if (pendingEvent.value) {
+    await saveEventDirectly(pendingEvent.value, editingEvent.value !== null)
+  }
 }
 
 // ==================== 代办事项操作 ====================

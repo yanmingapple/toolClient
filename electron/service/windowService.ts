@@ -10,8 +10,10 @@ import { join } from 'path';
  * 负责创建和管理应用中的各种窗口
  */
 export class WindowService {
-  // 存储所有窗口实例的映射
+  // 存储所有窗口实例的映射（按 windowId）
   private static windows: Map<string, typeof BrowserWindow> = new Map();
+  // 存储窗口类型到 windowId 的映射（用于防止重复创建）
+  private static windowsByType: Map<string, string> = new Map();
 
   /**
    * 注册窗口管理相关的IPC处理程序
@@ -58,11 +60,37 @@ export class WindowService {
       params = {}
     } = options;
 
+    // 检查是否已存在相同类型的窗口
+    const existingWindowId = this.windowsByType.get(page);
+    if (existingWindowId) {
+      const existingWindow = this.windows.get(existingWindowId);
+      if (existingWindow && !existingWindow.isDestroyed()) {
+        // 窗口已存在且未销毁，聚焦到该窗口
+        console.log(`[WindowService] 窗口类型 "${page}" 已存在，聚焦到现有窗口`);
+        existingWindow.focus();
+        if (existingWindow.isMinimized()) {
+          existingWindow.restore();
+        }
+        return existingWindowId;
+      } else {
+        // 窗口已被销毁，从映射中移除
+        this.windowsByType.delete(page);
+        if (existingWindowId) {
+          this.windows.delete(existingWindowId);
+        }
+      }
+    }
+
     // 生成窗口ID
     const windowId = `${page}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // 根据页面类型确定URL
     let hash = '';
+    
+    // 调试：检查 page 的实际值
+    console.log(`[WindowService] Page value: "${page}", type: ${typeof page}, length: ${page?.length}`);
+    console.log(`[WindowService] Page === 'dialog-service-monitor': ${page === 'dialog-service-monitor'}`);
+    console.log(`[WindowService] Page startsWith('dialog-service-monitor'): ${page?.startsWith('dialog-service-monitor')}`);
 
     switch (page) {
       case 'toolpanel':
@@ -102,9 +130,25 @@ export class WindowService {
       case 'dialog-credit-card':
         hash = '#dialog-credit-card';
         break;
+      case 'dialog-service-monitor':
+        console.log('[WindowService] Matched dialog-service-monitor case');
+        hash = '#dialog-service-monitor';
+        break;
+      case 'dialog-idea-notebook':
+        hash = '#dialog-idea-notebook';
+        break;
       default:
-        hash = '#toolpanel';
+        // 添加额外的检查，防止大小写或空格问题
+        if (page && page.trim().toLowerCase() === 'dialog-service-monitor') {
+          console.log('[WindowService] Matched dialog-service-monitor (after trim/toLowerCase)');
+          hash = '#dialog-service-monitor';
+        } else {
+          console.log(`[WindowService] No match found for page: "${page}", using default hash`);
+          hash = '#toolpanel';
+        }
     }
+    
+    console.log(`[WindowService] Final hash: ${hash}`);
 
     // 判断是否为对话框窗口
     const isDialog = page.startsWith('dialog-');
@@ -132,25 +176,35 @@ export class WindowService {
 
     // 加载页面
     if (process.env.NODE_ENV === 'development') {
-      newWindow.loadURL(`http://localhost:3000${hash}`);
+      const devUrl = `http://localhost:3000${hash}`;
+      console.log(`[WindowService] Loading development URL: ${devUrl}`);
+      newWindow.loadURL(devUrl);
     } else {
-      newWindow.loadURL(
-        url.format({
-          pathname: path.join(__dirname, '../renderer/index.html'),
-          protocol: 'file:',
-          slashes: true,
-          hash: hash
-        })
-      );
+      const fileUrl = url.format({
+        pathname: path.join(__dirname, '../renderer/index.html'),
+        protocol: 'file:',
+        slashes: true
+      });
+      // 手动添加 hash，因为 url.format 在处理 file:// 协议时可能不会正确处理 hash
+      const finalUrl = fileUrl + hash;
+      console.log(`[WindowService] Loading production URL: ${finalUrl}`);
+      newWindow.loadURL(finalUrl);
     }
 
     // 窗口关闭时从映射中移除
     newWindow.on('closed', () => {
       this.windows.delete(windowId);
+      // 如果该窗口是某个类型的唯一实例，也从类型映射中移除
+      const typeWindowId = this.windowsByType.get(page);
+      if (typeWindowId === windowId) {
+        this.windowsByType.delete(page);
+      }
     });
 
     // 存储窗口实例
     this.windows.set(windowId, newWindow);
+    // 存储窗口类型映射
+    this.windowsByType.set(page, windowId);
 
     // 获取窗口标题
     const windowTitle = title || this.getDefaultTitle(page);
@@ -163,6 +217,11 @@ export class WindowService {
     // 窗口加载完成后重新设置标题（防止被 HTML title 标签覆盖）
     newWindow.webContents.once('did-finish-load', () => {
       newWindow.setTitle(windowTitle);
+      // 检查 hash 是否正确传递
+      newWindow.webContents.executeJavaScript(`
+        console.log('[WindowService] Window loaded, current hash:', window.location.hash);
+        console.log('[WindowService] Expected hash:', '${hash}');
+      `).catch(err => console.error('[WindowService] Error checking hash:', err));
     });
 
     // 监听页面标题变化，保持窗口标题不变
@@ -178,6 +237,8 @@ export class WindowService {
       // 对话框窗口明确禁用菜单
       newWindow.setMenu(null);
     }
+
+
 
     return windowId;
   }
@@ -257,7 +318,9 @@ export class WindowService {
       'dialog-command-result': '命令执行结果',
       'dialog-terminal': '终端控制台',
       'dialog-event-reminder': '代办事项',
-      'dialog-credit-card': '信用卡'
+      'dialog-credit-card': '信用卡',
+      'dialog-service-monitor': '服务监控',
+      'dialog-idea-notebook': '想法记事本'
     };
     return titles[page] || '应用';
   }

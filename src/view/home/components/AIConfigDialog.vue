@@ -134,7 +134,7 @@ const defaultBaseUrls: Record<string, string> = {
 
 const defaultModels: Record<string, string[]> = {
   openai: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
   baidu: ['ernie-bot', 'ernie-bot-turbo', 'ernie-bot-4'],
   ali: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
   tencent: ['hunyuan-lite', 'hunyuan-standard']

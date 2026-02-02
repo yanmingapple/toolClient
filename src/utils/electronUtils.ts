@@ -116,9 +116,6 @@ interface ElectronAPI {
   }
   workLog: {
     getLogByDate: (date: string) => Promise<ServiceResult<string>>
-    saveLog: (date: string, content: string) => Promise<ServiceResult<void>>
-    generateLog: (date: string) => Promise<ServiceResult<string>>
-    exportLog: (date: string) => Promise<ServiceResult<string>>
     getTodayStats: () => Promise<ServiceResult<{
       completedTasks: number
       totalTasks: number
@@ -132,6 +129,11 @@ interface ElectronAPI {
     getCompletionStats: () => Promise<ServiceResult<any>>
     getWorkPatterns: () => Promise<ServiceResult<any>>
     getAllStats: () => Promise<ServiceResult<any>>
+  }
+  ideaNotebook: {
+    read: () => Promise<ServiceResult<string>>
+    save: (content: string) => Promise<ServiceResult<void>>
+    append: (idea: string, tags?: string[]) => Promise<ServiceResult<void>>
   }
 }
 
@@ -516,12 +518,19 @@ export const openCreditCardReminder = async (): Promise<void> => {
 }
 
 /**
+ * 打开想法记事本 - 直接打开对话框窗口
+ */
+export const openIdeaNotebook = async (): Promise<void> => {
+  await openIdeaNotebookDialog()
+}
+
+/**
  * 创建新窗口
  * @param options 窗口选项
  * @returns Promise<string> 窗口ID
  */
 export const createWindow = async (options: {
-  page: 'toolpanel' | 'workspace' | 'sidebar' | 'dialog-connection' | 'dialog-command-result' | 'dialog-terminal' | 'dialog-event-reminder' | 'dialog-credit-card'
+  page: 'toolpanel' | 'workspace' | 'sidebar' | 'dialog-connection' | 'dialog-command-result' | 'dialog-terminal' | 'dialog-event-reminder' | 'dialog-credit-card' | 'dialog-service-monitor' | 'dialog-idea-notebook'
   title?: string
   width?: number
   height?: number
@@ -604,6 +613,30 @@ export const openCreditCardDialog = async (): Promise<string | null> => {
     title: '信用卡提醒',
     width: 800,
     height: 600
+  })
+}
+
+/**
+ * 打开服务监控窗口
+ */
+export const openServiceMonitorDialog = async (): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-service-monitor',
+    title: '服务监控',
+    width: 1000,
+    height: 700
+  })
+}
+
+/**
+ * 打开想法记事本窗口
+ */
+export const openIdeaNotebookDialog = async (): Promise<string | null> => {
+  return await createWindow({
+    page: 'dialog-idea-notebook',
+    title: '想法记事本',
+    width: 1000,
+    height: 700
   })
 }
 

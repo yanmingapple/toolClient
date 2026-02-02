@@ -55,6 +55,11 @@ export const SQLStatements = {
     ALTER TABLE service_monitor ADD COLUMN serverName TEXT
   `,
 
+  // 为 events 表添加 description 列（如果不存在）
+  ALTER_EVENTS_ADD_DESCRIPTION: `
+    ALTER TABLE events ADD COLUMN description TEXT
+  `,
+
   // 服务监控相关操作
   SELECT_ALL_SERVICE_MONITORS: 'SELECT * FROM service_monitor',
   SELECT_SERVICE_MONITOR_BY_ID: 'SELECT * FROM service_monitor WHERE id = ?',
@@ -72,6 +77,7 @@ export const SQLStatements = {
       type TEXT NOT NULL,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
+      endTime TEXT,
       reminder INTEGER DEFAULT 0,
       createTime TEXT,
       updateTime TEXT
@@ -82,8 +88,9 @@ export const SQLStatements = {
   SELECT_ALL_EVENTS: 'SELECT * FROM events',
   SELECT_EVENT_BY_ID: 'SELECT * FROM events WHERE id = ?',
   SELECT_EVENTS_BY_DATE: 'SELECT * FROM events WHERE date = ?',
-  INSERT_OR_REPLACE_EVENT: 'INSERT OR REPLACE INTO events (id, title, type, date, time, reminder, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-  UPDATE_EVENT: 'UPDATE events SET title = ?, type = ?, date = ?, time = ?, reminder = ?, updateTime = ? WHERE id = ?',
+  INSERT_OR_REPLACE_EVENT: 'INSERT OR REPLACE INTO events (id, title, type, date, time, endTime, description, reminder, createTime, updateTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  UPDATE_EVENT: 'UPDATE events SET title = ?, type = ?, date = ?, time = ?, endTime = ?, description = ?, reminder = ?, updateTime = ? WHERE id = ?',
+  ALTER_EVENTS_ADD_END_TIME: 'ALTER TABLE events ADD COLUMN endTime TEXT',
   DELETE_EVENT_BY_ID: 'DELETE FROM events WHERE id = ?',
   DELETE_ALL_EVENTS: 'DELETE FROM events',
 

@@ -21,6 +21,8 @@ async function initApp() {
   const hash = window.location.hash
   const pathname = window.location.pathname
   
+  console.log('[main.ts] Initializing app with hash:', hash, 'pathname:', pathname)
+  
   let EntryComponent: any
   
   // 检查是否为侧边栏窗口
@@ -43,12 +45,21 @@ async function initApp() {
   else if (hash.startsWith('#dialog-credit-card')) {
     EntryComponent = (await import('./entries/DialogCreditCard.vue')).default
   }
+  else if (hash.startsWith('#dialog-service-monitor')) {
+    console.log('[main.ts] Loading DialogServiceMonitor component')
+    EntryComponent = (await import('./entries/DialogServiceMonitor.vue')).default
+  }
+  else if (hash.startsWith('#dialog-idea-notebook')) {
+    console.log('[main.ts] Loading DialogIdeaNotebook component')
+    EntryComponent = (await import('./entries/DialogIdeaNotebook.vue')).default
+  }
   // 检查是否为工作区页面
   else if (hash === '#workspace') {
     EntryComponent = (await import('./entries/Workspace.vue')).default
   }
   // 默认显示工具面板
   else {
+    console.log('[main.ts] No matching route, loading default ToolPanel. Hash was:', hash)
     EntryComponent = (await import('./entries/ToolPanel.vue')).default
   }
   

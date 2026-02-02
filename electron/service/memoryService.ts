@@ -96,138 +96,6 @@ export class MemoryService {
   }
 
   /**
-   * 获取今日日志文件路径
-   */
-  public getTodayLogPath(): string {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return path.join(this.memoryBasePath, 'daily', `${today}.md`);
-  }
-
-  /**
-   * 追加内容到今日日志
-   */
-  public async appendToTodayLog(content: string): Promise<ServiceResult<void>> {
-    try {
-      const logPath = this.getTodayLogPath();
-      const timestamp = new Date().toLocaleString('zh-CN');
-      const logEntry = `\n## ${timestamp}\n\n${content}\n`;
-
-      if (fs.existsSync(logPath)) {
-        fs.appendFileSync(logPath, logEntry, 'utf-8');
-      } else {
-        fs.writeFileSync(logPath, `# ${new Date().toISOString().split('T')[0]} 工作日志\n\n${logEntry}`, 'utf-8');
-      }
-
-      return ServiceResultFactory.success(undefined, '日志已追加');
-    } catch (error: any) {
-      console.error('追加日志失败:', error);
-      return ServiceResultFactory.error(`追加日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 记录事件到工作日志
-   * 当事件创建、更新或完成时自动调用
-   * 注意：这只是日志记录，不影响数据存储（数据存储在SQLite中）
-   */
-  public async logEvent(action: 'created' | 'updated' | 'completed' | 'deleted', event: any): Promise<ServiceResult<void>> {
-    try {
-      const actionMap = {
-        created: '创建',
-        updated: '更新',
-        completed: '完成',
-        deleted: '删除'
-      };
-
-      const eventTypeMap: { [key: string]: string } = {
-        '工作': '💼',
-        '会议': '📅',
-        '学习': '📚',
-        '生活': '🏠',
-        '其他': '📝'
-      };
-
-      const emoji = eventTypeMap[event.type] || '📝';
-      const timeStr = event.time ? `${event.date} ${event.time}` : event.date;
-      const logContent = `${emoji} **${event.title}** (${actionMap[action]})\n` +
-        `- 类型: ${event.type}\n` +
-        `- 时间: ${timeStr}\n` +
-        (event.description ? `- 描述: ${event.description}\n` : '') +
-        `- 事件ID: ${event.id}\n`;
-
-      return await this.appendToTodayLog(logContent);
-    } catch (error: any) {
-      console.error('记录事件日志失败:', error);
-      // 日志记录失败不影响主数据存储，只返回错误但不抛出异常
-      return ServiceResultFactory.error(`记录事件日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 记录代办事项到工作日志
-   * 当代办创建、更新、完成或删除时自动调用
-   * 注意：这只是日志记录，不影响数据存储（数据存储在SQLite中）
-   */
-  public async logTodo(action: 'created' | 'updated' | 'completed' | 'deleted', todo: any): Promise<ServiceResult<void>> {
-    try {
-      const actionMap = {
-        created: '创建',
-        updated: '更新',
-        completed: '完成',
-        deleted: '删除'
-      };
-
-      const statusEmoji = todo.done ? '✅' : '⏳';
-      const logContent = `${statusEmoji} **${todo.text || todo.title}** (${actionMap[action]})\n` +
-        `- 日期: ${todo.date}\n` +
-        `- 状态: ${todo.done ? '已完成' : '未完成'}\n` +
-        `- 代办ID: ${todo.id}\n`;
-
-      return await this.appendToTodayLog(logContent);
-    } catch (error: any) {
-      console.error('记录代办日志失败:', error);
-      // 日志记录失败不影响主数据存储，只返回错误但不抛出异常
-      return ServiceResultFactory.error(`记录代办日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 读取今日日志
-   */
-  public async readTodayLog(): Promise<ServiceResult<string>> {
-    try {
-      const logPath = this.getTodayLogPath();
-      if (fs.existsSync(logPath)) {
-        const content = fs.readFileSync(logPath, 'utf-8');
-        return ServiceResultFactory.success(content);
-      } else {
-        return ServiceResultFactory.success('');
-      }
-    } catch (error: any) {
-      console.error('读取日志失败:', error);
-      return ServiceResultFactory.error(`读取日志失败: ${error.message}`);
-    }
-  }
-
-  /**
-   * 读取指定日期的日志
-   */
-  public async readLogByDate(date: string): Promise<ServiceResult<string>> {
-    try {
-      const logPath = path.join(this.memoryBasePath, 'daily', `${date}.md`);
-      if (fs.existsSync(logPath)) {
-        const content = fs.readFileSync(logPath, 'utf-8');
-        return ServiceResultFactory.success(content);
-      } else {
-        return ServiceResultFactory.success('');
-      }
-    } catch (error: any) {
-      console.error('读取日志失败:', error);
-      return ServiceResultFactory.error(`读取日志失败: ${error.message}`);
-    }
-  }
-
-  /**
    * 读取长期记忆文件（MEMORY.md）
    */
   public async readLongTermMemory(): Promise<ServiceResult<string>> {
@@ -838,8 +706,26 @@ export class MemoryService {
   }
 
   /**
-   * 获取会话启动时需要加载的记忆
-   * 根据 Clawdbot 规则：SOUL.md, USER.md, 今日和昨日的日志, MEMORY.md
+   * 读取指定日期的日志（只读，用于总结上下文）
+   */
+  public async readLogByDate(date: string): Promise<ServiceResult<string>> {
+    try {
+      const logPath = path.join(this.memoryBasePath, 'daily', `${date}.md`);
+      if (fs.existsSync(logPath)) {
+        const content = fs.readFileSync(logPath, 'utf-8');
+        return ServiceResultFactory.success(content);
+      } else {
+        return ServiceResultFactory.success('');
+      }
+    } catch (error: any) {
+      console.error('读取日志失败:', error);
+      return ServiceResultFactory.error(`读取日志失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 获取会话启动时需要加载的记忆（用于总结上下文）
+   * 只读取已存在的文件，不写入新日志
    */
   public async getSessionMemory(): Promise<ServiceResult<{ [key: string]: string }>> {
     try {
@@ -851,14 +737,14 @@ export class MemoryService {
         memory['MEMORY.md'] = longTermResult.data;
       }
 
-      // 读取今日日志
+      // 读取今日日志（如果存在）
       const today = new Date().toISOString().split('T')[0];
       const todayResult = await this.readLogByDate(today);
       if (todayResult.success && todayResult.data) {
         memory[`daily/${today}.md`] = todayResult.data;
       }
 
-      // 读取昨日日志
+      // 读取昨日日志（如果存在）
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split('T')[0];

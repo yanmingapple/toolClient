@@ -51,7 +51,7 @@ export class AIServiceIPC {
         
         // 创建IPC发送器，将事件发送到前端
         const ipcSender = (channel: string, data: any) => {
-          console.log('[AIServiceIPC] 发送IPC事件到前端:', channel, data);
+          // console.log('[AIServiceIPC] 发送IPC事件到前端:', channel, data);
           event.sender.send(channel, data);
         };
         

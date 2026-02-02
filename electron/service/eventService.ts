@@ -10,7 +10,9 @@ export interface Event {
   title: string;
   type: string;
   date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  time: string; // HH:mm 开始时间
+  endTime?: string; // HH:mm 结束时间
+  description?: string; // 事件描述
   reminder: number; // 提醒时间（分钟）
   createTime?: string;
   updateTime?: string;
@@ -68,6 +70,8 @@ export class EventService {
         type: row.type,
         date: row.date,
         time: row.time,
+        endTime: row.endTime || undefined,
+        description: row.description || '',
         reminder: row.reminder || 0,
         createTime: row.createTime,
         updateTime: row.updateTime
@@ -98,6 +102,8 @@ export class EventService {
           type: row.type,
           date: row.date,
           time: row.time,
+          endTime: row.endTime || undefined,
+          description: row.description || '',
           reminder: row.reminder || 0,
           createTime: row.createTime,
           updateTime: row.updateTime
@@ -128,6 +134,8 @@ export class EventService {
         type: row.type,
         date: row.date,
         time: row.time,
+        endTime: row.endTime || undefined,
+        description: row.description || '',
         reminder: row.reminder || 0,
         createTime: row.createTime,
         updateTime: row.updateTime
@@ -166,21 +174,12 @@ export class EventService {
         event.type,
         event.date,
         event.time,
+        event.endTime || null,
+        event.description || '',
         event.reminder || 0,
         createTime,
         updateTime
       ]);
-
-      // 2. 记录到工作日志（可选，不影响主数据存储）
-      // 注意：SQLite是唯一的数据源，Markdown日志只是记录操作历史
-      try {
-        const { MemoryService } = await import('./memoryService');
-        const memoryService = MemoryService.getInstance();
-        await memoryService.logEvent(action, event);
-      } catch (error: any) {
-        // 如果 MemoryService 未初始化，只记录警告，不影响事件保存
-        console.warn('记录事件到工作日志失败:', error);
-      }
 
       return { success: true };
     } catch (error: any) {
@@ -205,18 +204,6 @@ export class EventService {
 
       // 2. 从SQLite删除（这是唯一的数据源）
       await this.databaseClient.execute(SQLStatements.DELETE_EVENT_BY_ID, [eventId]);
-
-      // 3. 记录到工作日志（可选，不影响主数据存储）
-      if (event) {
-        try {
-          const { MemoryService } = await import('./memoryService');
-          const memoryService = MemoryService.getInstance();
-          await memoryService.logEvent('deleted', event);
-        } catch (error: any) {
-          // 如果 MemoryService 未初始化，只记录警告，不影响删除操作
-          console.warn('记录事件删除到工作日志失败:', error);
-        }
-      }
 
       return { success: true };
     } catch (error: any) {
@@ -249,41 +236,28 @@ export class EventService {
       }
 
       const event = eventResult.data;
-      const completeTime = new Date().toISOString();
 
-      // 生成工作日志
+      // 提取工作模式（不写入日志文件，只用于总结）
       try {
         const { WorkLogService } = await import('./workLogService');
-        const { AIService } = await import('./aiService');
         const workLogService = WorkLogService.getInstance();
-        const aiService = AIService.getInstance();
-        
         workLogService.setDatabaseClient(this.databaseClient);
-        workLogService.setAIService(aiService);
 
-        await workLogService.generateTaskCompletionLog({
+        // 只提取工作模式，不生成日志文件
+        await workLogService.extractWorkPatternsOnly({
           eventId: event.id,
           title: event.title,
           type: event.type,
-          createTime: event.createTime || completeTime,
-          completeTime: completeTime,
-          estimatedMinutes: options?.actualMinutes ? undefined : 60, // 如果没有提供，使用默认值
+          createTime: event.createTime || new Date().toISOString(),
+          completeTime: new Date().toISOString(),
+          estimatedMinutes: options?.actualMinutes ? undefined : 60,
           actualMinutes: options?.actualMinutes,
           interruptionCount: options?.interruptionCount || 0,
           description: options?.notes
         });
       } catch (error: any) {
-        console.warn('生成工作日志失败:', error);
+        console.warn('提取工作模式失败:', error);
         // 不影响事件完成操作
-      }
-
-      // 记录到MemoryService
-      try {
-        const { MemoryService } = await import('./memoryService');
-        const memoryService = MemoryService.getInstance();
-        await memoryService.logEvent('completed', event);
-      } catch (error: any) {
-        console.warn('记录事件到工作日志失败:', error);
       }
 
       return { success: true };
@@ -374,16 +348,6 @@ export class EventService {
         updateTime
       ]);
 
-      // 2. 记录到工作日志（可选，不影响主数据存储）
-      try {
-        const { MemoryService } = await import('./memoryService');
-        const memoryService = MemoryService.getInstance();
-        await memoryService.logTodo(action, todo);
-      } catch (error: any) {
-        // 如果 MemoryService 未初始化，只记录警告，不影响代办保存
-        console.warn('记录代办到工作日志失败:', error);
-      }
-
       return { success: true };
     } catch (error: any) {
       console.error('保存代办事项失败:', error);
@@ -437,18 +401,6 @@ export class EventService {
 
       // 2. 从SQLite删除（这是唯一的数据源）
       await this.databaseClient.execute(SQLStatements.DELETE_TODO_BY_ID, [todoId]);
-
-      // 3. 记录到工作日志（可选，不影响主数据存储）
-      if (todo) {
-        try {
-          const { MemoryService } = await import('./memoryService');
-          const memoryService = MemoryService.getInstance();
-          await memoryService.logTodo('deleted', todo);
-        } catch (error: any) {
-          // 如果 MemoryService 未初始化，只记录警告，不影响删除操作
-          console.warn('记录代办删除到工作日志失败:', error);
-        }
-      }
 
       return { success: true };
     } catch (error: any) {

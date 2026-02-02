@@ -52,6 +52,16 @@ export class SidebarService {
       });
     });
 
+    // 处理打开事件提醒对话框请求（从通知点击触发）
+    ipcMain.on('open-event-reminder-dialog', async () => {
+      await WindowService.createWindow({
+        page: 'dialog-event-reminder',
+        title: '日历提醒',
+        width: 800,
+        height: 600
+      });
+    });
+
     // 处理打开信用卡提醒工具请求 - 直接打开对话框窗口
     ipcMain.on('sidebar:open-credit-card', async () => {
       await WindowService.createWindow({

@@ -31,6 +31,7 @@
           @create-panel="handleCreatePanel" 
           @open-terminal="handleOpenTerminal"
           @open-dbgate="handleOpenDbgate"
+          @open-service-monitor="handleOpenServiceMonitor"
         />
       </section>
 
@@ -46,39 +47,6 @@
           @refresh="handleRefreshAI"
         />
       </section>
-
-      <!-- AI智能推荐卡片 -->
-      <section class="card ai-card">
-        <div class="card-header">
-          <el-icon class="card-icon"><MagicStick /></el-icon>
-          <span class="card-title">AI智能推荐</span>
-          <el-button type="primary" size="small" text @click="handleRefreshAI">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
-        </div>
-        <AISuggestionsPanel :events="allEvents" />
-      </section>
-
-      <!-- Plan-and-Solve 执行过程展示 -->
-      <section class="card plan-execution-card">
-        <div class="card-header">
-          <el-icon class="card-icon"><List /></el-icon>
-          <span class="card-title">AI执行过程</span>
-        </div>
-        <PlanExecutionViewer />
-      </section>
-
-      <!-- 服务监控卡片 -->
-      <section class="card monitor-card">
-        <div class="card-header">
-          <el-icon class="card-icon"><Monitor /></el-icon>
-          <span class="card-title">服务监控</span>
-          <el-button type="primary" size="small" text @click="handleRefreshMonitor">
-            <el-icon><Refresh /></el-icon>
-          </el-button>
-        </div>
-        <ServiceMonitor />
-      </section>
     </main>
 
     <!-- AI配置对话框 -->
@@ -89,19 +57,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
-  Monitor, Refresh,
-  Tools, Grid, Bell, MagicStick, List
+  Tools, Grid, Bell, MagicStick
 } from '@element-plus/icons-vue'
 
 // import { useConnectionStore } from '@/stores/connection'
-import ServiceMonitor from '../monitor/index.vue'
 import ToolSets from './components/ToolSets.vue'
 import DigitalClock from './components/DigitalClock.vue'
 import AIConfigDialog from './components/AIConfigDialog.vue'
-import AISuggestionsPanel from './components/AISuggestionsPanel.vue'
 import AIAssistant from './components/AIAssistant.vue'
-import PlanExecutionViewer from './components/PlanExecutionViewer.vue'
-import { openEventReminderDialog } from '../../utils/electronUtils'
+import { openEventReminderDialog, openServiceMonitorDialog } from '../../utils/electronUtils'
 
 // Props
 interface Props {
@@ -125,7 +89,6 @@ import { ElMessage } from 'element-plus'
 // State
 const events = ref<any[]>([])
 const showAIConfig = ref(false)
-const allEvents = ref<any[]>([])
 
 // Computed
 const upcomingEvents = computed(() => {
@@ -148,15 +111,12 @@ const loadEvents = async () => {
   try {
     const result = await (window as any).electronAPI.event.getAll()
     if (result.success && result.data) {
-      allEvents.value = result.data
       events.value = result.data
     } else {
-      allEvents.value = []
       events.value = []
     }
   } catch (e) {
     console.error('Failed to load events:', e)
-    allEvents.value = []
     events.value = []
   }
 }
@@ -212,9 +172,8 @@ const handleOpenEventReminder = async () => {
   await openEventReminderDialog()
 }
 
-const handleRefreshMonitor = () => {
-  // 刷新监控数据
-  console.log('刷新监控数据')
+const handleOpenServiceMonitor = async () => {
+  await openServiceMonitorDialog()
 }
 
 const handleAIConfigSaved = () => {
@@ -419,10 +378,6 @@ onMounted(() => {
 // 特定卡片布局
 .quick-actions-card {
   min-height: 200px;
-}
-
-.monitor-card {
-  min-height: 300px;
 }
 
 .tools-card {

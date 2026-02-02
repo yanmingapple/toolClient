@@ -297,6 +297,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
+   * 监听事件提醒触发事件
+   * @param callback 回调函数
+   */
+  onEventReminderTriggered: (callback: (data: any) => void): void => {
+    ipcRenderer.on('event-reminder:triggered', (_event: any, data: any) => callback(data));
+  },
+  onInterruptionReminderTriggered: (callback: (data: any) => void): void => {
+    ipcRenderer.on('interruption-reminder:triggered', (_event: any, data: any) => callback(data));
+  },
+
+  /**
    * 移除 IPC 事件监听器
    * @param channel 事件通道名称
    * @param callback 可选，指定要移除的回调函数。如果不提供，将移除该通道的所有监听器
@@ -319,6 +330,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'connection:status-changed',
       'database:databases-updated',
       'database:tables-updated',
+      'interruption-reminder:triggered',
       'open-new-connection-dialog',
       'terminal:open-console',
       'terminal:result',
@@ -529,6 +541,53 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
+  // 打断相关 API
+  interruption: {
+    /**
+     * 记录打断
+     * @param {Object} interruption 打断对象
+     * @returns {Promise<ServiceResult<Interruption>>}
+     */
+    record: (interruption: any): Promise<ServiceResult<any>> => {
+      return ipcRenderer.invoke('interruption:record', interruption);
+    },
+
+    /**
+     * 获取待处理的提醒
+     * @returns {Promise<ServiceResult<Interruption[]>>}
+     */
+    getPendingReminders: (): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('interruption:get-pending-reminders');
+    },
+
+    /**
+     * 获取事件的所有打断记录
+     * @param {string} eventId 事件ID
+     * @returns {Promise<ServiceResult<Interruption[]>>}
+     */
+    getByEvent: (eventId: string): Promise<ServiceResult<any[]>> => {
+      return ipcRenderer.invoke('interruption:get-by-event', eventId);
+    },
+
+    /**
+     * 标记提醒已处理
+     * @param {string} interruptionId 打断ID
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    markHandled: (interruptionId: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('interruption:mark-handled', interruptionId);
+    },
+
+    /**
+     * 删除打断记录
+     * @param {string} interruptionId 打断ID
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    delete: (interruptionId: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('interruption:delete', interruptionId);
+    }
+  },
+
   // AI相关 API
   ai: {
     /**
@@ -659,24 +718,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Memory相关 API
   memory: {
     /**
-     * 追加内容到今日日志
-     * @param {string} content 日志内容
-     * @returns {Promise<ServiceResult<void>>}
-     */
-    appendToTodayLog: (content: string): Promise<ServiceResult<void>> => {
-      return ipcRenderer.invoke('memory:append-today-log', content);
-    },
-
-    /**
-     * 读取今日日志
-     * @returns {Promise<ServiceResult<string>>}
-     */
-    readTodayLog: (): Promise<ServiceResult<string>> => {
-      return ipcRenderer.invoke('memory:read-today-log');
-    },
-
-    /**
-     * 读取指定日期的日志
+     * 读取指定日期的日志（只读，用于总结上下文）
      * @param {string} date 日期 (YYYY-MM-DD)
      * @returns {Promise<ServiceResult<string>>}
      */
@@ -764,33 +806,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return ipcRenderer.invoke('work-log:get-by-date', date);
     },
 
-    /**
-     * 保存日志
-     * @param {string} date 日期 (YYYY-MM-DD)
-     * @param {string} content 日志内容
-     * @returns {Promise<ServiceResult<void>>}
-     */
-    saveLog: (date: string, content: string): Promise<ServiceResult<void>> => {
-      return ipcRenderer.invoke('work-log:save', date, content);
-    },
-
-    /**
-     * AI生成日志
-     * @param {string} date 日期 (YYYY-MM-DD)
-     * @returns {Promise<ServiceResult<string>>}
-     */
-    generateLog: (date: string): Promise<ServiceResult<string>> => {
-      return ipcRenderer.invoke('work-log:generate', date);
-    },
-
-    /**
-     * 导出日志
-     * @param {string} date 日期 (YYYY-MM-DD)
-     * @returns {Promise<ServiceResult<string>>}
-     */
-    exportLog: (date: string): Promise<ServiceResult<string>> => {
-      return ipcRenderer.invoke('work-log:export', date);
-    },
 
     /**
      * 获取今日统计
@@ -833,6 +848,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
      */
     getAllStats: (): Promise<ServiceResult<any>> => {
       return ipcRenderer.invoke('data-analysis:get-all-stats');
+    }
+  },
+  ideaNotebook: {
+    /**
+     * 读取想法记事本内容
+     * @returns {Promise<ServiceResult<string>>}
+     */
+    read: (): Promise<ServiceResult<string>> => {
+      return ipcRenderer.invoke('idea-notebook:read');
+    },
+    /**
+     * 保存想法记事本内容
+     * @param {string} content 内容
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    save: (content: string): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('idea-notebook:save', content);
+    },
+    /**
+     * 追加想法
+     * @param {string} idea 想法内容
+     * @param {string[]} tags 标签（可选）
+     * @returns {Promise<ServiceResult<void>>}
+     */
+    append: (idea: string, tags?: string[]): Promise<ServiceResult<void>> => {
+      return ipcRenderer.invoke('idea-notebook:append', idea, tags);
     }
   }
 
