@@ -42,7 +42,7 @@
                 </el-tag>
               </div>
               <div class="conflict-suggestion" v-if="conflict.suggestion">
-                <el-icon><Lightbulb /></el-icon>
+                <el-icon><Promotion /></el-icon>
                 <span>{{ conflict.suggestion }}</span>
               </div>
             </div>
@@ -100,7 +100,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { InfoFilled, WarningFilled, Lightbulb, Tools } from '@element-plus/icons-vue'
+import { InfoFilled, WarningFilled, Promotion, Tools } from '@element-plus/icons-vue'
 
 interface Conflict {
   eventId: string

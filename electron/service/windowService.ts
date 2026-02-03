@@ -238,7 +238,7 @@ export class WindowService {
       newWindow.setMenu(null);
     }
 
-
+    newWindow.webContents.toggleDevTools()
 
     return windowId;
   }

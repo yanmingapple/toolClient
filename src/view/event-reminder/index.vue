@@ -104,13 +104,13 @@
                 </div>
               </div>
               <div class="list-event-actions">
-                <el-button type="text" size="small" @click="handleCompleteEvent(event.id)" title="标记为完成">
+                <el-button link size="small" @click="handleCompleteEvent(event.id)" title="标记为完成">
                   <el-icon><CircleCheck /></el-icon>
                 </el-button>
-                <el-button type="text" size="small" @click="editEvent(event)" title="编辑">
+                <el-button link size="small" @click="editEvent(event)" title="编辑">
                   <el-icon><Edit /></el-icon>
                 </el-button>
-                <el-button type="text" size="small" @click="deleteEvent(event.id)" title="删除">
+                <el-button link size="small" @click="deleteEvent(event.id)" title="删除">
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
@@ -157,10 +157,10 @@
                 </div>
               </div>
               <div class="event-actions">
-                <el-button type="text" size="small" @click="editEvent(event)">
+                <el-button link size="small" @click="editEvent(event)">
                   <el-icon><Edit /></el-icon>
                 </el-button>
-                <el-button type="text" size="small" @click="deleteEvent(event.id)">
+                <el-button link size="small" @click="deleteEvent(event.id)">
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
@@ -209,7 +209,7 @@
                   {{ todo.title }}
                 </div>
                 <el-button
-                  type="text"
+                  link
                   size="small"
                   @click="deleteTodo(todo.id)"
                 >

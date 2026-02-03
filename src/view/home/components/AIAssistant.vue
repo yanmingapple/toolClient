@@ -51,7 +51,7 @@
             <div class="result-header">
               <span>💬 AI 回答</span>
               <el-button 
-                type="text" 
+                link 
                 size="small" 
                 @click="lastResult = null"
                 style="padding: 0;"
@@ -79,7 +79,7 @@
             <div class="result-header">
               <span>{{ lastResult.type === 'eventCreated' ? '📅 事件创建成功' : '✓ 待办创建成功' }}</span>
               <el-button 
-                type="text" 
+                link 
                 size="small" 
                 @click="lastResult = null"
                 style="padding: 0;"
@@ -135,7 +135,7 @@
             <div class="result-header">
               <span>🔍 检索结果 ({{ searchResults.length }}条)</span>
               <el-button 
-                type="text" 
+                link 
                 size="small" 
                 @click="searchResults = []; lastResult = null"
                 style="padding: 0;"
