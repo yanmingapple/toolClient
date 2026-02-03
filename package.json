@@ -136,9 +136,11 @@
       "!dbgate-master/**/node_modules/**/*",
       "!dbgate-master/**/*.map"
     ],
+    "asar": true,
     "asarUnpack": [
       "**/*.node",
-      "dist/dbgate-master/app/packages/**/*"
+      "dist/dbgate-master/app/packages/**/*",
+      "dist/electron/preload.js"
     ],
     "beforeBuild": null,
     "npmRebuild": false,

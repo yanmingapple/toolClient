@@ -166,7 +166,34 @@ export class WindowService {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: join(process.cwd(), 'dist/electron/preload.js'),
+        preload: (() => {
+          const isDev = process.env.NODE_ENV === 'development'
+          const fs = require('fs')
+          let preloadPath: string
+          
+          if (isDev) {
+            preloadPath = join(process.cwd(), 'dist/electron/preload.js')
+          } else {
+            preloadPath = join(__dirname, 'preload.js')
+            
+            // 如果文件不存在，尝试其他路径
+            if (!fs.existsSync(preloadPath)) {
+              const { app } = require('electron')
+              const appPath = app.getAppPath()
+              const altPath = join(appPath, 'dist/electron/preload.js')
+              if (fs.existsSync(altPath)) {
+                preloadPath = altPath
+              } else {
+                const resourcesPath = join(appPath, '..', 'dist/electron/preload.js')
+                if (fs.existsSync(resourcesPath)) {
+                  preloadPath = resourcesPath
+                }
+              }
+            }
+          }
+          
+          return preloadPath
+        })(),
         devTools: true,
         webSecurity: true,
         allowRunningInsecureContent: false,
@@ -180,15 +207,54 @@ export class WindowService {
       console.log(`[WindowService] Loading development URL: ${devUrl}`);
       newWindow.loadURL(devUrl);
     } else {
-      const fileUrl = url.format({
-        pathname: path.join(__dirname, '../renderer/index.html'),
+      // 检查文件路径是否存在
+      const indexPath = path.join(__dirname, '../renderer/index.html');
+      const fs = require('fs');
+      const fileExists = fs.existsSync(indexPath);
+      console.log(`[WindowService] Index file path: ${indexPath}`);
+      console.log(`[WindowService] Index file exists: ${fileExists}`);
+      
+      // 如果文件不存在，尝试使用 app.getAppPath()
+      let actualIndexPath = indexPath;
+      if (!fileExists) {
+        const { app } = require('electron');
+        const appPath = app.getAppPath();
+        const altPath = path.join(appPath, 'dist/renderer/index.html');
+        console.log(`[WindowService] Trying alternative path: ${altPath}`);
+        if (fs.existsSync(altPath)) {
+          actualIndexPath = altPath;
+          console.log(`[WindowService] Using alternative path: ${actualIndexPath}`);
+        } else {
+          const resourcesPath = path.join(appPath, '..', 'dist/renderer/index.html');
+          console.log(`[WindowService] Trying resources path: ${resourcesPath}`);
+          if (fs.existsSync(resourcesPath)) {
+            actualIndexPath = resourcesPath;
+            console.log(`[WindowService] Using resources path: ${actualIndexPath}`);
+          }
+        }
+      }
+      
+      // 使用与主窗口相同的方式构建 URL，确保 hash 正确传递
+      const finalUrl = url.format({
+        pathname: actualIndexPath,
         protocol: 'file:',
-        slashes: true
+        slashes: true,
+        hash: hash
       });
-      // 手动添加 hash，因为 url.format 在处理 file:// 协议时可能不会正确处理 hash
-      const finalUrl = fileUrl + hash;
       console.log(`[WindowService] Loading production URL: ${finalUrl}`);
+      console.log(`[WindowService] Hash value: ${hash}`);
+      console.log(`[WindowService] Page type: ${page}`);
       newWindow.loadURL(finalUrl);
+      
+      // 窗口加载完成后检查实际的 hash
+      newWindow.webContents.once('did-finish-load', () => {
+        newWindow.webContents.executeJavaScript(`
+          console.log('[WindowService] Window loaded successfully');
+          console.log('[WindowService] Actual hash:', window.location.hash);
+          console.log('[WindowService] Expected hash:', '${hash}');
+          console.log('[WindowService] Pathname:', window.location.pathname);
+        `).catch((err: any) => console.error('[WindowService] Error checking window state:', err));
+      });
     }
 
     // 窗口关闭时从映射中移除
@@ -215,14 +281,17 @@ export class WindowService {
     }
 
     // 窗口加载完成后重新设置标题（防止被 HTML title 标签覆盖）
-    newWindow.webContents.once('did-finish-load', () => {
-      newWindow.setTitle(windowTitle);
-      // 检查 hash 是否正确传递
-      newWindow.webContents.executeJavaScript(`
-        console.log('[WindowService] Window loaded, current hash:', window.location.hash);
-        console.log('[WindowService] Expected hash:', '${hash}');
-      `).catch(err => console.error('[WindowService] Error checking hash:', err));
-    });
+    // 注意：生产环境的 did-finish-load 已经在上面处理了，这里只处理开发环境
+    if (process.env.NODE_ENV === 'development') {
+      newWindow.webContents.once('did-finish-load', () => {
+        newWindow.setTitle(windowTitle);
+        // 检查 hash 是否正确传递
+        newWindow.webContents.executeJavaScript(`
+          console.log('[WindowService] Window loaded, current hash:', window.location.hash);
+          console.log('[WindowService] Expected hash:', '${hash}');
+        `).catch((err: any) => console.error('[WindowService] Error checking hash:', err));
+      });
+    }
 
     // 监听页面标题变化，保持窗口标题不变
     newWindow.webContents.on('page-title-updated', (event: any) => {
@@ -237,8 +306,6 @@ export class WindowService {
       // 对话框窗口明确禁用菜单
       newWindow.setMenu(null);
     }
-
-    newWindow.webContents.toggleDevTools()
 
     return windowId;
   }

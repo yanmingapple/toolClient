@@ -20,7 +20,6 @@ declare module 'vue' {
     CreateActivity: typeof import('./components/TKCreateActivityButton/createActivity/index.vue')['default']
     CreateProjectFormPop: typeof import('./components/TKCreateActivityButton/CreateProjectFormPop/index.vue')['default']
     DraggableButton: typeof import('./components/TKAI/DraggableButton/index.vue')['default']
-    ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElBreadcrumb: typeof import('element-plus/es')['ElBreadcrumb']
