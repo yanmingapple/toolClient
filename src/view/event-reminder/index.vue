@@ -147,7 +147,8 @@
               :class="{ 'event-past': isEventPast(event) }"
             >
               <div class="event-time-badge" :class="{ 'past-time': isEventPast(event) }">
-                {{ event.time }}
+                <div class="event-time-start">{{ event.time }}</div>
+                <div class="event-time-end" v-if="event.endTime">{{ event.endTime }}</div>
               </div>
               <div class="event-content">
                 <div class="event-title">{{ event.title }}</div>
@@ -176,20 +177,6 @@
           <div class="todo-section">
             <div class="todo-header">
               <div class="todo-title">代办事项</div>
-              <div class="todo-input">
-                <el-input
-                  v-model="newTodoText"
-                  placeholder="添加一条代办，例如：下午 3 点给客户回电"
-                  @keyup.enter="addTodo"
-                />
-                <el-button
-                  type="primary"
-                  @click="addTodo"
-                  :disabled="!newTodoText.trim()"
-                >
-                  添加代办
-                </el-button>
-              </div>
             </div>
 
             <div class="todo-list" v-if="selectedDateTodos.length > 0">
@@ -266,20 +253,39 @@
             />
           </el-form-item>
           <el-form-item label="开始时间" prop="time">
-            <el-time-picker
-              v-model="formData.time"
-              placeholder="选择开始时间"
-              format="HH:mm"
-              value-format="HH:mm"
-            />
+            <div class="time-picker-wrapper">
+              <el-time-picker
+                v-model="formData.time"
+                placeholder="选择开始时间"
+                format="HH:mm"
+                value-format="HH:mm"
+                class="time-picker-input"
+              />
+              <div class="time-quick-buttons">
+                <el-button size="small" @click="setCurrentTime">当前时间</el-button>
+                <el-button size="small" @click="addTime(15)">+15分钟</el-button>
+                <el-button size="small" @click="addTime(30)">+30分钟</el-button>
+                <el-button size="small" @click="addTime(60)">+1小时</el-button>
+                <el-button size="small" @click="addTime(120)">+2小时</el-button>
+              </div>
+            </div>
           </el-form-item>
           <el-form-item label="结束时间" prop="endTime">
-            <el-time-picker
-              v-model="formData.endTime"
-              placeholder="选择结束时间（可选）"
-              format="HH:mm"
-              value-format="HH:mm"
-            />
+            <div class="time-picker-wrapper">
+              <el-time-picker
+                v-model="formData.endTime"
+                placeholder="选择结束时间（可选）"
+                format="HH:mm"
+                value-format="HH:mm"
+                class="time-picker-input"
+              />
+              <div class="time-quick-buttons" v-if="formData.time">
+                <el-button size="small" @click="setEndTime(15)">+15分钟</el-button>
+                <el-button size="small" @click="setEndTime(30)">+30分钟</el-button>
+                <el-button size="small" @click="setEndTime(60)">+1小时</el-button>
+                <el-button size="small" @click="setEndTime(120)">+2小时</el-button>
+              </div>
+            </div>
           </el-form-item>
           <el-form-item label="事件描述" prop="description">
             <el-input
@@ -831,11 +837,13 @@ const renderEventContent = (arg: EventContentArg) => {
   }
 
   const time = ext?.time || ''
+  const endTime = ext?.endTime || ''
+  const timeDisplay = endTime ? `${time} - ${endTime}` : time
   
   return {
     html: `
       <div class="fc-event-main-frame">
-        <div class="fc-event-time">${time}</div>
+        <div class="fc-event-time">${timeDisplay}</div>
         <div class="fc-event-title-container">
           <div class="fc-event-title">${event.title}</div>
         </div>
@@ -1010,11 +1018,15 @@ const generateId = () => {
 
 const showAddEventDialog = () => {
   editingEvent.value = null
+  // 获取当前时间，格式化为 HH:mm
+  const now = new Date()
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  
   formData.value = {
     title: '',
-    type: '其他',
+    type: '工作', // 默认选择"工作"
     date: selectedDate.value || new Date().toISOString().split('T')[0],
-    time: '09:00',
+    time: currentTime, // 默认当前时间
     endTime: undefined,
     description: '',
     remindBefore: 15
@@ -1022,6 +1034,46 @@ const showAddEventDialog = () => {
   addEventVisible.value = true
 }
 
+// 设置当前时间
+const setCurrentTime = () => {
+  const now = new Date()
+  formData.value.time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
+
+// 快捷设置开始时间（在当前时间基础上增加分钟数）
+const addTime = (minutes: number) => {
+  if (!formData.value.time) {
+    // 如果没有开始时间，使用当前时间
+    const now = new Date()
+    formData.value.time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  }
+  
+  const [hours, mins] = formData.value.time.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, mins, 0, 0)
+  date.setMinutes(date.getMinutes() + minutes)
+  
+  const newHours = String(date.getHours()).padStart(2, '0')
+  const newMins = String(date.getMinutes()).padStart(2, '0')
+  formData.value.time = `${newHours}:${newMins}`
+}
+
+// 快捷设置结束时间（在开始时间基础上增加分钟数）
+const setEndTime = (minutes: number) => {
+  if (!formData.value.time) {
+    ElMessage.warning('请先设置开始时间')
+    return
+  }
+  
+  const [hours, mins] = formData.value.time.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, mins, 0, 0)
+  date.setMinutes(date.getMinutes() + minutes)
+  
+  const newHours = String(date.getHours()).padStart(2, '0')
+  const newMins = String(date.getMinutes()).padStart(2, '0')
+  formData.value.endTime = `${newHours}:${newMins}`
+}
 
 // 刷新 FullCalendar 事件
 const refreshCalendarEvents = () => {
@@ -1953,6 +2005,8 @@ defineExpose({
 :deep(.fc-event-time) {
   font-weight: 600;
   font-size: 11px;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
 :deep(.fc-event-title) {
@@ -2161,11 +2215,33 @@ defineExpose({
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(102, 126, 234, 0.25);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  gap: 2px;
 }
 
 .event-time-badge.past-time {
   background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
   box-shadow: 0 4px 12px rgba(156, 163, 175, 0.3);
+}
+
+.event-time-start {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.event-time-end {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.9;
+  line-height: 1.2;
+  margin-top: 2px;
+  padding-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .event-content {
@@ -2524,6 +2600,68 @@ defineExpose({
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
+}
+
+/* 时间选择器包装器 */
+.time-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.time-picker-input {
+  width: 100%;
+}
+
+.time-quick-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.time-quick-buttons .el-button {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.time-quick-buttons .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+/* 时间选择器包装器 */
+.time-picker-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.time-picker-input {
+  width: 100%;
+}
+
+.time-quick-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.time-quick-buttons .el-button {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.time-quick-buttons .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .form-textarea {

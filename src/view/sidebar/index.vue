@@ -16,6 +16,24 @@
         <div class="current-time">{{ currentTime }}</div>
         <div class="current-date">{{ currentDate }}</div>
       </div>
+
+      <!-- 快捷工具 -->
+      <div class="tools-section">
+        <div class="tool-row">
+          <div class="tool-item" @click="handleOpenCalendar">
+            <el-icon><Calendar /></el-icon>
+            <span>日历提醒</span>
+          </div>
+          <div class="tool-item" @click="handleOpenCreditCard">
+            <el-icon><Money /></el-icon>
+            <span>信用卡提醒</span>
+          </div>
+          <div class="tool-item" @click="handleOpenIdeaNotebook">
+            <el-icon><EditPen /></el-icon>
+            <span>想法记事本</span>
+          </div>
+        </div>
+      </div>
       
       <!-- 今日概览 -->
       <div class="overview-section">
@@ -42,85 +60,53 @@
         </div>
       </div>
 
-      <!-- 当前焦点任务 -->
-      <div class="focus-section" v-if="focusTask">
-        <div class="section-header">
-          <el-icon><Aim /></el-icon>
-          <span>当前焦点</span>
+      <!-- 可滚动内容区域 -->
+      <div class="scrollable-content">
+        <!-- 当前焦点任务 -->
+        <div class="focus-section" v-if="focusTask">
+          <div class="section-header">
+            <el-icon><Aim /></el-icon>
+            <span>当前焦点</span>
+          </div>
+          <div class="focus-task" @click="handleOpenCalendar">
+            <div class="task-title">{{ focusTask.title }}</div>
+            <div class="task-time" v-if="focusTask.time">
+              {{ focusTask.time }}
+              <span v-if="focusTask.endTime"> - {{ focusTask.endTime }}</span>
+            </div>
+          </div>
         </div>
-        <div class="focus-task" @click="handleOpenCalendar">
-          <div class="task-title">{{ focusTask.title }}</div>
-          <div class="task-time" v-if="focusTask.time">{{ focusTask.time }}</div>
-        </div>
-      </div>
 
-      <!-- 下一个会议 -->
-      <div class="next-meeting-section" v-if="nextMeeting">
-        <div class="section-header">
-          <el-icon><VideoCamera /></el-icon>
-          <span>下一个会议</span>
+        <!-- 下一个会议 -->
+        <div class="next-meeting-section" v-if="nextMeeting">
+          <div class="section-header">
+            <el-icon><VideoCamera /></el-icon>
+            <span>下一个会议</span>
+          </div>
+          <div class="meeting-info" @click="handleOpenCalendar">
+            <div class="meeting-title">{{ nextMeeting.title }}</div>
+            <div class="meeting-time">{{ formatMeetingTime(nextMeeting) }}</div>
+          </div>
         </div>
-        <div class="meeting-info" @click="handleOpenCalendar">
-          <div class="meeting-title">{{ nextMeeting.title }}</div>
-          <div class="meeting-time">{{ formatMeetingTime(nextMeeting) }}</div>
-        </div>
-      </div>
 
-      <!-- 快速添加任务 -->
-      <div class="quick-add-section">
-        <div class="section-header">
-          <el-icon><Plus /></el-icon>
-          <span>快速添加</span>
-        </div>
-        <el-input
-          v-model="quickTaskText"
-          placeholder="输入任务..."
-          @keyup.enter="handleQuickAddTask"
-          class="quick-add-input"
-          size="small"
-        >
-          <template #append>
-            <el-button @click="handleQuickAddTask" :icon="Check" size="small" />
-          </template>
-        </el-input>
-      </div>
-
-      <!-- AI建议 -->
-      <div class="ai-suggestions-section" v-if="aiSuggestions.length > 0">
-        <div class="section-header">
-          <el-icon><MagicStick /></el-icon>
-          <span>AI建议</span>
-        </div>
-        <div class="suggestions-list">
-          <div 
-            v-for="(suggestion, index) in aiSuggestions" 
-            :key="index"
-            class="suggestion-item"
-          >
-            {{ suggestion }}
+        <!-- AI建议 -->
+        <div class="ai-suggestions-section" v-if="aiSuggestions.length > 0">
+          <div class="section-header">
+            <el-icon><MagicStick /></el-icon>
+            <span>AI建议</span>
+          </div>
+          <div class="suggestions-list">
+            <div 
+              v-for="(suggestion, index) in aiSuggestions" 
+              :key="index"
+              class="suggestion-item"
+            >
+              {{ suggestion }}
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- 快捷工具 -->
-      <div class="tools-section">
-        <div class="tool-row">
-          <div class="tool-item" @click="handleOpenCalendar">
-            <el-icon><Calendar /></el-icon>
-            <span>日历提醒</span>
-          </div>
-          <div class="tool-item" @click="handleOpenCreditCard">
-            <el-icon><Money /></el-icon>
-            <span>信用卡提醒</span>
-          </div>
-        </div>
-        <div class="tool-row">
-          <div class="tool-item" @click="handleOpenIdeaNotebook">
-            <el-icon><EditPen /></el-icon>
-            <span>想法记事本</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -136,8 +122,6 @@ import {
   DataAnalysis, 
   Aim, 
   VideoCamera, 
-  Plus, 
-  Check, 
   MagicStick 
 } from '@element-plus/icons-vue'
 import { expandSidebar, collapseSidebar, openCalendarReminder, openCreditCardReminder, openIdeaNotebook } from '@/utils/electronUtils'
@@ -152,6 +136,7 @@ interface Task {
   id: string
   title: string
   time?: string
+  endTime?: string
   date: string
   type?: string
   done?: boolean
@@ -171,7 +156,6 @@ const todayEvents = ref<Task[]>([])
 const todayTodos = ref<Task[]>([])
 const focusTask = ref<Task | null>(null)
 const nextMeeting = ref<Task | null>(null)
-const quickTaskText = ref('')
 const aiSuggestions = ref<string[]>([])
 let timer: number | null = null
 let expandTimeout: number | null = null
@@ -261,12 +245,13 @@ const loadTodayData = async () => {
     // 加载今日事件
     const eventsResult = await (window as any).electronAPI.event.getByDate(today)
     if (eventsResult.success && eventsResult.data) {
-      todayEvents.value = eventsResult.data.map((e: { id: string; title: string; time: string; date: string; type: string }) => ({
+      todayEvents.value = eventsResult.data.map((e: { id: string; title: string; time: string; date: string; type: string; endTime?: string }) => ({
         id: e.id,
         title: e.title,
         time: e.time,
         date: e.date,
-        type: e.type
+        type: e.type,
+        endTime: e.endTime
       }))
     }
 
@@ -386,66 +371,6 @@ const formatMeetingTime = (meeting: Task): string => {
   if (minutes < 60) return `${minutes}分钟后`
   const hours = Math.floor(minutes / 60)
   return `${hours}小时后`
-}
-
-// 快速添加任务
-const handleQuickAddTask = async () => {
-  if (!quickTaskText.value.trim()) {
-    return
-  }
-
-  try {
-    const today = new Date().toISOString().split('T')[0]
-    
-    // 使用AI解析自然语言
-    const parseResult = await (window as any).electronAPI.ai.parseNaturalLanguage(quickTaskText.value, {
-      date: today
-    })
-
-    if (parseResult.success && parseResult.data) {
-      const event = parseResult.data.event
-      
-      // 保存事件
-      const saveResult = await (window as any).electronAPI.event.save({
-        id: event.id || `event_${Date.now()}`,
-        title: event.title || quickTaskText.value,
-        type: event.type || '其他',
-        date: event.date || today,
-        time: event.time || '09:00',
-        reminder: event.reminder || 0,
-        description: event.description || ''
-      })
-
-      if (saveResult.success) {
-        ElMessage.success('任务已添加')
-        quickTaskText.value = ''
-        await loadTodayData()
-      } else {
-        ElMessage.error(saveResult.message || '添加失败')
-      }
-    } else {
-      // 如果AI解析失败，直接作为代办事项添加
-      const todoId = `todo_${Date.now()}`
-      const saveResult = await (window as any).electronAPI.todo.save({
-        id: todoId,
-        text: quickTaskText.value,
-        date: today,
-        done: false,
-        createTime: new Date().toISOString()
-      })
-
-      if (saveResult.success) {
-        ElMessage.success('任务已添加')
-        quickTaskText.value = ''
-        await loadTodayData()
-      } else {
-        ElMessage.error(saveResult.message || '添加失败')
-      }
-    }
-  } catch (error: any) {
-    console.error('Failed to add quick task:', error)
-    ElMessage.error('添加任务失败')
-  }
 }
 
 // 加载AI建议
@@ -584,6 +509,35 @@ onUnmounted(() => {
   box-sizing: border-box;
   transition: all 0.3s ease;
   overflow: hidden;
+  min-height: 0;
+}
+
+/* 可滚动内容区域 */
+.scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-right: 4px;
+  
+  /* 自定义滚动条样式 */
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 2px;
+    
+    &:hover {
+      background: rgba(102, 126, 234, 0.7);
+    }
+  }
 }
 
 .time-section {
@@ -609,13 +563,17 @@ onUnmounted(() => {
 .overview-section,
 .focus-section,
 .next-meeting-section,
-.quick-add-section,
 .ai-suggestions-section {
-  margin-bottom: 16px;
-  padding: 12px;
+  margin-bottom: 12px;
+  padding: 10px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   -webkit-app-region: no-drag;
+}
+
+.overview-section {
+  margin-bottom: 10px;
+  padding: 8px;
 }
 
 .overview-header,
@@ -638,7 +596,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .stat-item {
@@ -646,14 +604,14 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -665,9 +623,9 @@ onUnmounted(() => {
 
 .progress-bar {
   width: 100%;
-  height: 6px;
+  height: 4px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -705,22 +663,6 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.quick-add-input {
-  :deep(.el-input__inner) {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #fff;
-
-    &::placeholder {
-      color: rgba(255, 255, 255, 0.5);
-    }
-  }
-
-  :deep(.el-input-group__append) {
-    background: rgba(102, 126, 234, 0.3);
-    border: 1px solid rgba(102, 126, 234, 0.5);
-  }
-}
 
 .suggestions-list {
   display: flex;
@@ -738,12 +680,10 @@ onUnmounted(() => {
 }
 
 .tools-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
-  margin-top: auto;
+  margin-bottom: 10px;
 }
 
 .tool-row {

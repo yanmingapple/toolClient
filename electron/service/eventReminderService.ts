@@ -134,8 +134,9 @@ export class EventReminderService {
         minute: '2-digit'
       });
 
-      const title = `📅 事件提醒: ${event.title}`;
-      const body = `时间: ${timeStr}\n类型: ${event.type}${event.description ? `\n描述: ${event.description}` : ''}`;
+      // 使用事件类型作为通知标题
+      const title = event.type || '事件提醒';
+      const body = `${event.title}\n时间: ${timeStr}${event.description ? `\n描述: ${event.description}` : ''}`;
 
       console.log(`[EventReminderService] 触发提醒: ${title}`);
 
